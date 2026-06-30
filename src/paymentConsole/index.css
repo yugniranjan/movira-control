@@ -1,0 +1,155 @@
+@import "tailwindcss";
+
+:root {
+  color-scheme: light;
+
+  --brand-primary: #ff7a24;
+  --brand-primary-deep: #f45b0a;
+  --brand-secondary: #ffce1f;
+
+  --surface-app: #f6f7fb;
+  --surface-panel: #ffffff;
+  --surface-muted: #f1f3f9;
+  --stroke-soft: #e7e9f2;
+  --stroke-strong: #d7dae8;
+
+  --text-strong: #0f1726;
+  --text-base: #475569;
+  --text-muted: #94a3b8;
+
+  --ok: #16a34a;
+  --warn: #d97706;
+  --err: #dc2626;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: "DM Sans", system-ui, -apple-system, sans-serif;
+  background: #fff7ed;
+  color: var(--text-strong);
+  -webkit-font-smoothing: antialiased;
+}
+
+.font-display {
+  font-family: "Bricolage Grotesque", "DM Sans", sans-serif;
+  letter-spacing: -0.01em;
+}
+
+/* Thin, unobtrusive scrollbars */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--stroke-strong) transparent;
+}
+
+[data-app="admin"] {
+  --surface-app: #fff7ed;
+  --surface-panel: #ffffff;
+  --surface-panel-strong: #ffffff;
+  --surface-muted: #fffaf2;
+  --surface-header: #fffaf2;
+  --surface-bottom: #fffaf2;
+  --stroke-soft: #e4d8c9;
+  --stroke-medium: #d4c4b1;
+  --stroke-strong: #171512;
+  --text-strong: #111111;
+  --text-base: #3f3a34;
+  --text-muted: #6c6257;
+  --brand-primary: #ff6a13;
+  --brand-primary-deep: #b43a05;
+  --brand-primary-soft: #ffecd2;
+  --brand-primary-border: #ffb56e;
+  --brand-secondary: #ffcf1f;
+  --input-bg: #ffffff;
+  --input-border: #d6c8b8;
+  --input-focus-bg: #ffffff;
+  --input-placeholder: #8a8176;
+  --shadow-soft: 0 12px 28px rgba(38, 25, 12, 0.08);
+  --shadow-card: 0 6px 18px rgba(38, 25, 12, 0.08);
+  color-scheme: light;
+}
+
+[data-app="admin"] .section-kicker {
+  color: #f45b0a;
+  -webkit-text-fill-color: #f45b0a;
+  background: none;
+  font-weight: 900;
+  letter-spacing: 0.18em;
+}
+
+[data-app="admin"] .btn-nexus,
+[data-app="admin"] button.bg-orange-600,
+[data-app="admin"] a.bg-orange-600 {
+  background: #ff6a13 !important;
+  color: #ffffff !important;
+  border: 2px solid #171512 !important;
+  box-shadow: 0 5px 0 #b43a05 !important;
+  border-radius: 10px !important;
+  font-weight: 900 !important;
+}
+
+[data-app="admin"] .btn-nexus:hover:not(:disabled),
+[data-app="admin"] button.bg-orange-600:hover,
+[data-app="admin"] a.bg-orange-600:hover {
+  background: #ff7b2a !important;
+}
+
+[data-app="admin"] .btn-nexus:active,
+[data-app="admin"] button.bg-orange-600:active,
+[data-app="admin"] a.bg-orange-600:active {
+  transform: translateY(2px);
+  box-shadow: 0 3px 0 #b43a05 !important;
+}
+
+[data-app="admin"] .input-nexus,
+[data-app="admin"] input:not([type="checkbox"]):not([type="radio"]),
+[data-app="admin"] select,
+[data-app="admin"] textarea {
+  border: 2px solid #d6c8b8;
+  border-radius: 10px;
+  background: #ffffff;
+  color: #111111;
+  box-shadow: 0 2px 0 rgba(23, 21, 18, 0.08);
+}
+
+[data-app="admin"] .input-nexus:focus,
+[data-app="admin"] input:not([type="checkbox"]):not([type="radio"]):focus,
+[data-app="admin"] select:focus,
+[data-app="admin"] textarea:focus {
+  outline: none;
+  border-color: #171512;
+  box-shadow: 0 0 0 3px rgba(255, 106, 19, 0.16);
+}
+
+[data-app="admin"] .rounded-xl,
+[data-app="admin"] .rounded-2xl {
+  border-radius: 8px;
+}
+
+[data-app="admin"] table thead th {
+  background: #171512;
+  color: #fffaf2;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+[data-app="admin"] table tbody tr {
+  background: #ffffff;
+}
+
+[data-app="admin"] table tbody tr:hover {
+  background: #fff8ed;
+}
+
+[data-app="admin"] .payment-card,
+[data-app="admin"] [class*="border-[var(--stroke-soft)]"],
+[data-app="admin"] .border-stone-200 {
+  border-color: #e4d8c9 !important;
+}
