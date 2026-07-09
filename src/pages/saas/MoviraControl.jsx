@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { createElement, useEffect, useMemo, useState } from "react";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
 import {
@@ -16,23 +16,30 @@ import {
   FaPlus,
   FaRocket,
   FaSearch,
+  FaTimes,
   FaTrash,
   FaTrashRestore,
+  FaUserPlus,
 } from "react-icons/fa";
 import PageLayout from "../../layouts/PageLayout";
 import Loader from "../../components/Loader";
 import ErrorMessage from "../../components/ErrorMessage";
 import ConfirmDialog from "../../components/common/ConfirmDialog";
+import SearchableSelect from "../../components/common/SearchableSelect";
 import {
   useApproveSaasParkGoLiveMutation,
   useCreateSaasParkMutation,
   useCreateSaasCustomerOwnerMutation,
   useCreateSaasInvoicePaymentLinkMutation,
+  useCreateSaasPlanMutation,
+  useDeleteSaasPlanMutation,
   useDeleteSaasParkMutation,
   useGetSaasParkAuditLogsQuery,
   useGetSaasParkByIdQuery,
   useGetSaasParkPaymentEventsQuery,
   useGetSaasParksQuery,
+  useGetSaasModulesQuery,
+  useGetSaasPlansQuery,
   useLazyGetSaasInvoiceDocumentQuery,
   useLazyGetSaasParkPermanentDeletePreviewQuery,
   useRecordSaasInvoicePaymentMutation,
@@ -44,6 +51,8 @@ import {
   useUpdateSaasParkMutation,
   useUpdateSaasParkOnboardingMutation,
   useUpdateSaasParkPaymentsMutation,
+  useUpdateSaasModuleMutation,
+  useUpdateSaasPlanMutation,
   useVoidSaasInvoiceMutation,
   usePermanentDeleteSaasParkMutation,
 } from "../../features/saas/moviraControlApi";
@@ -102,6 +111,95 @@ const defaultCustomerOwner = {
   temporaryPassword: "",
 };
 
+const billingCycleOptions = [
+  { value: "monthly", label: "Monthly" },
+  { value: "annual", label: "Annual" },
+];
+
+const taxLabelOptions = [
+  { value: "Tax", label: "Tax", description: "Generic tax label for regions without a named tax." },
+  { value: "VAT", label: "VAT", description: "Value Added Tax." },
+  { value: "GST", label: "GST", description: "Goods and Services Tax." },
+  { value: "HST", label: "HST", description: "Harmonized Sales Tax." },
+  { value: "PST", label: "PST", description: "Provincial Sales Tax." },
+  { value: "QST", label: "QST", description: "Quebec Sales Tax." },
+  { value: "Sales Tax", label: "Sales Tax", description: "Common sales tax label." },
+];
+
+const platformBillingMethodOptions = [
+  { value: "not_configured", label: "Not configured" },
+  { value: "online_payment", label: "Online payment" },
+  { value: "online", label: "Online payment" },
+  { value: "card_on_file", label: "Card on file" },
+  { value: "bank_debit", label: "Bank debit" },
+  { value: "manual_invoice", label: "Manual invoice" },
+];
+
+const platformBillingStatusOptions = [
+  { value: "not_configured", label: "Not configured" },
+  { value: "pending", label: "Pending" },
+  { value: "active", label: "Active" },
+  { value: "past_due", label: "Past due" },
+  { value: "suspended", label: "Suspended" },
+];
+
+const guestPaymentStatusOptions = [
+  { value: "not_configured", label: "Not configured" },
+  { value: "sandbox", label: "Sandbox" },
+  { value: "live", label: "Live" },
+];
+
+const paymentHistoryStatusOptions = [
+  { value: "all", label: "All statuses" },
+  { value: "paid", label: "Paid" },
+  { value: "partial", label: "Partial" },
+  { value: "open", label: "Open" },
+  { value: "overdue", label: "Overdue" },
+  { value: "past_due", label: "Past due" },
+  { value: "suspended", label: "Suspended" },
+  { value: "recovered", label: "Recovered" },
+  { value: "void", label: "Void" },
+  { value: "recorded", label: "Recorded" },
+];
+
+const paymentEventTypeOptions = [
+  { value: "all", label: "All event types" },
+  { value: "invoice_generated", label: "Invoice generated" },
+  { value: "invoice_payment_captured", label: "Payment captured" },
+  { value: "invoice_payment_refunded", label: "Payment refunded" },
+  { value: "invoice_payment_link_created", label: "Payment link" },
+  { value: "invoice_marked_overdue", label: "Marked overdue" },
+  { value: "invoice_reminder_sent", label: "Reminder sent" },
+  { value: "invoice_reminder_failed", label: "Reminder failed" },
+  { value: "account_marked_past_due", label: "Account past due" },
+  { value: "account_suspended_for_non_payment", label: "Account suspended" },
+  { value: "account_collection_recovered", label: "Account recovered" },
+  { value: "invoice_voided", label: "Invoice voided" },
+  { value: "payment_settings_updated", label: "Payment settings" },
+];
+
+const auditActionOptions = [
+  { value: "all", label: "All actions" },
+  { value: "park.created", label: "Park created" },
+  { value: "park.updated", label: "Park updated" },
+  { value: "park.archived", label: "Park archived" },
+  { value: "park.lifecycle_updated", label: "Lifecycle updated" },
+  { value: "billing.updated", label: "Billing updated" },
+  { value: "payments.updated", label: "Payments updated" },
+  { value: "invoice.generated", label: "Invoice generated" },
+  { value: "invoice.payment_recorded", label: "Payment recorded" },
+  { value: "invoice.payment_link_created", label: "Payment link created" },
+  { value: "invoice.payment_refunded", label: "Payment refunded" },
+  { value: "invoice.marked_overdue", label: "Marked overdue" },
+  { value: "invoice.reminder_sent", label: "Reminder sent" },
+  { value: "invoice.reminder_failed", label: "Reminder failed" },
+  { value: "billing.past_due", label: "Billing past due" },
+  { value: "billing.suspended", label: "Billing suspended" },
+  { value: "billing.collection_recovered", label: "Billing recovered" },
+  { value: "invoice.voided", label: "Invoice voided" },
+  { value: "onboarding.updated", label: "Onboarding updated" },
+];
+
 const setupSteps = [
   { key: "parkWorkspace", label: "Workspace", route: "" },
   { key: "ownerAccess", label: "Owner", route: "edit" },
@@ -115,12 +213,38 @@ const setupSteps = [
   { key: "goLiveApproval", label: "Go live", route: "onboarding" },
 ];
 
+const parkDetailTabs = [
+  { suffix: "", label: "Overview" },
+  { suffix: "modules", label: "Modules", requiredStep: "parkWorkspace", requiredLabel: "Workspace" },
+  { suffix: "billing", label: "Billing", requiredStep: "moduleAccess", requiredLabel: "Modules" },
+  { suffix: "billing-history", label: "Billing History", requiredStep: "billingPlan", requiredLabel: "Billing" },
+  { suffix: "payments", label: "Payments", requiredStep: "billingPlan", requiredLabel: "Billing" },
+  { suffix: "payment-history", label: "Payment History", requiredStep: "paymentMethod", requiredLabel: "Payments" },
+  { suffix: "onboarding", label: "Onboarding", requiredStep: "guestPayments", requiredLabel: "Guest payments" },
+  { suffix: "audit", label: "Audit", requiredStep: "goLiveApproval", requiredLabel: "Go live" },
+];
+
 function money(value, currency = "CAD") {
   return new Intl.NumberFormat("en-CA", {
     style: "currency",
     currency,
     maximumFractionDigits: 0,
   }).format(Number(value || 0));
+}
+
+function todayDateInputValue() {
+  const today = new Date();
+  const offsetMs = today.getTimezoneOffset() * 60 * 1000;
+  return new Date(today.getTime() - offsetMs).toISOString().slice(0, 10);
+}
+
+function dateInputValue(value) {
+  if (!value) return "";
+  if (/^\d{4}-\d{2}-\d{2}$/.test(String(value))) return String(value);
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  const offsetMs = date.getTimezoneOffset() * 60 * 1000;
+  return new Date(date.getTime() - offsetMs).toISOString().slice(0, 10);
 }
 
 function dateOnly(value) {
@@ -154,6 +278,10 @@ function billingStatusClass(status) {
   if (status === "failed" || status === "refunded") return "border-red-200 bg-red-50 text-red-700";
   if (status === "void") return "border-stone-200 bg-stone-100 text-stone-500";
   return "border-amber-200 bg-amber-50 text-amber-700";
+}
+
+function optionLabel(options, value) {
+  return options.find((option) => option.value === value)?.label || String(value || "Not configured").replace(/_/g, " ");
 }
 
 function Pill({ children, className = "" }) {
@@ -192,7 +320,7 @@ function StatCard({ icon: Icon, label, value, detail, compact = false }) {
     <div className={`rounded-xl border border-stone-200 bg-white shadow-sm ${compact ? "p-3" : "p-4"}`}>
       <div className={`flex items-center ${compact ? "gap-2.5" : "gap-3"}`}>
         <div className={`grid shrink-0 place-items-center rounded-lg bg-orange-50 text-orange-700 ${compact ? "h-9 w-9 text-sm" : "h-11 w-11"}`}>
-          <Icon />
+          {createElement(Icon)}
         </div>
         <div>
         <div className={`min-w-0 ${compact ? "flex flex-1 items-baseline gap-2" : ""}`}>
@@ -234,6 +362,16 @@ function getNextStep(park) {
 
 function stepHref(parkId, step) {
   return `/movira-control/parks/${parkId}${step?.route ? `/${step.route}` : ""}`;
+}
+
+function getParkTabLock(park, suffix = "") {
+  const tab = parkDetailTabs.find((item) => item.suffix === suffix);
+  if (!tab?.requiredStep) return null;
+  if (park?.onboarding?.[tab.requiredStep]) return null;
+  return {
+    tab,
+    message: `Complete ${tab.requiredLabel} before opening ${tab.label}.`,
+  };
 }
 
 function LaunchRail({ park }) {
@@ -331,6 +469,620 @@ function ControlShell({ title, kicker = "SaaS command", children, actions }) {
     >
       {children}
     </PageLayout>
+  );
+}
+
+const emptyPlanForm = {
+  key: "",
+  label: "",
+  monthlyBaseFee: 0,
+  maxParks: "",
+  description: "",
+  sortOrder: 100,
+  recommended: false,
+  internalOnly: false,
+  status: "active",
+};
+
+function planFormFrom(plan = null) {
+  if (!plan) return emptyPlanForm;
+  return {
+    key: plan.key || "",
+    label: plan.label || "",
+    monthlyBaseFee: Number(plan.monthlyBaseFee || 0),
+    maxParks: plan.maxParks === null || plan.maxParks === undefined ? "" : Number(plan.maxParks),
+    description: plan.description || "",
+    sortOrder: Number(plan.sortOrder || 100),
+    recommended: Boolean(plan.recommended),
+    internalOnly: Boolean(plan.internalOnly),
+    status: plan.status || "active",
+  };
+}
+
+function PlansManager() {
+  const [activeCatalogTab, setActiveCatalogTab] = useState("plans");
+  const [search, setSearch] = useState("");
+  const [includeArchived, setIncludeArchived] = useState(false);
+  const [planModalOpen, setPlanModalOpen] = useState(false);
+  const [editingPlan, setEditingPlan] = useState(null);
+  const [form, setForm] = useState(emptyPlanForm);
+  const [deletePlan, setDeletePlan] = useState(null);
+  const { data = {}, isLoading, isError, error } = useGetSaasPlansQuery({ includeArchived });
+  const [createPlan, createState] = useCreateSaasPlanMutation();
+  const [updatePlan, updateState] = useUpdateSaasPlanMutation();
+  const [archivePlan, archiveState] = useDeleteSaasPlanMutation();
+  const plans = data.plans || [];
+  const filteredPlans = plans.filter((plan) => {
+    const term = search.trim().toLowerCase();
+    if (!term) return true;
+    return [plan.label, plan.key, plan.description].some((value) => String(value || "").toLowerCase().includes(term));
+  });
+  const activePlans = plans.filter((plan) => plan.status === "active" && !plan.archivedAt);
+  const recommendedPlan = activePlans.find((plan) => plan.recommended);
+  const cheapestPlan = activePlans.reduce((lowest, plan) => {
+    if (!lowest) return plan;
+    return Number(plan.monthlyBaseFee || 0) < Number(lowest.monthlyBaseFee || 0) ? plan : lowest;
+  }, null);
+  const unlimitedCount = activePlans.filter((plan) => plan.maxParks === null).length;
+  const isSaving = createState.isLoading || updateState.isLoading;
+
+  function openCreate() {
+    setEditingPlan(null);
+    setForm(emptyPlanForm);
+    setPlanModalOpen(true);
+  }
+
+  function openEdit(plan) {
+    setEditingPlan(plan);
+    setForm(planFormFrom(plan));
+    setPlanModalOpen(true);
+  }
+
+  function closeForm() {
+    if (isSaving) return;
+    setEditingPlan(null);
+    setForm(emptyPlanForm);
+    setPlanModalOpen(false);
+  }
+
+  async function handleSavePlan(event) {
+    event.preventDefault();
+    const payload = {
+      ...form,
+      monthlyBaseFee: Number(form.monthlyBaseFee || 0),
+      maxParks: form.maxParks === "" ? null : Number(form.maxParks),
+      sortOrder: Number(form.sortOrder || 100),
+    };
+    try {
+      if (editingPlan) {
+        await updatePlan({ planKey: editingPlan.key, ...payload }).unwrap();
+        toast.success("Plan updated.");
+      } else {
+        await createPlan(payload).unwrap();
+        toast.success("Plan created.");
+      }
+      closeForm();
+    } catch (err) {
+      toast.error(err?.data?.message || "Failed to save plan.");
+    }
+  }
+
+  async function handleDeletePlan() {
+    if (!deletePlan) return;
+    try {
+      await archivePlan(deletePlan.key).unwrap();
+      toast.success("Plan archived.");
+      setDeletePlan(null);
+    } catch (err) {
+      toast.error(err?.data?.message || "Failed to delete plan.");
+    }
+  }
+
+  if (isLoading) return <Loader />;
+  if (isError) return <ErrorMessage message={error?.data?.message || "Failed to load SaaS plans."} />;
+
+  return (
+    <ControlShell
+      title="Plans"
+      actions={
+        activeCatalogTab === "plans" ? (
+          <button type="button" onClick={openCreate} className={buttonClass("primary")}>
+            <FaPlus /> New plan
+          </button>
+        ) : null
+      }
+    >
+      <div className="space-y-4">
+        <section className="rounded-xl border border-stone-200 bg-white p-2 shadow-sm">
+          <div className="inline-flex rounded-lg bg-stone-50 p-1">
+            {[
+              { key: "plans", label: "Plans" },
+              { key: "modules", label: "Module pricing" },
+            ].map((tab) => (
+              <button
+                key={tab.key}
+                type="button"
+                onClick={() => setActiveCatalogTab(tab.key)}
+                className={`rounded-md px-4 py-2 text-sm font-black transition ${
+                  activeCatalogTab === tab.key ? "bg-orange-50 text-orange-700 shadow-sm" : "text-stone-600 hover:bg-white"
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+        </section>
+
+        {activeCatalogTab === "plans" ? (
+          <>
+        <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+          <StatCard compact icon={FaLayerGroup} label="Active plans" value={activePlans.length} detail="available for billing" />
+          <StatCard compact icon={FaRocket} label="Recommended" value={recommendedPlan?.label || "-"} detail="highlighted for sales" />
+          <StatCard compact icon={FaMapMarkerAlt} label="Unlimited" value={unlimitedCount} detail="no park cap" />
+          <StatCard compact icon={FaCreditCard} label="Starts at" value={cheapestPlan ? money(cheapestPlan.monthlyBaseFee) : "$0"} detail="monthly base fee" />
+        </section>
+
+        <section className="overflow-hidden rounded-xl border border-stone-200 bg-white shadow-sm">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-stone-200 p-4">
+            <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
+              <div className="relative min-w-[260px] flex-1 md:max-w-md">
+                <FaSearch className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-stone-400" />
+                <input
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                  placeholder="Search plans..."
+                  className="input-nexus w-full px-9 py-2.5 text-sm"
+                />
+              </div>
+              <div className="inline-flex rounded-lg border border-stone-200 bg-stone-50 p-1">
+                <button
+                  type="button"
+                  onClick={() => setIncludeArchived(false)}
+                  className={`rounded-md px-3 py-1.5 text-xs font-black ${!includeArchived ? "bg-white text-orange-700 shadow-sm" : "text-stone-500"}`}
+                >
+                  Active
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIncludeArchived(true)}
+                  className={`rounded-md px-3 py-1.5 text-xs font-black ${includeArchived ? "bg-white text-orange-700 shadow-sm" : "text-stone-500"}`}
+                >
+                  All
+                </button>
+              </div>
+            </div>
+            <Pill className="border-stone-200 bg-stone-50 text-stone-600">{filteredPlans.length} plans</Pill>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-stone-200 text-sm">
+              <thead className="bg-stone-950 text-left text-xs font-black uppercase tracking-wide text-white">
+                <tr>
+                  <th className="px-4 py-3">Plan</th>
+                  <th className="px-4 py-3">Base fee</th>
+                  <th className="px-4 py-3">Park limit</th>
+                  <th className="px-4 py-3">Status</th>
+                  <th className="px-4 py-3">Flags</th>
+                  <th className="px-4 py-3 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-stone-100 bg-white">
+                {filteredPlans.map((plan) => (
+                  <tr key={plan.key} className="hover:bg-orange-50/30">
+                    <td className="px-4 py-3">
+                      <p className="font-black text-stone-950">{plan.label}</p>
+                      <p className="text-xs font-bold text-stone-500">{plan.key}</p>
+                      {plan.description ? <p className="mt-1 max-w-xl text-xs font-semibold text-stone-500">{plan.description}</p> : null}
+                    </td>
+                    <td className="px-4 py-3 font-black text-stone-950">{money(plan.monthlyBaseFee)}/mo</td>
+                    <td className="px-4 py-3 font-bold text-stone-600">
+                      {plan.maxParks === null ? "Unlimited parks" : `${plan.maxParks} park${plan.maxParks === 1 ? "" : "s"}`}
+                    </td>
+                    <td className="px-4 py-3">
+                      <Pill className={plan.status === "active" && !plan.archivedAt ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-stone-200 bg-stone-100 text-stone-600"}>
+                        {plan.archivedAt ? "archived" : plan.status}
+                      </Pill>
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex flex-wrap gap-1.5">
+                        {plan.recommended ? <Pill className="border-orange-200 bg-orange-50 text-orange-700">recommended</Pill> : null}
+                        {plan.internalOnly ? <Pill className="border-blue-200 bg-blue-50 text-blue-700">internal</Pill> : null}
+                        {!plan.recommended && !plan.internalOnly ? <span className="text-xs font-bold text-stone-400">-</span> : null}
+                      </div>
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center justify-end gap-2">
+                        <button type="button" onClick={() => openEdit(plan)} className={iconButtonClass("secondary")} aria-label={`Edit ${plan.label}`}>
+                          <FaEdit />
+                        </button>
+                        <button
+                          type="button"
+                          disabled={plan.key === "starter" || Boolean(plan.archivedAt)}
+                          onClick={() => setDeletePlan(plan)}
+                          className={iconButtonClass("danger")}
+                          aria-label={`Delete ${plan.label}`}
+                        >
+                          <FaTrash />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+                {filteredPlans.length === 0 ? (
+                  <tr>
+                    <td colSpan="6" className="px-4 py-8">
+                      <EmptyState title="No plans found" detail="Try another search or create a new SaaS billing plan." />
+                    </td>
+                  </tr>
+                ) : null}
+              </tbody>
+            </table>
+          </div>
+        </section>
+          </>
+        ) : (
+          <ModulePricingPanel />
+        )}
+      </div>
+
+      {planModalOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-stone-950/45 px-4 py-6 backdrop-blur-sm" onClick={closeForm}>
+          <form
+            onSubmit={handleSavePlan}
+            className="w-full max-w-3xl overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-2xl"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="flex items-start justify-between gap-4 border-b border-stone-200 p-5">
+              <div>
+                <p className="text-xs font-black uppercase tracking-[0.18em] text-orange-700">{editingPlan ? "Update plan" : "New plan"}</p>
+                <h3 className="mt-1 text-2xl font-black text-stone-950">{editingPlan ? `Edit ${editingPlan.label}` : "Create SaaS billing plan"}</h3>
+                <p className="mt-1 text-sm font-semibold text-stone-500">Plans define base SaaS fee and how many parks an owner can run.</p>
+              </div>
+              <button type="button" onClick={closeForm} className={iconButtonClass("secondary")} aria-label="Close">
+                <FaTimes />
+              </button>
+            </div>
+
+            <div className="grid gap-4 p-5 md:grid-cols-2">
+              <label>
+                <span className="text-xs font-black uppercase text-stone-500">Plan name</span>
+                <input
+                  required
+                  value={form.label}
+                  onChange={(event) => setForm((current) => ({ ...current, label: event.target.value }))}
+                  placeholder="Starter"
+                  className="input-nexus mt-1 w-full px-3 py-2.5 text-sm"
+                />
+              </label>
+              <label>
+                <span className="text-xs font-black uppercase text-stone-500">Plan key</span>
+                <input
+                  required
+                  disabled={Boolean(editingPlan)}
+                  value={form.key}
+                  onChange={(event) => setForm((current) => ({ ...current, key: event.target.value }))}
+                  placeholder="starter"
+                  className="input-nexus mt-1 w-full px-3 py-2.5 text-sm disabled:bg-stone-50 disabled:text-stone-500"
+                />
+              </label>
+              <label>
+                <span className="text-xs font-black uppercase text-stone-500">Monthly base fee</span>
+                <input
+                  type="number"
+                  min="0"
+                  required
+                  value={form.monthlyBaseFee}
+                  onChange={(event) => setForm((current) => ({ ...current, monthlyBaseFee: event.target.value }))}
+                  className="input-nexus mt-1 w-full px-3 py-2.5 text-sm"
+                />
+              </label>
+              <label>
+                <span className="text-xs font-black uppercase text-stone-500">Park limit</span>
+                <input
+                  type="number"
+                  min="1"
+                  value={form.maxParks}
+                  onChange={(event) => setForm((current) => ({ ...current, maxParks: event.target.value }))}
+                  placeholder="Blank means unlimited"
+                  className="input-nexus mt-1 w-full px-3 py-2.5 text-sm"
+                />
+              </label>
+              <label>
+                <span className="text-xs font-black uppercase text-stone-500">Sort order</span>
+                <input
+                  type="number"
+                  value={form.sortOrder}
+                  onChange={(event) => setForm((current) => ({ ...current, sortOrder: event.target.value }))}
+                  className="input-nexus mt-1 w-full px-3 py-2.5 text-sm"
+                />
+              </label>
+              <label>
+                <span className="text-xs font-black uppercase text-stone-500">Status</span>
+                <SearchableSelect
+                  value={form.status}
+                  onChange={(value) => setForm((current) => ({ ...current, status: value }))}
+                  className="mt-1"
+                  buttonClassName="min-h-11 py-2.5"
+                  options={[
+                    { value: "active", label: "Active" },
+                    { value: "draft", label: "Draft" },
+                    { value: "archived", label: "Archived" },
+                  ]}
+                />
+              </label>
+              <label className="md:col-span-2">
+                <span className="text-xs font-black uppercase text-stone-500">Description</span>
+                <textarea
+                  value={form.description}
+                  onChange={(event) => setForm((current) => ({ ...current, description: event.target.value }))}
+                  rows={3}
+                  className="input-nexus mt-1 w-full px-3 py-2.5 text-sm"
+                />
+              </label>
+              <label className="flex items-center gap-3 rounded-xl border border-stone-200 bg-stone-50 p-3">
+                <input
+                  type="checkbox"
+                  checked={form.recommended}
+                  onChange={(event) => setForm((current) => ({ ...current, recommended: event.target.checked }))}
+                  className="h-4 w-4 accent-orange-600"
+                />
+                <span>
+                  <span className="block text-sm font-black text-stone-950">Recommended plan</span>
+                  <span className="text-xs font-semibold text-stone-500">Highlight this plan for operators.</span>
+                </span>
+              </label>
+              <label className="flex items-center gap-3 rounded-xl border border-stone-200 bg-stone-50 p-3">
+                <input
+                  type="checkbox"
+                  checked={form.internalOnly}
+                  onChange={(event) => setForm((current) => ({ ...current, internalOnly: event.target.checked }))}
+                  className="h-4 w-4 accent-orange-600"
+                />
+                <span>
+                  <span className="block text-sm font-black text-stone-950">Internal only</span>
+                  <span className="text-xs font-semibold text-stone-500">Hide from normal customer-facing choices.</span>
+                </span>
+              </label>
+            </div>
+
+            <div className="flex flex-wrap justify-end gap-2 border-t border-stone-200 bg-stone-50 px-5 py-4">
+              <button type="button" onClick={closeForm} className={buttonClass("secondary")}>
+                Cancel
+              </button>
+              <button type="submit" disabled={isSaving} className={buttonClass("primary")}>
+                {isSaving ? "Saving..." : editingPlan ? "Update plan" : "Create plan"}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      <ConfirmDialog
+        open={Boolean(deletePlan)}
+        tone="danger"
+        eyebrow="Delete plan"
+        title={deletePlan ? `Delete ${deletePlan.label}?` : ""}
+        message="The plan will be archived and removed from normal plan selection. Existing parks keep their saved billing values until changed."
+        details={["Starter/default plan cannot be deleted.", "Archived plans can still be shown from the All filter for audit context."]}
+        confirmLabel="Delete plan"
+        loading={archiveState.isLoading}
+        onConfirm={handleDeletePlan}
+        onClose={() => setDeletePlan(null)}
+      />
+    </ControlShell>
+  );
+}
+
+function ModulePricingPanel() {
+  const [search, setSearch] = useState("");
+  const [editingModule, setEditingModule] = useState(null);
+  const [form, setForm] = useState(null);
+  const { data = {}, isLoading, isError, error } = useGetSaasModulesQuery({ includeInactive: true });
+  const [updateModule, updateState] = useUpdateSaasModuleMutation();
+  const moduleList = data.modules?.length ? data.modules : modules;
+  const filteredModules = moduleList.filter((module) => {
+    const term = search.trim().toLowerCase();
+    if (!term) return true;
+    return [module.label, module.key, module.description].some((value) => String(value || "").toLowerCase().includes(term));
+  });
+  const activeModules = moduleList.filter((module) => (module.status || "active") === "active");
+  const monthlyTotal = activeModules.reduce((sum, module) => sum + Number(module.monthly || 0), 0);
+  const highestModule = activeModules.reduce((highest, module) => {
+    if (!highest) return module;
+    return Number(module.monthly || 0) > Number(highest.monthly || 0) ? module : highest;
+  }, null);
+
+  function openEdit(module) {
+    setEditingModule(module);
+    setForm({
+      label: module.label || "",
+      monthly: Number(module.monthly || 0),
+      description: module.description || "",
+      sortOrder: Number(module.sortOrder || 100),
+      status: module.status || "active",
+    });
+  }
+
+  function closeEdit() {
+    if (updateState.isLoading) return;
+    setEditingModule(null);
+    setForm(null);
+  }
+
+  async function handleSaveModule(event) {
+    event.preventDefault();
+    if (!editingModule || !form) return;
+    try {
+      await updateModule({
+        moduleKey: editingModule.key,
+        ...form,
+        monthly: Number(form.monthly || 0),
+        sortOrder: Number(form.sortOrder || 100),
+      }).unwrap();
+      toast.success("Module price updated.");
+      closeEdit();
+    } catch (err) {
+      toast.error(err?.data?.message || "Failed to update module price.");
+    }
+  }
+
+  if (isLoading) return <Loader />;
+  if (isError) return <ErrorMessage message={error?.data?.message || "Failed to load module pricing."} />;
+
+  return (
+    <>
+      <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+        <StatCard compact icon={FaLayerGroup} label="Active modules" value={activeModules.length} detail="available add-ons" />
+        <StatCard compact icon={FaCreditCard} label="Monthly bundle" value={money(monthlyTotal)} detail="all active modules" />
+        <StatCard compact icon={FaRocket} label="Highest price" value={highestModule?.label || "-"} detail={highestModule ? `${money(highestModule.monthly)}/mo` : "No active module"} />
+        <StatCard compact icon={FaCheckCircle} label="Catalog rows" value={moduleList.length} detail="managed modules" />
+      </section>
+
+      <section className="overflow-hidden rounded-xl border border-stone-200 bg-white shadow-sm">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-stone-200 p-4">
+          <div className="relative min-w-[260px] flex-1 md:max-w-md">
+            <FaSearch className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-stone-400" />
+            <input
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder="Search modules..."
+              className="input-nexus w-full px-9 py-2.5 text-sm"
+            />
+          </div>
+          <Pill className="border-stone-200 bg-stone-50 text-stone-600">{filteredModules.length} modules</Pill>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-stone-200 text-sm">
+            <thead className="bg-stone-950 text-left text-xs font-black uppercase tracking-wide text-white">
+              <tr>
+                <th className="px-4 py-3">Module</th>
+                <th className="px-4 py-3">Monthly price</th>
+                <th className="px-4 py-3">Status</th>
+                <th className="px-4 py-3">Sort</th>
+                <th className="px-4 py-3 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-stone-100 bg-white">
+              {filteredModules.map((module) => (
+                <tr key={module.key} className="hover:bg-orange-50/30">
+                  <td className="px-4 py-3">
+                    <p className="font-black text-stone-950">{module.label}</p>
+                    <p className="text-xs font-bold text-stone-500">{module.key}</p>
+                    {module.description ? <p className="mt-1 max-w-xl text-xs font-semibold text-stone-500">{module.description}</p> : null}
+                  </td>
+                  <td className="px-4 py-3 font-black text-stone-950">{money(module.monthly)}/mo</td>
+                  <td className="px-4 py-3">
+                    <Pill className={(module.status || "active") === "active" ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-stone-200 bg-stone-100 text-stone-600"}>
+                      {module.status || "active"}
+                    </Pill>
+                  </td>
+                  <td className="px-4 py-3 font-bold text-stone-600">{module.sortOrder || 100}</td>
+                  <td className="px-4 py-3">
+                    <div className="flex items-center justify-end">
+                      <button type="button" onClick={() => openEdit(module)} className={iconButtonClass("secondary")} aria-label={`Edit ${module.label}`}>
+                        <FaEdit />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+              {filteredModules.length === 0 ? (
+                <tr>
+                  <td colSpan="5" className="px-4 py-8">
+                    <EmptyState title="No modules found" detail="Try another search to find a module price." />
+                  </td>
+                </tr>
+              ) : null}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      {editingModule && form ? (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-stone-950/45 px-4 py-6 backdrop-blur-sm" onClick={closeEdit}>
+          <form
+            onSubmit={handleSaveModule}
+            className="w-full max-w-2xl overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-2xl"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="flex items-start justify-between gap-4 border-b border-stone-200 p-5">
+              <div>
+                <p className="text-xs font-black uppercase tracking-[0.18em] text-orange-700">Module pricing</p>
+                <h3 className="mt-1 text-2xl font-black text-stone-950">Edit {editingModule.label}</h3>
+                <p className="mt-1 text-sm font-semibold text-stone-500">This price is used for park modules, billing totals, and generated SaaS invoices.</p>
+              </div>
+              <button type="button" onClick={closeEdit} className={iconButtonClass("secondary")} aria-label="Close">
+                <FaTimes />
+              </button>
+            </div>
+
+            <div className="grid gap-4 p-5 md:grid-cols-2">
+              <label>
+                <span className="text-xs font-black uppercase text-stone-500">Module name</span>
+                <input
+                  required
+                  value={form.label}
+                  onChange={(event) => setForm((current) => ({ ...current, label: event.target.value }))}
+                  className="input-nexus mt-1 w-full px-3 py-2.5 text-sm"
+                />
+              </label>
+              <label>
+                <span className="text-xs font-black uppercase text-stone-500">Monthly price</span>
+                <input
+                  type="number"
+                  min="0"
+                  required
+                  value={form.monthly}
+                  onChange={(event) => setForm((current) => ({ ...current, monthly: event.target.value }))}
+                  className="input-nexus mt-1 w-full px-3 py-2.5 text-sm"
+                />
+              </label>
+              <label>
+                <span className="text-xs font-black uppercase text-stone-500">Sort order</span>
+                <input
+                  type="number"
+                  value={form.sortOrder}
+                  onChange={(event) => setForm((current) => ({ ...current, sortOrder: event.target.value }))}
+                  className="input-nexus mt-1 w-full px-3 py-2.5 text-sm"
+                />
+              </label>
+              <label>
+                <span className="text-xs font-black uppercase text-stone-500">Status</span>
+                <SearchableSelect
+                  value={form.status}
+                  onChange={(value) => setForm((current) => ({ ...current, status: value }))}
+                  className="mt-1"
+                  buttonClassName="min-h-11 py-2.5"
+                  options={[
+                    { value: "active", label: "Active" },
+                    { value: "inactive", label: "Inactive" },
+                  ]}
+                />
+              </label>
+              <label className="md:col-span-2">
+                <span className="text-xs font-black uppercase text-stone-500">Description</span>
+                <textarea
+                  value={form.description}
+                  onChange={(event) => setForm((current) => ({ ...current, description: event.target.value }))}
+                  rows={3}
+                  className="input-nexus mt-1 w-full px-3 py-2.5 text-sm"
+                />
+              </label>
+            </div>
+
+            <div className="flex flex-wrap justify-end gap-2 border-t border-stone-200 bg-stone-50 px-5 py-4">
+              <button type="button" onClick={closeEdit} className={buttonClass("secondary")}>
+                Cancel
+              </button>
+              <button type="submit" disabled={updateState.isLoading} className={buttonClass("primary")}>
+                {updateState.isLoading ? "Saving..." : "Update module"}
+              </button>
+            </div>
+          </form>
+        </div>
+      ) : null}
+    </>
   );
 }
 
@@ -657,21 +1409,23 @@ function ParksList() {
               <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-stone-400" />
               <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search parks..." className="input-nexus w-full py-1.5 pl-8 pr-3 text-sm" />
             </div>
-            <select
+            <SearchableSelect
               value={organizationFilter}
-              onChange={(event) => {
-                setOrganizationFilter(event.target.value);
+              onChange={(value) => {
+                setOrganizationFilter(value);
                 setPage(1);
               }}
-              className="input-nexus min-h-9 w-52 px-3 py-1.5 text-sm"
-            >
-              <option value="">All organizations</option>
-              {organizations.map((org) => (
-                <option key={org.id || org.organizationId} value={org.id || org.organizationId}>
-                  {org.name}
-                </option>
-              ))}
-            </select>
+              placeholder="All organizations"
+              searchPlaceholder="Search organizations..."
+              className="w-56"
+              options={[
+                { value: "", label: "All organizations" },
+                ...organizations.map((org) => ({
+                  value: String(org.id || org.organizationId),
+                  label: org.name,
+                })),
+              ]}
+            />
             <p className="ml-auto shrink-0 text-sm font-bold text-stone-500">{pagination.totalRecords || 0} parks</p>
           </div>
           {parks.length ? (
@@ -803,12 +1557,20 @@ function ParkForm() {
   const [newCustomer, setNewCustomer] = useState(defaultCustomerOwner);
   const [createdCustomer, setCreatedCustomer] = useState(null);
   const [temporaryPassword, setTemporaryPassword] = useState("");
+  const [ownerModalOpen, setOwnerModalOpen] = useState(false);
   const [createPark, createState] = useCreateSaasParkMutation();
   const [createCustomerOwner, createCustomerState] = useCreateSaasCustomerOwnerMutation();
   const [updatePark, updateState] = useUpdateSaasParkMutation();
   const customerUsers = createdCustomer && !users.some((user) => String(user.user_id || user.userId || user.id) === String(createdCustomer.userId || createdCustomer.id))
     ? [...users, createdCustomer]
     : users;
+  const selectedCustomer = customerUsers.find((user) => String(user.user_id || user.userId || user.id) === String(form.ownerUserId));
+  const selectedCustomerName =
+    selectedCustomer?.name ||
+    [selectedCustomer?.first_name || selectedCustomer?.firstName, selectedCustomer?.last_name || selectedCustomer?.lastName].filter(Boolean).join(" ") ||
+    form.owner ||
+    "No customer selected";
+  const selectedCustomerEmail = selectedCustomer?.email || form.ownerEmail || "Select or create an owner account";
 
   useEffect(() => {
     if (data?.park && isEdit) {
@@ -842,9 +1604,17 @@ function ParkForm() {
       return;
     }
     try {
-      const response = await createCustomerOwner(newCustomer).unwrap();
+      const response = await createCustomerOwner({
+        ...newCustomer,
+        locationId: isEdit ? parkId : undefined,
+        parkId: isEdit ? parkId : undefined,
+        parkName: form.name,
+        organizationName: form.organizationName,
+        appBaseUrl: window.location.origin,
+      }).unwrap();
       const user = response?.user || response?.data?.user;
       const password = response?.temporaryPassword || response?.data?.temporaryPassword || "";
+      const welcomeEmail = response?.welcomeEmail || response?.data?.welcomeEmail || null;
       if (!user) {
         toast.error("Customer owner was created, but the user data was not returned.");
         return;
@@ -861,7 +1631,14 @@ function ParkForm() {
         phone: newCustomer.phone || current.phone,
       }));
       setNewCustomer(defaultCustomerOwner);
-      toast.success(password ? "Customer owner created and selected." : "Existing customer owner selected.");
+      setOwnerModalOpen(false);
+      if (welcomeEmail?.sent) {
+        toast.success("Customer owner created, selected, and welcome email queued.");
+      } else if (password) {
+        toast.warning(`Customer owner created and selected, but welcome email was not sent${welcomeEmail?.reason ? `: ${welcomeEmail.reason}` : "."}`);
+      } else {
+        toast.success("Existing customer owner selected.");
+      }
     } catch (err) {
       toast.error(err?.data?.message || "Failed to create customer owner.");
     }
@@ -897,36 +1674,42 @@ function ParkForm() {
       title={isEdit ? "Edit park" : "New park"}
       actions={<Link to="/movira-control/parks" className={buttonClass("secondary")}><FaArrowLeft /> Parks</Link>}
     >
-      <form onSubmit={submit} className="grid max-w-6xl gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
+      <form onSubmit={submit} className="grid max-w-7xl gap-4 xl:grid-cols-[minmax(0,1fr)_300px]">
         <div className="space-y-4">
-          <section className="rounded-xl border border-stone-200 bg-white p-5 shadow-sm">
-            <div className="border-b border-stone-200 pb-4">
-              <p className="text-xs font-black uppercase text-orange-700">Park profile</p>
-              <h2 className="mt-1 text-xl font-black text-stone-950">Workspace identity</h2>
+          <section className="overflow-hidden rounded-xl border border-stone-200 bg-white shadow-sm">
+            <div className="flex flex-wrap items-start justify-between gap-3 border-b border-stone-200 bg-gradient-to-r from-orange-50/80 to-white px-4 py-3">
+              <div>
+                <p className="text-xs font-black uppercase tracking-[0.18em] text-orange-700">Park profile</p>
+                <h2 className="mt-1 text-lg font-black text-stone-950">Workspace identity</h2>
+              </div>
+              <Pill className="border-orange-200 bg-white text-orange-700">{isEdit ? "Editing" : "New setup"}</Pill>
             </div>
-            <div className="mt-5 grid gap-4 md:grid-cols-2">
+            <div className="grid gap-4 p-4 md:grid-cols-2">
               <label className="block md:col-span-2">
                 <span className="text-xs font-black uppercase text-stone-500">Organization</span>
                 <div className="mt-1 grid gap-2 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
-                  <select
+                  <SearchableSelect
                     value={form.organizationId}
-                    onChange={(event) => {
-                      const selected = organizations.find((org) => String(org.id || org.organizationId) === event.target.value);
+                    onChange={(value) => {
+                      const selected = organizations.find((org) => String(org.id || org.organizationId) === String(value));
                       setForm((current) => ({
                         ...current,
-                        organizationId: event.target.value,
+                        organizationId: value,
                         organizationName: selected?.name || current.organizationName,
                       }));
                     }}
-                    className="input-nexus w-full px-3 py-2.5 text-sm"
-                  >
-                    <option value="">Create or match by organization name</option>
-                    {organizations.map((org) => (
-                      <option key={org.id || org.organizationId} value={org.id || org.organizationId}>
-                        {org.name}
-                      </option>
-                    ))}
-                  </select>
+                    placeholder="Create or match by organization name"
+                    searchPlaceholder="Search organizations..."
+                    className="w-full"
+                    buttonClassName="min-h-11 py-2.5"
+                    options={[
+                      { value: "", label: "Create or match by organization name" },
+                      ...organizations.map((org) => ({
+                        value: String(org.id || org.organizationId),
+                        label: org.name,
+                      })),
+                    ]}
+                  />
                   <input
                     value={form.organizationName}
                     onChange={(event) => update("organizationName", event.target.value)}
@@ -947,111 +1730,85 @@ function ParkForm() {
             </div>
           </section>
 
-          <section className="rounded-xl border border-stone-200 bg-white p-5 shadow-sm">
-            <div className="border-b border-stone-200 pb-4">
-              <p className="text-xs font-black uppercase text-orange-700">Customer assignment</p>
-              <h2 className="mt-1 text-xl font-black text-stone-950">Assign the account that owns this park</h2>
-            </div>
-            <div className="mt-5 grid gap-4 md:grid-cols-3">
-              {[
-                ["owner", "Customer name", "Yogesh Niranjan"],
-                ["phone", "Phone", "9055550101"],
-              ].map(([key, label, placeholder]) => (
-                <label key={key} className="block">
-                  <span className="text-xs font-black uppercase text-stone-500">{label}</span>
-                  <input value={form[key]} onChange={(event) => update(key, event.target.value)} placeholder={placeholder} className="input-nexus mt-1 w-full px-3 py-2.5 text-sm" />
-                </label>
-              ))}
-              <label className="block">
-                <span className="text-xs font-black uppercase text-stone-500">Customer account *</span>
-                <select
-                  required
-                  value={form.ownerUserId}
-                  onChange={(event) => {
-                    const selected = customerUsers.find((user) => String(user.user_id || user.userId || user.id) === event.target.value);
-                    setForm((current) => ({
-                      ...current,
-                      ownerUserId: event.target.value,
-                      ownerEmail: selected?.email || current.ownerEmail,
-                      owner: selected ? selected.name || [selected.first_name || selected.firstName, selected.last_name || selected.lastName].filter(Boolean).join(" ") || current.owner : current.owner,
-                    }));
-                  }}
-                  className="input-nexus mt-1 w-full px-3 py-2.5 text-sm"
-                >
-                  <option value="">Select customer account</option>
-                  {customerUsers.map((user) => {
-                    const id = user.user_id || user.userId || user.id;
-                    const name = user.name || [user.first_name || user.firstName, user.last_name || user.lastName].filter(Boolean).join(" ") || user.email;
-                    return (
-                      <option key={id} value={id}>
-                        {name} · {user.email}
-                      </option>
-                    );
-                  })}
-                </select>
-              </label>
-              <label className="block">
-                <span className="text-xs font-black uppercase text-stone-500">Customer email</span>
-                <input value={form.ownerEmail} onChange={(event) => update("ownerEmail", event.target.value)} placeholder="owner@example.com" className="input-nexus mt-1 w-full px-3 py-2.5 text-sm" />
-              </label>
-            </div>
-            <div className="mt-5 rounded-xl border border-orange-100 bg-orange-50/50 p-4">
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div>
-                  <p className="text-xs font-black uppercase text-orange-700">New paying customer</p>
-                  <h3 className="mt-1 text-base font-black text-stone-950">Create a login owner account</h3>
-                  <p className="mt-1 text-sm font-semibold text-stone-600">Use this when the customer does not already exist in Movira.</p>
-                </div>
-                <button
-                  type="button"
-                  disabled={createCustomerState.isLoading}
-                  onClick={handleCreateCustomerOwner}
-                  className={buttonClass("secondary", "shrink-0")}
-                >
-                  <FaPlus /> {createCustomerState.isLoading ? "Creating..." : "Create owner"}
-                </button>
+          <section className="overflow-hidden rounded-xl border border-stone-200 bg-white shadow-sm">
+            <div className="flex flex-wrap items-start justify-between gap-3 border-b border-stone-200 bg-gradient-to-r from-stone-50 to-white px-4 py-3">
+              <div>
+                <p className="text-xs font-black uppercase tracking-[0.18em] text-orange-700">Customer assignment</p>
+                <h2 className="mt-1 text-lg font-black text-stone-950">Assign the account that owns this park</h2>
               </div>
-              <div className="mt-4 grid gap-3 md:grid-cols-4">
-                <label className="block">
-                  <span className="text-xs font-black uppercase text-stone-500">First name</span>
-                  <input value={newCustomer.firstName} onChange={(event) => updateNewCustomer("firstName", event.target.value)} placeholder="Yogesh" className="input-nexus mt-1 w-full px-3 py-2.5 text-sm" />
+              <button type="button" onClick={() => setOwnerModalOpen(true)} className={buttonClass("primary", "shrink-0")}>
+                <FaUserPlus /> Create owner
+              </button>
+            </div>
+            <div className="grid gap-4 p-4 md:grid-cols-[minmax(0,1.1fr)_minmax(0,1.5fr)]">
+              <div className="rounded-xl border border-orange-100 bg-orange-50/50 p-4">
+                <div className="flex items-start gap-3">
+                  <div className="grid h-11 w-11 shrink-0 place-items-center rounded-lg bg-white text-orange-700 shadow-sm">
+                    <FaUserPlus />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-xs font-black uppercase text-orange-700">Selected owner</p>
+                    <p className="mt-1 truncate text-base font-black text-stone-950">{selectedCustomerName}</p>
+                    <p className="mt-1 truncate text-sm font-semibold text-stone-600">{selectedCustomerEmail}</p>
+                  </div>
+                </div>
+                {temporaryPassword ? (
+                  <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm font-bold text-amber-900">
+                    Temporary login password: <span className="font-black">{temporaryPassword}</span>
+                  </div>
+                ) : null}
+              </div>
+              <div className="grid gap-3 md:grid-cols-2">
+                <label className="block md:col-span-2">
+                  <span className="text-xs font-black uppercase text-stone-500">Customer account *</span>
+                  <SearchableSelect
+                    value={form.ownerUserId}
+                    onChange={(value) => {
+                      const selected = customerUsers.find((user) => String(user.user_id || user.userId || user.id) === String(value));
+                      setForm((current) => ({
+                        ...current,
+                        ownerUserId: value,
+                        ownerEmail: selected?.email || current.ownerEmail,
+                        owner: selected ? selected.name || [selected.first_name || selected.firstName, selected.last_name || selected.lastName].filter(Boolean).join(" ") || current.owner : current.owner,
+                      }));
+                    }}
+                    placeholder="Select customer account"
+                    searchPlaceholder="Search customer account..."
+                    className="mt-1"
+                    buttonClassName="min-h-11 py-2.5"
+                    options={[
+                      { value: "", label: "Select customer account" },
+                      ...customerUsers.map((user) => {
+                        const id = user.user_id || user.userId || user.id;
+                        const name = user.name || [user.first_name || user.firstName, user.last_name || user.lastName].filter(Boolean).join(" ") || user.email;
+                        return { value: String(id), label: name, description: user.email };
+                      }),
+                    ]}
+                  />
                 </label>
-                <label className="block">
-                  <span className="text-xs font-black uppercase text-stone-500">Last name</span>
-                  <input value={newCustomer.lastName} onChange={(event) => updateNewCustomer("lastName", event.target.value)} placeholder="Niranjan" className="input-nexus mt-1 w-full px-3 py-2.5 text-sm" />
-                </label>
-                <label className="block">
-                  <span className="text-xs font-black uppercase text-stone-500">Email</span>
-                  <input type="email" value={newCustomer.email} onChange={(event) => updateNewCustomer("email", event.target.value)} placeholder="owner@example.com" className="input-nexus mt-1 w-full px-3 py-2.5 text-sm" />
-                </label>
-                <label className="block">
-                  <span className="text-xs font-black uppercase text-stone-500">Phone</span>
-                  <input value={newCustomer.phone} onChange={(event) => updateNewCustomer("phone", event.target.value)} placeholder="9055550101" className="input-nexus mt-1 w-full px-3 py-2.5 text-sm" />
+                {[
+                  ["owner", "Customer name", "Yogesh Niranjan"],
+                  ["phone", "Phone", "9055550101"],
+                ].map(([key, label, placeholder]) => (
+                  <label key={key} className="block">
+                    <span className="text-xs font-black uppercase text-stone-500">{label}</span>
+                    <input value={form[key]} onChange={(event) => update(key, event.target.value)} placeholder={placeholder} className="input-nexus mt-1 w-full px-3 py-2.5 text-sm" />
+                  </label>
+                ))}
+                <label className="block md:col-span-2">
+                  <span className="text-xs font-black uppercase text-stone-500">Customer email</span>
+                  <input value={form.ownerEmail} onChange={(event) => update("ownerEmail", event.target.value)} placeholder="owner@example.com" className="input-nexus mt-1 w-full px-3 py-2.5 text-sm" />
                 </label>
               </div>
-              <label className="mt-3 block max-w-md">
-                <span className="text-xs font-black uppercase text-stone-500">Temporary password</span>
-                <input
-                  value={newCustomer.temporaryPassword}
-                  onChange={(event) => updateNewCustomer("temporaryPassword", event.target.value)}
-                  placeholder="Leave blank to auto-generate"
-                  className="input-nexus mt-1 w-full px-3 py-2.5 text-sm"
-                />
-              </label>
-              {temporaryPassword ? (
-                <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm font-bold text-amber-900">
-                  Temporary login password: <span className="font-black">{temporaryPassword}</span>
-                </div>
-              ) : null}
             </div>
           </section>
 
-          <section className="rounded-xl border border-stone-200 bg-white p-5 shadow-sm">
-            <div className="border-b border-stone-200 pb-4">
-              <p className="text-xs font-black uppercase text-orange-700">Location</p>
-              <h2 className="mt-1 text-xl font-black text-stone-950">Operating region</h2>
+          <section className="overflow-hidden rounded-xl border border-stone-200 bg-white shadow-sm">
+            <div className="border-b border-stone-200 bg-gradient-to-r from-stone-50 to-white px-4 py-3">
+              <p className="text-xs font-black uppercase tracking-[0.18em] text-orange-700">Location</p>
+              <h2 className="mt-1 text-lg font-black text-stone-950">Operating region</h2>
             </div>
-            <div className="mt-5 grid gap-4 md:grid-cols-3">
+            <div className="grid gap-4 p-4 md:grid-cols-3">
               {[
                 ["city", "City", "St. Catharines"],
                 ["state", "State / province", "Ontario"],
@@ -1079,7 +1836,7 @@ function ParkForm() {
           </section>
         </div>
 
-        <aside className="h-fit rounded-xl border border-stone-200 bg-white p-5 shadow-sm xl:sticky xl:top-4">
+        <aside className="h-fit rounded-xl border border-stone-200 bg-white p-4 shadow-sm xl:sticky xl:top-4">
           <p className="text-xs font-black uppercase text-stone-500">Setup starts here</p>
           <h3 className="mt-1 text-xl font-black text-stone-950">{isEdit ? "Save profile changes" : "Create workspace"}</h3>
           <div className="mt-4 space-y-3 text-sm font-bold text-stone-600">
@@ -1095,27 +1852,106 @@ function ParkForm() {
             <Link to="/movira-control/parks" className={buttonClass("secondary", "w-full")}>Cancel</Link>
           </div>
         </aside>
+        {ownerModalOpen ? (
+          <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-stone-950/35 p-4 backdrop-blur-sm">
+            <div
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="create-owner-title"
+              className="w-full max-w-3xl overflow-hidden rounded-xl border border-stone-200 bg-white shadow-2xl"
+              onKeyDown={(event) => {
+                if (event.key !== "Enter" || event.shiftKey || createCustomerState.isLoading) return;
+                event.preventDefault();
+                handleCreateCustomerOwner();
+              }}
+            >
+              <div className="flex items-start justify-between gap-4 border-b border-stone-200 bg-orange-50/70 px-5 py-4">
+                <div className="min-w-0">
+                  <p className="text-xs font-black uppercase tracking-[0.18em] text-orange-700">New paying customer</p>
+                  <h3 id="create-owner-title" className="mt-1 text-xl font-black text-stone-950">Create a login owner account</h3>
+                  <p className="mt-1 text-sm font-semibold text-stone-600">Use this when the customer does not already exist in Movira.</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setOwnerModalOpen(false)}
+                  className="grid h-10 w-10 shrink-0 place-items-center rounded-lg border border-stone-200 bg-white text-stone-700 shadow-sm hover:bg-stone-50"
+                  aria-label="Close create owner"
+                >
+                  <FaTimes />
+                </button>
+              </div>
+              <div className="grid gap-4 p-5 md:grid-cols-2">
+                <label className="block">
+                  <span className="text-xs font-black uppercase text-stone-500">First name *</span>
+                  <input value={newCustomer.firstName} onChange={(event) => updateNewCustomer("firstName", event.target.value)} placeholder="Yogesh" className="input-nexus mt-1 w-full px-3 py-2.5 text-sm" />
+                </label>
+                <label className="block">
+                  <span className="text-xs font-black uppercase text-stone-500">Last name</span>
+                  <input value={newCustomer.lastName} onChange={(event) => updateNewCustomer("lastName", event.target.value)} placeholder="Niranjan" className="input-nexus mt-1 w-full px-3 py-2.5 text-sm" />
+                </label>
+                <label className="block">
+                  <span className="text-xs font-black uppercase text-stone-500">Email *</span>
+                  <input type="email" value={newCustomer.email} onChange={(event) => updateNewCustomer("email", event.target.value)} placeholder="owner@example.com" className="input-nexus mt-1 w-full px-3 py-2.5 text-sm" />
+                </label>
+                <label className="block">
+                  <span className="text-xs font-black uppercase text-stone-500">Phone</span>
+                  <input value={newCustomer.phone} onChange={(event) => updateNewCustomer("phone", event.target.value)} placeholder="9055550101" className="input-nexus mt-1 w-full px-3 py-2.5 text-sm" />
+                </label>
+                <label className="block md:col-span-2">
+                  <span className="text-xs font-black uppercase text-stone-500">Temporary password</span>
+                  <input
+                    value={newCustomer.temporaryPassword}
+                    onChange={(event) => updateNewCustomer("temporaryPassword", event.target.value)}
+                    placeholder="Leave blank to auto-generate"
+                    className="input-nexus mt-1 w-full px-3 py-2.5 text-sm"
+                  />
+                </label>
+              </div>
+              <div className="flex flex-wrap justify-end gap-2 border-t border-stone-200 bg-stone-50 px-5 py-4">
+                <button type="button" onClick={() => setOwnerModalOpen(false)} className={buttonClass("secondary")}>
+                  Cancel
+                </button>
+                <button type="button" disabled={createCustomerState.isLoading} onClick={handleCreateCustomerOwner} className={buttonClass("primary")}>
+                  <FaPlus /> {createCustomerState.isLoading ? "Creating..." : "Create owner"}
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : null}
       </form>
     </ControlShell>
   );
 }
 
-function ParkTabs({ parkId }) {
-  const tabs = [
-    ["", "Overview"],
-    ["modules", "Modules"],
-    ["billing", "Billing"],
-    ["payments", "Payments"],
-    ["onboarding", "Onboarding"],
-    ["audit", "Audit"],
-  ];
+function ParkTabs({ park }) {
   const { pathname } = useLocation();
   return (
-    <div className="sticky top-[76px] z-30 mb-3 flex flex-wrap gap-1.5 rounded-lg border border-stone-200 bg-white/95 p-1.5 shadow-sm backdrop-blur">
-      {tabs.map(([suffix, label]) => {
-        const to = `/movira-control/parks/${parkId}${suffix ? `/${suffix}` : ""}`;
+    <div className="sticky top-[76px] z-30 mb-3 flex gap-1.5 overflow-x-auto rounded-lg border border-stone-200 bg-white/95 p-1.5 shadow-sm backdrop-blur">
+      {parkDetailTabs.map(({ suffix, label }) => {
+        const to = `/movira-control/parks/${park.id}${suffix ? `/${suffix}` : ""}`;
         const active = pathname === to;
-        return <Link key={label} to={to} className={`rounded-lg px-3 py-1.5 text-sm font-black ${active ? "bg-orange-100 text-orange-700" : "text-stone-600 hover:bg-stone-100"}`}>{label}</Link>;
+        const locked = getParkTabLock(park, suffix);
+        return (
+          <Link
+            key={label}
+            to={to}
+            onClick={(event) => {
+              if (!locked) return;
+              event.preventDefault();
+              toast.error(locked.message);
+            }}
+            title={locked?.message || label}
+            className={`shrink-0 whitespace-nowrap rounded-lg px-3 py-1.5 text-sm font-black ${
+              active
+                ? "bg-orange-100 text-orange-700"
+                : locked
+                ? "cursor-not-allowed text-stone-400 hover:bg-stone-50"
+                : "text-stone-600 hover:bg-stone-100"
+            }`}
+          >
+            {label}
+          </Link>
+        );
       })}
     </div>
   );
@@ -1123,11 +1959,22 @@ function ParkTabs({ parkId }) {
 
 function ParkDetail() {
   const { parkId, section = "" } = useParams();
+  const navigate = useNavigate();
   const { data, isLoading, isError, error } = useGetSaasParkByIdQuery(parkId);
   const park = data?.park;
   const auditLogs = data?.auditLogs || [];
   const invoices = data?.invoices || [];
   const paymentEvents = data?.paymentEvents || [];
+  const catalogModules = data?.catalogs?.modules?.length ? data.catalogs.modules : modules;
+
+  useEffect(() => {
+    if (!park) return;
+    const lock = getParkTabLock(park, section);
+    if (!lock) return;
+    toast.error(lock.message);
+    const previousTab = parkDetailTabs[Math.max(0, parkDetailTabs.findIndex((tab) => tab.suffix === section) - 1)];
+    navigate(`/movira-control/parks/${park.id}${previousTab?.suffix ? `/${previousTab.suffix}` : ""}`, { replace: true });
+  }, [navigate, park, section]);
 
   if (isLoading) return <Loader />;
   if (isError || !park) return <ErrorMessage message={error?.data?.message || "Park not found"} />;
@@ -1142,15 +1989,17 @@ function ParkDetail() {
         </div>
       }
     >
-      <ParkTabs parkId={park.id} />
+      <ParkTabs park={park} />
       {section !== "audit" ? (
         <div className="mb-4">
           <LaunchRail park={park} />
         </div>
       ) : null}
-      {section === "modules" ? <ModulesPanel park={park} /> : null}
-      {section === "billing" ? <BillingPanel park={park} invoices={invoices} /> : null}
-      {section === "payments" ? <PaymentsPanel park={park} invoices={invoices} paymentEvents={paymentEvents} /> : null}
+      {section === "modules" ? <ModulesPanel park={park} moduleCatalog={catalogModules} /> : null}
+      {section === "billing" ? <BillingPanel park={park} plans={data?.catalogs?.plans || []} moduleCatalog={catalogModules} planUsage={data?.planUsage} /> : null}
+      {section === "payments" ? <PaymentsPanel park={park} /> : null}
+      {section === "payment-history" ? <PaymentHistoryPanel park={park} paymentEvents={paymentEvents} /> : null}
+      {section === "billing-history" ? <InvoiceHistoryTable park={park} invoices={invoices} /> : null}
       {section === "onboarding" ? <OnboardingPanel park={park} /> : null}
       {section === "audit" ? <AuditPanel park={park} initialLogs={auditLogs} /> : null}
       {!section ? <OverviewPanel park={park} /> : null}
@@ -1230,7 +2079,7 @@ function OverviewPanel({ park }) {
   );
 }
 
-function ModulesPanel({ park }) {
+function ModulesPanel({ park, moduleCatalog = modules }) {
   const [updateModules] = useUpdateSaasParkModulesMutation();
   const selected = new Set(park.modules || []);
   const toggle = async (key) => {
@@ -1244,7 +2093,7 @@ function ModulesPanel({ park }) {
       toast.error(err?.data?.message || "Failed to update modules.");
     }
   };
-  const enabledTotal = modules
+  const enabledTotal = moduleCatalog
     .filter((module) => selected.has(module.key))
     .reduce((sum, module) => sum + Number(module.monthly || 0), 0);
   return (
@@ -1262,7 +2111,7 @@ function ModulesPanel({ park }) {
         </div>
       </section>
       <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-        {modules.map((module) => (
+        {moduleCatalog.map((module) => (
           <button key={module.key} onClick={() => toggle(module.key)} className={`rounded-xl border p-4 text-left shadow-sm transition hover:-translate-y-0.5 ${selected.has(module.key) ? "border-orange-300 bg-orange-50" : "border-stone-200 bg-white hover:border-orange-200"}`}>
             <div className="flex items-center justify-between">
               <h3 className="font-black text-stone-950">{module.label}</h3>
@@ -1277,17 +2126,42 @@ function ModulesPanel({ park }) {
   );
 }
 
-function BillingPanel({ park, invoices = [] }) {
+const fallbackPlanOptions = [
+  { key: "starter", label: "Starter", monthlyBaseFee: 499, maxParks: 1, description: "For one park getting live with the core Movira setup." },
+  { key: "pro", label: "Pro", monthlyBaseFee: 899, maxParks: 3, description: "For growing operators with multiple parks under one customer." },
+  { key: "scale", label: "Scale", monthlyBaseFee: 1499, maxParks: 8, description: "For larger groups that need more parks and operational coverage." },
+  { key: "enterprise", label: "Enterprise", monthlyBaseFee: 2499, maxParks: null, description: "Unlimited parks with commercial terms handled by Movira." },
+  { key: "custom", label: "Custom", monthlyBaseFee: 0, maxParks: null, description: "Legacy or custom contract managed by Movira." },
+];
+
+function BillingPanel({ park, plans = [], moduleCatalog = modules, planUsage = null }) {
+  const availablePlans = plans.length ? plans : fallbackPlanOptions;
+  const currentPlan = availablePlans.find((plan) => plan.key === (park.planKey || "starter")) || availablePlans[0];
   const [form, setForm] = useState({
-    monthlyBaseFee: park.monthlyBaseFee || 0,
-    billingCycle: park.billingCycle,
-    billingStartDate: park.billingStartDate || "",
+    planKey: park.planKey || currentPlan?.key || "starter",
+    monthlyBaseFee: park.monthlyBaseFee || currentPlan?.monthlyBaseFee || 0,
+    billingCycle: park.billingCycle || "monthly",
+    billingStartDate: dateInputValue(park.billingStartDate) || todayDateInputValue(),
     discountAmount: park.discountAmount || 0,
     taxLabel: park.taxLabel || "Tax",
     taxRatePercent: park.taxRatePercent || 0,
     taxRegistrationNumber: park.taxRegistrationNumber || "",
   });
   const [updateBilling] = useUpdateSaasParkBillingMutation();
+  const selectedPlan = availablePlans.find((plan) => plan.key === form.planKey) || currentPlan;
+  const planOptions = availablePlans.map((plan) => ({
+    value: plan.key,
+    label: `${plan.label} - ${money(plan.monthlyBaseFee, park.currency)}/mo`,
+    description: plan.maxParks === null ? "Unlimited parks" : `${plan.maxParks} park${plan.maxParks === 1 ? "" : "s"} included`,
+  }));
+  const selectPlan = (planKey) => {
+    const plan = availablePlans.find((item) => item.key === planKey) || selectedPlan;
+    setForm((current) => ({
+      ...current,
+      planKey: plan.key,
+      monthlyBaseFee: plan.monthlyBaseFee,
+    }));
+  };
   const submit = async (event) => {
     event.preventDefault();
     try {
@@ -1297,8 +2171,8 @@ function BillingPanel({ park, invoices = [] }) {
       toast.error(err?.data?.message || "Failed to update billing.");
     }
   };
-  const selectedModules = modules.filter((module) => (park.modules || []).includes(module.key));
-  const baseAmount = Number(form.monthlyBaseFee ?? park.billing?.base ?? park.monthlyBaseFee ?? 0);
+  const selectedModules = moduleCatalog.filter((module) => (park.modules || []).includes(module.key));
+  const baseAmount = Number(form.monthlyBaseFee ?? selectedPlan?.monthlyBaseFee ?? park.billing?.base ?? park.monthlyBaseFee ?? 0);
   const moduleTotal = selectedModules.reduce((sum, module) => sum + Number(module.monthly || 0), 0);
   const discount = Number(form.discountAmount ?? park.billing?.discount ?? park.discountAmount ?? 0);
   const taxRatePercent = Math.max(0, Math.min(100, Number(form.taxRatePercent || 0)));
@@ -1319,6 +2193,43 @@ function BillingPanel({ park, invoices = [] }) {
           <Pill className="border-orange-200 bg-orange-50 text-orange-700">{park.billingCycle || "monthly"}</Pill>
         </div>
 
+        <div className="mt-5 rounded-xl border border-orange-100 bg-orange-50/50 p-4">
+          <div className="grid gap-4 lg:grid-cols-[minmax(260px,360px)_1fr]">
+            <label>
+              <span className="flex items-center justify-between gap-2 text-xs font-black uppercase text-stone-500">
+                <span>Customer plan</span>
+                <Link to="/movira-control/plans" className="text-orange-700 hover:text-orange-800">
+                  Manage plans
+                </Link>
+              </span>
+              <SearchableSelect
+                value={form.planKey}
+                onChange={selectPlan}
+                className="mt-1"
+                buttonClassName="min-h-11 py-2.5"
+                options={planOptions}
+              />
+            </label>
+            <div className="grid gap-3 md:grid-cols-3">
+              <div className="rounded-lg border border-orange-100 bg-white p-3">
+                <p className="text-xs font-black uppercase text-stone-500">Base fee</p>
+                <p className="mt-1 text-lg font-black text-stone-950">{money(selectedPlan?.monthlyBaseFee || 0, park.currency)}/mo</p>
+              </div>
+              <div className="rounded-lg border border-orange-100 bg-white p-3">
+                <p className="text-xs font-black uppercase text-stone-500">Park limit</p>
+                <p className="mt-1 text-lg font-black text-stone-950">{selectedPlan?.maxParks === null ? "Unlimited" : selectedPlan?.maxParks}</p>
+              </div>
+              <div className="rounded-lg border border-orange-100 bg-white p-3">
+                <p className="text-xs font-black uppercase text-stone-500">Current usage</p>
+                <p className="mt-1 text-lg font-black text-stone-950">
+                  {planUsage?.activeParks ?? "-"}{selectedPlan?.maxParks === null ? "" : ` / ${selectedPlan?.maxParks}`}
+                </p>
+              </div>
+            </div>
+          </div>
+          <p className="mt-3 text-sm font-semibold text-stone-600">{selectedPlan?.description}</p>
+        </div>
+
         <div className="mt-5 grid gap-4 md:grid-cols-4">
           <label>
             <span className="text-xs font-black uppercase text-stone-500">Base platform fee</span>
@@ -1327,15 +2238,20 @@ function BillingPanel({ park, invoices = [] }) {
               min="0"
               value={form.monthlyBaseFee}
               onChange={(event) => setForm({ ...form, monthlyBaseFee: event.target.value })}
-              className="input-nexus mt-1 w-full px-3 py-2.5 text-sm"
+              readOnly={form.planKey !== "custom"}
+              className={`input-nexus mt-1 w-full px-3 py-2.5 text-sm ${form.planKey !== "custom" ? "bg-stone-50 text-stone-500" : ""}`}
             />
+            {form.planKey !== "custom" ? <span className="mt-1 block text-xs font-semibold text-stone-500">Auto-calculated from selected plan.</span> : null}
           </label>
           <label>
             <span className="text-xs font-black uppercase text-stone-500">Cycle</span>
-            <select value={form.billingCycle} onChange={(event) => setForm({ ...form, billingCycle: event.target.value })} className="input-nexus mt-1 w-full px-3 py-2.5 text-sm">
-              <option value="monthly">Monthly</option>
-              <option value="annual">Annual</option>
-            </select>
+            <SearchableSelect
+              value={form.billingCycle}
+              onChange={(value) => setForm({ ...form, billingCycle: value })}
+              className="mt-1"
+              buttonClassName="min-h-11 py-2.5"
+              options={billingCycleOptions}
+            />
           </label>
           <label>
             <span className="text-xs font-black uppercase text-stone-500">Billing start</span>
@@ -1349,7 +2265,15 @@ function BillingPanel({ park, invoices = [] }) {
         <div className="mt-4 grid gap-4 md:grid-cols-3">
           <label>
             <span className="text-xs font-black uppercase text-stone-500">Tax label</span>
-            <input value={form.taxLabel} onChange={(event) => setForm({ ...form, taxLabel: event.target.value })} placeholder="GST / HST" className="input-nexus mt-1 w-full px-3 py-2.5 text-sm" />
+            <SearchableSelect
+              value={form.taxLabel}
+              onChange={(value) => setForm({ ...form, taxLabel: value })}
+              placeholder="Select tax label"
+              searchPlaceholder="Search tax label..."
+              className="mt-1"
+              buttonClassName="min-h-11 py-2.5"
+              options={taxLabelOptions}
+            />
           </label>
           <label>
             <span className="text-xs font-black uppercase text-stone-500">Tax rate %</span>
@@ -1451,7 +2375,6 @@ function BillingPanel({ park, invoices = [] }) {
         </div>
         </aside>
       </div>
-      <InvoiceHistoryTable park={park} invoices={invoices} />
     </div>
   );
 }
@@ -1463,6 +2386,7 @@ function InvoiceHistoryTable({ park, invoices }) {
   const [voidInvoice, voidInvoiceState] = useVoidSaasInvoiceMutation();
   const [refundInvoice, refundInvoiceState] = useRefundSaasInvoicePaymentMutation();
   const [getInvoiceDocument, invoiceDocumentState] = useLazyGetSaasInvoiceDocumentQuery();
+  const [actionConfirm, setActionConfirm] = useState(null);
   const [voidConfirm, setVoidConfirm] = useState(null);
   const [refundConfirm, setRefundConfirm] = useState(null);
 
@@ -1515,7 +2439,9 @@ function InvoiceHistoryTable({ park, invoices }) {
         try {
           await navigator.clipboard?.writeText(result.paymentLinkUrl);
           copied = true;
-        } catch (_) {}
+        } catch {
+          copied = false;
+        }
         window.open(result.paymentLinkUrl, "_blank", "noopener,noreferrer");
         toast.success(copied ? "Payment link created and copied." : "Payment link created.");
       } else {
@@ -1536,6 +2462,73 @@ function InvoiceHistoryTable({ park, invoices }) {
       toast.error(err?.data?.message || "Failed to open invoice document.");
     }
   };
+  const handleConfirmedInvoiceAction = async (event) => {
+    if (!actionConfirm || event.type !== "confirm") return;
+    const current = actionConfirm;
+    if (current.type === "refresh_lifecycle") {
+      await handleRefreshLifecycle();
+    } else if (current.type === "open_invoice") {
+      await handleOpenInvoiceDocument(current.invoice);
+    } else if (current.type === "record_payment") {
+      await handleRecordPayment(current.invoice);
+    } else if (current.type === "payment_link") {
+      await handleCreatePaymentLink(current.invoice);
+    }
+    setActionConfirm(null);
+  };
+  const actionConfirmLoading =
+    actionConfirm?.type === "refresh_lifecycle"
+      ? refreshLifecycleState.isLoading
+      : actionConfirm?.type === "open_invoice"
+        ? invoiceDocumentState.isFetching
+        : actionConfirm?.type === "record_payment"
+          ? isLoading
+          : actionConfirm?.type === "payment_link"
+            ? createLinkState.isLoading
+            : false;
+  const actionConfirmConfig = (() => {
+    if (!actionConfirm) return null;
+    const invoice = actionConfirm.invoice;
+    const remaining = invoice ? Math.max(0, Number(invoice.totalAmount || 0) - Number(invoice.paidAmount || 0)) : 0;
+    if (actionConfirm.type === "refresh_lifecycle") {
+      return {
+        tone: "warning",
+        eyebrow: "Refresh lifecycle",
+        title: "Refresh invoice lifecycle?",
+        message: "This can generate due invoices, mark overdue invoices, send reminders, and apply collection policy for this park.",
+        details: ["Use this when you intentionally want billing state to be recalculated.", "Audit and payment history will record resulting changes."],
+        confirmLabel: "Refresh invoices",
+      };
+    }
+    if (actionConfirm.type === "open_invoice") {
+      return {
+        tone: "info",
+        eyebrow: "Open invoice",
+        title: `Open ${invoice.invoiceNumber}?`,
+        message: "This opens the official invoice document in a new browser tab.",
+        details: [`Invoice total: ${money(invoice.totalAmount, invoice.currency || park.currency)}`, `Status: ${invoice.status}`],
+        confirmLabel: "Open invoice",
+      };
+    }
+    if (actionConfirm.type === "record_payment") {
+      return {
+        tone: "warning",
+        eyebrow: "Record payment",
+        title: `Record payment for ${invoice.invoiceNumber}?`,
+        message: "This marks money as received for the SaaS invoice. Only use it after payment is actually confirmed.",
+        details: [`Amount to record: ${money(remaining || invoice.totalAmount, invoice.currency || park.currency)}`, "This updates invoice balance, payment history, and audit logs."],
+        confirmLabel: "Record payment",
+      };
+    }
+    return {
+      tone: "warning",
+      eyebrow: "Create payment link",
+      title: `Create payment link for ${invoice.invoiceNumber}?`,
+      message: "This creates a customer-payable SaaS invoice link and may open/copy it for sharing.",
+      details: [`Amount due: ${money(remaining, invoice.currency || park.currency)}`, "Use only when you are ready to send the owner a real collection link."],
+      confirmLabel: "Create link",
+    };
+  })();
   const handleVoidInvoice = async (event) => {
     if (!voidConfirm) return;
     if (event.type === "input") {
@@ -1583,14 +2576,14 @@ function InvoiceHistoryTable({ park, invoices }) {
     <section className="overflow-hidden rounded-xl border border-stone-200 bg-white shadow-sm">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-stone-200 px-5 py-4">
         <div>
-          <p className="text-xs font-black uppercase text-orange-700">Invoice history</p>
-          <h3 className="text-lg font-black text-stone-950">Generated SaaS invoices</h3>
+          <p className="text-xs font-black uppercase text-orange-700">Billing history</p>
+          <h3 className="text-lg font-black text-stone-950">Generated SaaS invoices and collection status</h3>
         </div>
         <div className="flex flex-wrap items-center justify-end gap-2">
           <button
             type="button"
             disabled={refreshLifecycleState.isLoading}
-            onClick={handleRefreshLifecycle}
+            onClick={() => setActionConfirm({ type: "refresh_lifecycle" })}
             className={buttonClass("secondary", "min-h-9 px-3 py-1.5 text-xs")}
           >
             {refreshLifecycleState.isLoading ? "Refreshing..." : "Refresh invoices"}
@@ -1635,7 +2628,7 @@ function InvoiceHistoryTable({ park, invoices }) {
                       <button
                         type="button"
                         disabled={invoiceDocumentState.isFetching}
-                        onClick={() => handleOpenInvoiceDocument(invoice)}
+                        onClick={() => setActionConfirm({ type: "open_invoice", invoice })}
                         className={buttonClass("secondary", "min-h-9 px-3 py-1.5 text-xs")}
                       >
                         Open invoice
@@ -1643,7 +2636,7 @@ function InvoiceHistoryTable({ park, invoices }) {
                       <button
                         type="button"
                         disabled={!canPay || isLoading}
-                        onClick={() => handleRecordPayment(invoice)}
+                        onClick={() => setActionConfirm({ type: "record_payment", invoice })}
                         className={buttonClass(canPay ? "success" : "secondary", "min-h-9 px-3 py-1.5 text-xs")}
                       >
                         {canPay ? `Record ${money(remaining, invoice.currency || park.currency)}` : "Settled"}
@@ -1652,7 +2645,7 @@ function InvoiceHistoryTable({ park, invoices }) {
                         <button
                           type="button"
                           disabled={createLinkState.isLoading}
-                          onClick={() => handleCreatePaymentLink(invoice)}
+                          onClick={() => setActionConfirm({ type: "payment_link", invoice })}
                           className={buttonClass("secondary", "min-h-9 px-3 py-1.5 text-xs")}
                         >
                           Payment link
@@ -1703,6 +2696,18 @@ function InvoiceHistoryTable({ park, invoices }) {
           </tbody>
         </table>
       </div>
+      <ConfirmDialog
+        open={Boolean(actionConfirm && actionConfirmConfig)}
+        tone={actionConfirmConfig?.tone || "warning"}
+        eyebrow={actionConfirmConfig?.eyebrow || "Please confirm"}
+        title={actionConfirmConfig?.title || ""}
+        message={actionConfirmConfig?.message || ""}
+        details={actionConfirmConfig?.details || []}
+        confirmLabel={actionConfirmConfig?.confirmLabel || "Confirm"}
+        loading={actionConfirmLoading}
+        onConfirm={handleConfirmedInvoiceAction}
+        onClose={() => setActionConfirm(null)}
+      />
       <ConfirmDialog
         open={Boolean(voidConfirm)}
         tone="danger"
@@ -1769,76 +2774,75 @@ function InvoiceHistoryTable({ park, invoices }) {
   );
 }
 
-function PaymentsPanel({ park, paymentEvents = [] }) {
+function PaymentsPanel({ park }) {
   const [form, setForm] = useState({
-    paymentMethod: park.paymentMethod,
-    paymentStatus: park.paymentStatus,
-    guestPaymentStatus: park.guestPaymentStatus,
+    guestPaymentStatus: park.guestPaymentStatus || "not_configured",
   });
   const [updatePayments] = useUpdateSaasParkPaymentsMutation();
+  useEffect(() => {
+    setForm({ guestPaymentStatus: park.guestPaymentStatus || "not_configured" });
+  }, [park.id, park.guestPaymentStatus]);
+
+  const platformMethodLabel = optionLabel(platformBillingMethodOptions, park.paymentMethod);
+  const platformStatusLabel = optionLabel(platformBillingStatusOptions, park.paymentStatus);
+  const platformStatusClass = billingStatusClass(park.paymentStatus);
+
   const submit = async (event) => {
     event.preventDefault();
     try {
       await updatePayments({ id: park.id, ...form }).unwrap();
-      toast.success("Payments updated.");
+      toast.success("Guest payment setting updated.");
     } catch (err) {
       toast.error(err?.data?.message || "Failed to update payments.");
     }
   };
   return (
     <div className="space-y-4">
-      <form onSubmit={submit} className="rounded-xl border border-stone-200 bg-white p-5 shadow-sm">
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-stone-200 pb-4">
+      <form onSubmit={submit} className="rounded-xl border border-stone-200 bg-white p-4 shadow-sm">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-stone-200 pb-3">
           <div>
             <p className="text-xs font-black uppercase text-orange-700">Payment control</p>
-            <h2 className="mt-1 text-xl font-black text-stone-950">Platform billing and guest payment rails</h2>
+            <h2 className="mt-1 text-lg font-black text-stone-950">Platform billing and guest payment rails</h2>
           </div>
-          <Pill className={form.paymentStatus === "active" ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-amber-200 bg-amber-50 text-amber-700"}>
-            {form.paymentStatus}
-          </Pill>
+          <Pill className={platformStatusClass}>{platformStatusLabel}</Pill>
         </div>
-        <div className="mt-5 grid gap-4 md:grid-cols-3">
-          <label>
-            <span className="text-xs font-black uppercase text-stone-500">Platform billing method</span>
-            <select value={form.paymentMethod} onChange={(event) => setForm({ ...form, paymentMethod: event.target.value })} className="input-nexus mt-1 w-full px-3 py-2.5 text-sm">
-              <option value="not_configured">Not configured</option>
-              <option value="card_on_file">Card on file</option>
-              <option value="bank_debit">Bank debit</option>
-              <option value="manual_invoice">Manual invoice</option>
-            </select>
-          </label>
-          <label>
-            <span className="text-xs font-black uppercase text-stone-500">Platform billing status</span>
-            <select value={form.paymentStatus} onChange={(event) => setForm({ ...form, paymentStatus: event.target.value })} className="input-nexus mt-1 w-full px-3 py-2.5 text-sm">
-              <option value="not_configured">Not configured</option>
-              <option value="pending">Pending</option>
-              <option value="active">Active</option>
-              <option value="past_due">Past due</option>
-              <option value="suspended">Suspended</option>
-            </select>
-          </label>
-          <label>
+        <div className="mt-4 grid gap-3 lg:grid-cols-[0.85fr_0.85fr_1.3fr]">
+          <div className="rounded-lg border border-stone-200 bg-stone-50 p-3">
+            <p className="text-xs font-black uppercase text-stone-500">Platform billing method</p>
+            <p className="mt-1 text-base font-black capitalize text-stone-950">{platformMethodLabel}</p>
+            <p className="mt-1 text-xs font-semibold text-stone-500">Auto selected from gateway and invoice setup.</p>
+          </div>
+          <div className="rounded-lg border border-stone-200 bg-stone-50 p-3">
+            <p className="text-xs font-black uppercase text-stone-500">Platform billing status</p>
+            <div className="mt-1">
+              <Pill className={platformStatusClass}>{platformStatusLabel}</Pill>
+            </div>
+            <p className="mt-2 text-xs font-semibold text-stone-500">Auto updated from invoice and collection lifecycle.</p>
+          </div>
+          <div className="rounded-lg border border-orange-100 bg-orange-50/40 p-3">
             <span className="text-xs font-black uppercase text-stone-500">Guest payments</span>
-            <select value={form.guestPaymentStatus} onChange={(event) => setForm({ ...form, guestPaymentStatus: event.target.value })} className="input-nexus mt-1 w-full px-3 py-2.5 text-sm">
-              <option value="not_configured">Not configured</option>
-              <option value="sandbox">Sandbox</option>
-              <option value="live">Live</option>
-            </select>
-          </label>
-        </div>
-        <div className="mt-5 grid gap-3 md:grid-cols-2">
-          <div className="rounded-xl border border-stone-200 bg-stone-50 p-4">
-            <p className="text-xs font-black uppercase text-stone-500">Movira charges the park</p>
-            <p className="mt-1 text-sm font-semibold text-stone-600">This controls SaaS subscription collection for the selected park.</p>
-          </div>
-          <div className="rounded-xl border border-stone-200 bg-stone-50 p-4">
-            <p className="text-xs font-black uppercase text-stone-500">Guests pay the park</p>
-            <p className="mt-1 text-sm font-semibold text-stone-600">This controls checkout, POS, refunds, and guest payment acceptance.</p>
+            <div className="mt-1 flex flex-col gap-2 sm:flex-row sm:items-start">
+              <SearchableSelect
+                value={form.guestPaymentStatus}
+                onChange={(value) => setForm({ ...form, guestPaymentStatus: value })}
+                className="min-w-0 flex-1"
+                buttonClassName="min-h-10 py-2"
+                options={guestPaymentStatusOptions}
+              />
+              <button className={buttonClass("primary", "min-h-10 shrink-0 px-4 py-2")}>Save</button>
+            </div>
+            <span className="mt-2 block text-xs font-semibold text-stone-500">Controls checkout/POS acceptance for this park.</span>
           </div>
         </div>
-        <button className={buttonClass("primary", "mt-5")}>Save payments</button>
+        <div className="mt-3 grid gap-2 text-xs font-semibold text-stone-500 md:grid-cols-2">
+          <p className="rounded-lg border border-stone-200 bg-stone-50 px-3 py-2">
+            <span className="font-black uppercase text-stone-600">Movira charges the park:</span> system-managed from billing gateway, invoices, payment links, and lifecycle jobs.
+          </p>
+          <p className="rounded-lg border border-stone-200 bg-stone-50 px-3 py-2">
+            <span className="font-black uppercase text-stone-600">Guests pay the park:</span> checkout, POS, refunds, and guest payment acceptance.
+          </p>
+        </div>
       </form>
-      <PaymentHistoryPanel park={park} paymentEvents={paymentEvents} />
       <ParkPaymentConsole park={park} />
     </div>
   );
@@ -1878,47 +2882,26 @@ function PaymentHistoryPanel({ park, paymentEvents }) {
             className="input-nexus w-full py-1.5 pl-8 pr-3 text-sm"
           />
         </div>
-        <select
+        <SearchableSelect
           value={status}
-          onChange={(event) => {
-            setStatus(event.target.value);
+          onChange={(value) => {
+            setStatus(value);
             setPage(1);
           }}
-          className="input-nexus min-h-9 w-36 px-3 py-1.5 text-sm"
-        >
-          <option value="all">All statuses</option>
-          <option value="paid">Paid</option>
-          <option value="partial">Partial</option>
-          <option value="open">Open</option>
-          <option value="overdue">Overdue</option>
-          <option value="past_due">Past due</option>
-          <option value="suspended">Suspended</option>
-          <option value="recovered">Recovered</option>
-          <option value="void">Void</option>
-          <option value="recorded">Recorded</option>
-        </select>
-        <select
+          searchPlaceholder="Search status..."
+          className="w-full sm:w-40"
+          options={paymentHistoryStatusOptions}
+        />
+        <SearchableSelect
           value={eventType}
-          onChange={(event) => {
-            setEventType(event.target.value);
+          onChange={(value) => {
+            setEventType(value);
             setPage(1);
           }}
-          className="input-nexus min-h-9 w-48 px-3 py-1.5 text-sm"
-        >
-          <option value="all">All event types</option>
-          <option value="invoice_generated">Invoice generated</option>
-          <option value="invoice_payment_captured">Payment captured</option>
-          <option value="invoice_payment_refunded">Payment refunded</option>
-          <option value="invoice_payment_link_created">Payment link</option>
-          <option value="invoice_marked_overdue">Marked overdue</option>
-          <option value="invoice_reminder_sent">Reminder sent</option>
-          <option value="invoice_reminder_failed">Reminder failed</option>
-          <option value="account_marked_past_due">Account past due</option>
-          <option value="account_suspended_for_non_payment">Account suspended</option>
-          <option value="account_collection_recovered">Account recovered</option>
-          <option value="invoice_voided">Invoice voided</option>
-          <option value="payment_settings_updated">Payment settings</option>
-        </select>
+          searchPlaceholder="Search event type..."
+          className="w-full sm:w-56"
+          options={paymentEventTypeOptions}
+        />
         {isFetching ? <span className="text-xs font-black uppercase text-stone-400">Loading...</span> : null}
       </div>
       <div className="divide-y divide-stone-100">
@@ -1955,7 +2938,8 @@ function PaymentHistoryPanel({ park, paymentEvents }) {
 
 function OnboardingPanel({ park }) {
   const [updateOnboarding] = useUpdateSaasParkOnboardingMutation();
-  const [goLive] = useApproveSaasParkGoLiveMutation();
+  const [goLive, goLiveState] = useApproveSaasParkGoLiveMutation();
+  const [goLiveConfirm, setGoLiveConfirm] = useState(false);
   const toggle = async (key) => {
     try {
       await updateOnboarding({ id: park.id, onboarding: { ...park.onboarding, [key]: !park.onboarding?.[key] } }).unwrap();
@@ -1964,10 +2948,12 @@ function OnboardingPanel({ park }) {
       toast.error(err?.data?.message || "Failed to update checklist.");
     }
   };
-  const approve = async () => {
+  const approve = async (event) => {
+    if (event?.type && event.type !== "confirm") return;
     try {
       await goLive({ id: park.id }).unwrap();
       toast.success("Go-live checked.");
+      setGoLiveConfirm(false);
     } catch (err) {
       toast.error(err?.data?.message || "Failed to approve go-live.");
     }
@@ -2004,8 +2990,24 @@ function OnboardingPanel({ park }) {
           <p className="font-black text-stone-950">Go-live gate</p>
           <p className="text-sm font-semibold text-stone-500">Approving updates the park status based on readiness.</p>
         </div>
-        <button onClick={approve} className={buttonClass("primary")}><FaRocket /> Approve go-live</button>
+        <button onClick={() => setGoLiveConfirm(true)} className={buttonClass("primary")}><FaRocket /> Approve go-live</button>
       </div>
+      <ConfirmDialog
+        open={goLiveConfirm}
+        tone="warning"
+        eyebrow="Go-live approval"
+        title={`Approve ${park.name} for go-live?`}
+        message="This checks readiness and updates the park lifecycle. Use it only when the park is ready for real customer operations."
+        details={[
+          `${park.onboardingScore || 0}% readiness currently complete.`,
+          "If checks are incomplete, the park may move to needs_checks instead of live.",
+          "This action is recorded in the audit history.",
+        ]}
+        confirmLabel="Approve go-live"
+        loading={goLiveState.isLoading}
+        onConfirm={approve}
+        onClose={() => setGoLiveConfirm(false)}
+      />
     </div>
   );
 }
@@ -2018,7 +3020,7 @@ function AuditPanel({ park, initialLogs = [] }) {
     { id: park.id, page, limit: 25, search, action },
     { skip: !park?.id }
   );
-  const logs = data.logs || initialLogs || [];
+  const logs = useMemo(() => data.logs || initialLogs || [], [data.logs, initialLogs]);
   const pagination = data.pagination || { totalRecords: logs.length, totalPages: 1, currentPage: 1 };
   const auditSummary = useMemo(() => {
     const actors = new Set();
@@ -2097,34 +3099,17 @@ function AuditPanel({ park, initialLogs = [] }) {
               className="input-nexus w-full py-2 pl-9 pr-3 text-sm"
             />
           </div>
-          <select
+          <SearchableSelect
             value={action}
-            onChange={(event) => {
-              setAction(event.target.value);
+            onChange={(value) => {
+              setAction(value);
               setPage(1);
             }}
-            className="input-nexus min-h-10 w-full px-3 py-2 text-sm font-bold sm:w-64"
-          >
-            <option value="all">All actions</option>
-            <option value="park.created">Park created</option>
-            <option value="park.updated">Park updated</option>
-            <option value="park.archived">Park archived</option>
-            <option value="park.lifecycle_updated">Lifecycle updated</option>
-            <option value="billing.updated">Billing updated</option>
-            <option value="payments.updated">Payments updated</option>
-            <option value="invoice.generated">Invoice generated</option>
-            <option value="invoice.payment_recorded">Payment recorded</option>
-            <option value="invoice.payment_link_created">Payment link created</option>
-            <option value="invoice.payment_refunded">Payment refunded</option>
-            <option value="invoice.marked_overdue">Marked overdue</option>
-            <option value="invoice.reminder_sent">Reminder sent</option>
-            <option value="invoice.reminder_failed">Reminder failed</option>
-            <option value="billing.past_due">Billing past due</option>
-            <option value="billing.suspended">Billing suspended</option>
-            <option value="billing.collection_recovered">Billing recovered</option>
-            <option value="invoice.voided">Invoice voided</option>
-            <option value="onboarding.updated">Onboarding updated</option>
-          </select>
+            searchPlaceholder="Search action..."
+            className="w-full sm:w-64"
+            buttonClassName="min-h-10 py-2"
+            options={auditActionOptions}
+          />
         </div>
 
         <div className="divide-y divide-stone-100">
@@ -2201,6 +3186,7 @@ export default function MoviraControl() {
   const { pathname } = useLocation();
   const { parkId } = useParams();
 
+  if (pathname === "/movira-control/plans") return <PlansManager />;
   if (pathname === "/movira-control" || pathname === "/movira-control/parks") return <ParksList />;
   if (pathname === "/movira-control/parks/new") return <ParkForm />;
   if (pathname.endsWith("/edit") && parkId) return <ParkForm />;

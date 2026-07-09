@@ -14,7 +14,7 @@ import {
 import { providerByKey } from "../constants/providers";
 import { Modal, Button, Field, Input, Select, Spinner, ProviderBadge, Badge } from "./ui";
 import { api } from "../api";
-import { validateAll } from "./AddGatewayModal";
+import { validateAll } from "./gatewayValidation";
 import TestConnectionResult from "./TestConnectionResult";
 
 const ACTION_TONE = {

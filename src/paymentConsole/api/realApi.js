@@ -84,6 +84,18 @@ export const realApi = {
     return (await http.get("/payments/config/credentials")).data;
   },
 
+  async getPlatformBillingGateway({ channel = "payment_link", currency = "" } = {}) {
+    const qs = new URLSearchParams();
+    if (channel) qs.set("channel", channel);
+    if (currency) qs.set("currency", currency);
+    const suffix = qs.toString() ? `?${qs.toString()}` : "";
+    return (await http.get(`/saas/platform-billing-gateway${suffix}`)).data || {};
+  },
+
+  async upsertPlatformBillingGateway(payload) {
+    return (await http.put("/saas/platform-billing-gateway", payload)).data;
+  },
+
   async createCredential(payload) {
     // payload: { provider, label, mode, values, locationId? }
     // locationId === null → org-wide; numeric → per-venue.

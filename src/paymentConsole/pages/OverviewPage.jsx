@@ -5,7 +5,7 @@
 // Stat cards on top, then a "Needs attention" panel listing venues whose
 // live channels are unconfigured or whose routes don't resolve a credential.
 
-import { useEffect, useMemo, useState } from "react";
+import { createElement, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   FiAlertTriangle,
@@ -17,7 +17,7 @@ import {
   FiZap,
 } from "react-icons/fi";
 import { api } from "../api";
-import { useAuth } from "../auth/AuthContext";
+import { useAuth } from "../auth/useAuth";
 import { CHANNELS, channelByKey } from "../constants/channels";
 import { providerByKey } from "../constants/providers";
 import { Badge, Card, PageShell, ProviderBadge, Spinner } from "../components/ui";
@@ -34,7 +34,7 @@ function Stat({ icon: Icon, label, value, hint, to }) {
     <Card className="p-5 h-full hover:border-[var(--brand-primary)] transition-colors">
       <div className="flex items-center justify-between">
         <span className="inline-flex items-center justify-center w-10 h-10 rounded-xl bg-orange-50 text-[var(--brand-primary-deep)]">
-          <Icon size={20} />
+          {createElement(Icon, { size: 20 })}
         </span>
         {to && <FiArrowRight className="text-[var(--text-muted)]" />}
       </div>

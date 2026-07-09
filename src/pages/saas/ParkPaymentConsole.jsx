@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { Children, useMemo, useState } from "react";
 import { toast } from "sonner";
 import {
   FaCheckCircle,
@@ -32,6 +32,7 @@ import {
   useUpsertVenuePaymentRouteMutation,
 } from "../../features/saas/moviraControlApi";
 import ConfirmDialog from "../../components/common/ConfirmDialog";
+import SearchableSelect from "../../components/common/SearchableSelect";
 
 const providers = [
   { key: "stripe", name: "Stripe", short: "S", color: "bg-indigo-50 text-indigo-700 border-indigo-200" },
@@ -110,8 +111,28 @@ function Input({ className = "", ...props }) {
   return <input className={`input-nexus w-full px-3 py-2.5 text-sm ${className}`} {...props} />;
 }
 
-function Select({ className = "", ...props }) {
-  return <select className={`input-nexus w-full px-3 py-2.5 text-sm ${className}`} {...props} />;
+function Select({ className = "", value, onChange, children, ...props }) {
+  const options = Children.toArray(children)
+    .filter((child) => child?.type === "option")
+    .map((child) => {
+      const label = Children.toArray(child.props.children).join("");
+      return {
+        value: String(child.props.value ?? ""),
+        label,
+        disabled: child.props.disabled,
+      };
+    });
+
+  return (
+    <SearchableSelect
+      {...props}
+      value={value}
+      onChange={(nextValue) => onChange?.({ target: { value: nextValue } })}
+      className={className}
+      buttonClassName="min-h-11 py-2.5"
+      options={options.filter((option) => !option.disabled)}
+    />
+  );
 }
 
 function Field({ label, children, hint, error }) {
@@ -293,6 +314,7 @@ function RouteModal({ park, channel, currentRoute, credentials, compatibility, o
   const providerKeys = Object.keys(available);
   const [provider, setProvider] = useState(currentRoute?.provider || providerKeys[0] || "");
   const [mode, setMode] = useState(currentRoute?.mode || "sandbox");
+  const [clearConfirmOpen, setClearConfirmOpen] = useState(false);
   const selectedAdapter = available[provider];
   const resolved = resolveCredential({ provider, mode, locationId: park.locationId, credentials });
   const [upsertRoute, upsertState] = useUpsertVenuePaymentRouteMutation();
@@ -316,10 +338,12 @@ function RouteModal({ park, channel, currentRoute, credentials, compatibility, o
     }
   }
 
-  async function clear() {
+  async function clear(event) {
+    if (event?.type && event.type !== "confirm") return;
     try {
       await deleteRoute({ locationId: park.locationId, channel: channel.key }).unwrap();
       toast.success("Route removed.");
+      setClearConfirmOpen(false);
       onClose();
     } catch (err) {
       toast.error(err?.data?.message || "Failed to remove route.");
@@ -367,7 +391,7 @@ function RouteModal({ park, channel, currentRoute, credentials, compatibility, o
 
         <div className="flex flex-wrap items-center justify-between gap-2 border-t border-stone-200 pt-4">
           {currentRoute ? (
-            <button type="button" onClick={clear} disabled={deleteState.isLoading} className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-red-200 bg-white px-4 py-2 text-sm font-black text-red-700">
+            <button type="button" onClick={() => setClearConfirmOpen(true)} disabled={deleteState.isLoading} className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-red-200 bg-white px-4 py-2 text-sm font-black text-red-700">
               <FaTrash /> Remove route
             </button>
           ) : (
@@ -378,6 +402,21 @@ function RouteModal({ park, channel, currentRoute, credentials, compatibility, o
           </button>
         </div>
       </div>
+      <ConfirmDialog
+        open={clearConfirmOpen}
+        tone="danger"
+        eyebrow="Remove payment route"
+        title={`Remove ${channel.label} route?`}
+        message="This channel will stop using its configured gateway until another route is saved."
+        details={[
+          "Checkout or POS flows that depend on this channel may stop accepting payments.",
+          "Gateway credentials are not deleted.",
+        ]}
+        confirmLabel="Remove route"
+        loading={deleteState.isLoading}
+        onConfirm={clear}
+        onClose={() => setClearConfirmOpen(false)}
+      />
     </Modal>
   );
 }
@@ -444,11 +483,12 @@ function PosTree({ park }) {
   const { data: tree = {}, isLoading, isError } = useGetVenuePosTreeQuery(park.locationId);
   const [terminalName, setTerminalName] = useState("");
   const [readerDraft, setReaderDraft] = useState({});
+  const [removeReaderTarget, setRemoveReaderTarget] = useState(null);
   const [createTerminal, createTerminalState] = useCreateVenueTerminalMutation();
   const [regeneratePairing] = useRegenerateVenueTerminalPairingMutation();
   const [addReader] = useAddVenueReaderMutation();
   const [updateReader] = useUpdateVenueReaderMutation();
-  const [deleteReader] = useDeleteVenueReaderMutation();
+  const [deleteReader, deleteReaderState] = useDeleteVenueReaderMutation();
 
   async function createTill() {
     if (!terminalName.trim()) return;
@@ -482,10 +522,25 @@ function PosTree({ park }) {
     }
   }
 
+  async function removeReader(event) {
+    if (!removeReaderTarget || event?.type !== "confirm") return;
+    try {
+      await deleteReader({
+        terminalId: removeReaderTarget.reader.terminalId,
+        locationId: park.locationId,
+      }).unwrap();
+      toast.success("Reader removed.");
+      setRemoveReaderTarget(null);
+    } catch (err) {
+      toast.error(err?.data?.message || "Failed to remove reader.");
+    }
+  }
+
   const terminals = tree.terminals || [];
   const routed = Boolean(tree.routed);
 
   return (
+    <>
     <section className="rounded-xl border border-stone-200 bg-white p-5 shadow-sm">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
@@ -556,7 +611,7 @@ function PosTree({ park }) {
                       ) : null}
                       <button
                         type="button"
-                        onClick={() => deleteReader({ terminalId: reader.terminalId, locationId: park.locationId })}
+                        onClick={() => setRemoveReaderTarget({ terminal, reader })}
                         className="rounded-lg border border-red-200 bg-white px-2 py-1 text-xs font-black text-red-700"
                       >
                         Remove
@@ -585,6 +640,22 @@ function PosTree({ park }) {
         })}
       </div>
     </section>
+    <ConfirmDialog
+      open={Boolean(removeReaderTarget)}
+      tone="danger"
+      eyebrow="Remove card reader"
+      title={removeReaderTarget ? `Remove ${removeReaderTarget.reader.displayName}?` : "Remove reader?"}
+      message="This reader will be detached from the terminal and can no longer be used for POS payments until added again."
+      details={[
+        removeReaderTarget ? `Terminal: ${removeReaderTarget.terminal.name}` : "Selected terminal reader.",
+        "Use this only when the hardware reader should no longer accept payments for this park.",
+      ]}
+      confirmLabel="Remove reader"
+      loading={deleteReaderState.isLoading}
+      onConfirm={removeReader}
+      onClose={() => setRemoveReaderTarget(null)}
+    />
+    </>
   );
 }
 

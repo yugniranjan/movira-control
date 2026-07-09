@@ -73,6 +73,16 @@ export default function MoviraLogin() {
       }
       navigate("/movira-control/parks", { replace: true });
     } catch (err) {
+      const code = err?.data?.code || err?.data?.reason;
+      if (code === "saas_payment_required") {
+        toast.error("Payment required before login", {
+          description:
+            err?.data?.message ||
+            "Please complete your first SaaS payment to unlock your Movira workspace.",
+          duration: 7000,
+        });
+        return;
+      }
       toast.error(err?.data?.message || "Login failed.");
     }
   };

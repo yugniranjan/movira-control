@@ -1,7 +1,7 @@
-import { createContext, useContext, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { api } from "../api";
+import { AuthContext } from "./authContextCore";
 
-const AuthContext = createContext(null);
 const STORAGE_KEY = "movira.superadmin.auth";
 const ADMIN_STORAGE_KEY = "authState";
 
@@ -39,7 +39,7 @@ export function AuthProvider({ children }) {
       return null;
     }
   });
-  const [ready, setReady] = useState(true);
+  const [ready] = useState(true);
 
   useEffect(() => {
     if (auth) localStorage.setItem(STORAGE_KEY, JSON.stringify(auth));
@@ -60,10 +60,4 @@ export function AuthProvider({ children }) {
       {children}
     </AuthContext.Provider>
   );
-}
-
-export function useAuth() {
-  const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error("useAuth must be used within AuthProvider");
-  return ctx;
 }

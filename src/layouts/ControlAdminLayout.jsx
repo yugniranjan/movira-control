@@ -1,10 +1,13 @@
+import { createElement } from "react";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
-import { FiCreditCard, FiGrid, FiLogOut, FiMapPin, FiSettings } from "react-icons/fi";
+import { FiCreditCard, FiDollarSign, FiGrid, FiLayers, FiLogOut, FiMapPin, FiSettings } from "react-icons/fi";
 import { logout } from "../features/auth/authSlice";
 
 const navItems = [
   { to: "/movira-control/parks", label: "Control", icon: FiGrid },
+  { to: "/movira-control/plans", label: "Plans", icon: FiLayers },
+  { to: "/payment-console/platform-billing", label: "SaaS Billing", icon: FiDollarSign },
   { to: "/payment-console", label: "Payments", icon: FiCreditCard },
   { to: "/payment-console/venues", label: "Venues", icon: FiMapPin },
   { to: "/payment-console/payments", label: "Gateways", icon: FiSettings },
@@ -55,7 +58,7 @@ export default function ControlAdminLayout() {
                 }`
               }
             >
-              <Icon className="text-sm" />
+              {createElement(Icon, { className: "text-sm" })}
               <span>{label}</span>
             </NavLink>
           ))}

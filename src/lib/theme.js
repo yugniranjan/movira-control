@@ -21,7 +21,7 @@ export const themeOptions = [
     id: "dark",
     label: "Night Jump",
     shortLabel: "Dark",
-    swatch: "linear-gradient(135deg, #111827, #FF7A24)",
+    swatch: "linear-gradient(135deg, var(--surface-panel), var(--brand-primary))",
     canonical: "admin-glass",
   },
   {
@@ -35,7 +35,7 @@ export const themeOptions = [
     id: "lagoon",
     label: "Lagoon",
     shortLabel: "Lagoon",
-    swatch: "linear-gradient(135deg, #063D4E, #22D3EE)",
+    swatch: "linear-gradient(135deg, var(--surface-panel), var(--brand-secondary))",
   },
   {
     id: "sunset",
@@ -87,7 +87,7 @@ export const defaultThemeForRole = (role) => (isCounterRole(role) ? "light" : "d
 // Whether a user is allowed to override the default. Counter staff can
 // be locked to the bright theme later via location config; for now everyone
 // can override. Wire location config in here when that ships.
-export const canOverrideTheme = (_role) => true;
+export const canOverrideTheme = () => true;
 
 // ─── Storage + apply ──────────────────────────────────────────────────
 

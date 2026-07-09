@@ -16,6 +16,7 @@ import PaymentOverviewPage from "../paymentConsole/pages/OverviewPage";
 import PaymentVenuesPage from "../paymentConsole/pages/VenuesPage";
 import PaymentVenueDetailPage from "../paymentConsole/pages/VenueDetailPage";
 import PaymentPaymentsPage from "../paymentConsole/pages/PaymentsPage";
+import PaymentPlatformBillingPage from "../paymentConsole/pages/PlatformBillingPage";
 
 const Login = lazy(() => import("../pages/auth/Login"));
 
@@ -47,6 +48,7 @@ export default function AppRoutes() {
           <Route element={<ControlGuard />}>
             <Route path="/" element={<Navigate to="/movira-control/parks" replace />} />
             <Route path="/movira-control" element={<MoviraControl />} />
+            <Route path="/movira-control/plans" element={<MoviraControl />} />
             <Route path="/movira-control/parks" element={<MoviraControl />} />
             <Route path="/movira-control/parks/new" element={<MoviraControl />} />
             <Route path="/movira-control/parks/:parkId" element={<MoviraControl />} />
@@ -54,6 +56,7 @@ export default function AppRoutes() {
 
             <Route path="/payment-console" element={<PaymentConsoleGuard />}>
               <Route index element={<PaymentOverviewPage />} />
+              <Route path="platform-billing" element={<PaymentPlatformBillingPage />} />
               <Route path="venues" element={<PaymentVenuesPage />} />
               <Route path="venues/:id" element={<PaymentVenueDetailPage />} />
               <Route path="payments" element={<PaymentPaymentsPage />} />

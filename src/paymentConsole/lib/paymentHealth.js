@@ -3,7 +3,7 @@
 // UI's "needs attention" indicators agree with what selectAdapter would do
 // at request time.
 
-import { CHANNELS, isChannelEditable } from "../constants/channels";
+import { CHANNELS } from "../constants/channels";
 
 // Resolve a route to the credential the backend would pick at request time.
 // Precedence: per-venue row > org-wide row. Match on (provider, mode).

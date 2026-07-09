@@ -15,6 +15,57 @@ export const moviraControlApi = baseApi.injectEndpoints({
       providesTags: (result, error, id) => [{ type: "SaasControl", id }],
       transformResponse: (response) => response?.data || response,
     }),
+    getSaasPlans: builder.query({
+      query: ({ includeArchived = false, includeInternal = true } = {}) => ({
+        url: "/saas/plans",
+        params: { includeArchived, includeInternal },
+      }),
+      providesTags: [{ type: "SaasControl", id: "plans" }],
+      transformResponse: (response) => response?.data || response || {},
+    }),
+    createSaasPlan: builder.mutation({
+      query: (body) => ({
+        url: "/saas/plans",
+        method: "POST",
+        body,
+      }),
+      invalidatesTags: ["SaasControl", { type: "SaasControl", id: "plans" }],
+      transformResponse: (response) => response?.data || response,
+    }),
+    updateSaasPlan: builder.mutation({
+      query: ({ planKey, ...body }) => ({
+        url: `/saas/plans/${planKey}`,
+        method: "PATCH",
+        body,
+      }),
+      invalidatesTags: ["SaasControl", { type: "SaasControl", id: "plans" }],
+      transformResponse: (response) => response?.data || response,
+    }),
+    deleteSaasPlan: builder.mutation({
+      query: (planKey) => ({
+        url: `/saas/plans/${planKey}`,
+        method: "DELETE",
+      }),
+      invalidatesTags: ["SaasControl", { type: "SaasControl", id: "plans" }],
+      transformResponse: (response) => response?.data || response,
+    }),
+    getSaasModules: builder.query({
+      query: ({ includeInactive = false } = {}) => ({
+        url: "/saas/modules",
+        params: { includeInactive },
+      }),
+      providesTags: [{ type: "SaasControl", id: "modules" }],
+      transformResponse: (response) => response?.data || response || {},
+    }),
+    updateSaasModule: builder.mutation({
+      query: ({ moduleKey, ...body }) => ({
+        url: `/saas/modules/${moduleKey}`,
+        method: "PATCH",
+        body,
+      }),
+      invalidatesTags: ["SaasControl", { type: "SaasControl", id: "modules" }],
+      transformResponse: (response) => response?.data || response,
+    }),
     getSaasParkAuditLogs: builder.query({
       query: ({ id, page = 1, limit = 25, search = "", action = "all", from = "", to = "" } = {}) => ({
         url: `/saas/parks/${id}/audit`,
@@ -99,6 +150,23 @@ export const moviraControlApi = baseApi.injectEndpoints({
       query: () => "/payments/config/credentials",
       providesTags: ["Payment"],
       transformResponse: (response) => response?.data || response || [],
+    }),
+    getSaasPlatformBillingGateway: builder.query({
+      query: ({ channel = "payment_link", currency = "" } = {}) => ({
+        url: "/saas/platform-billing-gateway",
+        params: { channel, currency },
+      }),
+      providesTags: [{ type: "SaasControl", id: "platform-billing-gateway" }],
+      transformResponse: (response) => response?.data || response || {},
+    }),
+    upsertSaasPlatformBillingGateway: builder.mutation({
+      query: (body) => ({
+        url: "/saas/platform-billing-gateway",
+        method: "PUT",
+        body,
+      }),
+      invalidatesTags: [{ type: "SaasControl", id: "platform-billing-gateway" }],
+      transformResponse: (response) => response?.data || response,
     }),
     createPaymentCredential: builder.mutation({
       query: (body) => ({
@@ -186,11 +254,15 @@ export const moviraControlApi = baseApi.injectEndpoints({
       transformResponse: (response) => response?.data || response,
     }),
     updateVenueReader: builder.mutation({
-      query: ({ terminalId, locationId, ...body }) => ({
-        url: `/payments/config/readers/${terminalId}`,
-        method: "PATCH",
-        body,
-      }),
+      query: (args) => {
+        const { terminalId, ...body } = args;
+        delete body.locationId;
+        return {
+          url: `/payments/config/readers/${terminalId}`,
+          method: "PATCH",
+          body,
+        };
+      },
       invalidatesTags: (result, error, { locationId }) => (locationId ? [{ type: "Payment", id: `pos-${locationId}` }] : ["Payment"]),
       transformResponse: (response) => response?.data || response,
     }),
@@ -335,6 +407,12 @@ export const moviraControlApi = baseApi.injectEndpoints({
 export const {
   useGetSaasParksQuery,
   useGetSaasParkByIdQuery,
+  useGetSaasPlansQuery,
+  useCreateSaasPlanMutation,
+  useUpdateSaasPlanMutation,
+  useDeleteSaasPlanMutation,
+  useGetSaasModulesQuery,
+  useUpdateSaasModuleMutation,
   useGetSaasParkAuditLogsQuery,
   useGetSaasParkPaymentEventsQuery,
   useCreateSaasParkMutation,
@@ -346,6 +424,8 @@ export const {
   useGetPaymentProviderSchemasQuery,
   useGetPaymentCompatibilityQuery,
   useGetPaymentCredentialsQuery,
+  useGetSaasPlatformBillingGatewayQuery,
+  useUpsertSaasPlatformBillingGatewayMutation,
   useCreatePaymentCredentialMutation,
   useUpdatePaymentCredentialMutation,
   useDeletePaymentCredentialMutation,
