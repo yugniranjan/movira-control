@@ -97,11 +97,123 @@ const defaultForm = {
   country: "Canada",
   timezone: "America/Toronto",
   currency: "CAD",
-  streetNumberOrBuildingName: "1",
-  streetName: "Main Street",
+  streetNumberOrBuildingName: "",
+  streetName: "",
+  postalCode: "",
   displayAddress: "",
   monthlyBaseFee: 0,
 };
+
+const countryProfiles = [
+  {
+    value: "Canada",
+    label: "Canada",
+    timezone: "America/Toronto",
+    currency: "CAD",
+    dialCode: "+1",
+    cityPlaceholder: "St. Catharines",
+    statePlaceholder: "Ontario",
+    postalPlaceholder: "L2R 7C2",
+  },
+  {
+    value: "United States",
+    label: "United States",
+    timezone: "America/New_York",
+    currency: "USD",
+    dialCode: "+1",
+    cityPlaceholder: "Orlando",
+    statePlaceholder: "Florida",
+    postalPlaceholder: "32801",
+  },
+  {
+    value: "India",
+    label: "India",
+    timezone: "Asia/Kolkata",
+    currency: "INR",
+    dialCode: "+91",
+    cityPlaceholder: "Jalaun",
+    statePlaceholder: "Uttar Pradesh",
+    postalPlaceholder: "285123",
+  },
+  {
+    value: "United Kingdom",
+    label: "United Kingdom",
+    timezone: "Europe/London",
+    currency: "GBP",
+    dialCode: "+44",
+    cityPlaceholder: "London",
+    statePlaceholder: "England",
+    postalPlaceholder: "SW1A 1AA",
+  },
+  {
+    value: "Australia",
+    label: "Australia",
+    timezone: "Australia/Sydney",
+    currency: "AUD",
+    dialCode: "+61",
+    cityPlaceholder: "Sydney",
+    statePlaceholder: "New South Wales",
+    postalPlaceholder: "2000",
+  },
+];
+
+const countryOptions = countryProfiles.map((profile) => ({
+  value: profile.value,
+  label: profile.label,
+  description: `${profile.timezone} / ${profile.currency} / ${profile.dialCode}`,
+}));
+
+const getCountryProfile = (country) =>
+  countryProfiles.find((profile) => profile.value.toLowerCase() === String(country || "").trim().toLowerCase()) ||
+  countryProfiles[0];
+
+const normalizeEmail = (value) => String(value || "").trim().toLowerCase();
+
+const isValidEmail = (value) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value || "").trim());
+
+const normalizePhoneForCountry = (phone, country) => {
+  const raw = String(phone || "").trim();
+  if (!raw) return "";
+  if (raw.startsWith("+")) return raw;
+  const digits = raw.replace(/\D/g, "");
+  if (!digits) return raw;
+  const dialCode = getCountryProfile(country).dialCode;
+  const dialDigits = dialCode.replace(/\D/g, "");
+  return digits.startsWith(dialDigits) ? `+${digits}` : `${dialCode} ${digits}`;
+};
+
+const phoneLocalValue = (phone, country) => {
+  const raw = String(phone || "").trim();
+  if (!raw) return "";
+  const dialDigits = getCountryProfile(country).dialCode.replace(/\D/g, "");
+  const digits = raw.replace(/\D/g, "");
+  if (digits.startsWith(dialDigits)) return digits.slice(dialDigits.length);
+  return digits || raw.replace(/^\+\d+\s*/, "");
+};
+
+const getUserName = (user) =>
+  user?.name ||
+  [user?.first_name || user?.firstName, user?.last_name || user?.lastName].filter(Boolean).join(" ") ||
+  user?.email ||
+  "";
+
+const getUserPhone = (user) => user?.phone || user?.phone_number || user?.contactNumber || "";
+
+const requiredParkProfileFields = [
+  ["organizationName", "Organization name is required."],
+  ["name", "Park name is required."],
+  ["owner", "Customer name is required."],
+  ["phone", "Customer phone is required."],
+  ["ownerEmail", "Customer email is required."],
+  ["country", "Country is required."],
+  ["timezone", "Timezone is required."],
+  ["currency", "Currency is required."],
+  ["city", "City is required."],
+  ["state", "State / province is required."],
+  ["postalCode", "Postal / ZIP code is required."],
+  ["streetNumberOrBuildingName", "Building / street number is required."],
+  ["streetName", "Street / address line is required."],
+];
 
 const defaultCustomerOwner = {
   firstName: "",
@@ -1550,9 +1662,17 @@ function ParkForm() {
   const isEdit = Boolean(parkId);
   const { data, isLoading } = useGetSaasParkByIdQuery(parkId, { skip: !isEdit });
   const { data: listData = {} } = useGetSaasParksQuery({ limit: 1, status: "all", includeArchived: true });
-  const { data: usersData = {} } = useGetAllUsersQuery({ search: "" });
+  const [customerSearchInput, setCustomerSearchInput] = useState("");
+  const [customerSearch, setCustomerSearch] = useState("");
+  const { data: usersData = {} } = useGetAllUsersQuery({ search: customerSearch });
   const organizations = listData.catalogs?.organizations || data?.catalogs?.organizations || [];
-  const users = Array.isArray(usersData?.data) ? usersData.data : Array.isArray(usersData?.users) ? usersData.users : [];
+  const users = Array.isArray(usersData)
+    ? usersData
+    : Array.isArray(usersData?.data)
+    ? usersData.data
+    : Array.isArray(usersData?.users)
+    ? usersData.users
+    : [];
   const [form, setForm] = useState(defaultForm);
   const [newCustomer, setNewCustomer] = useState(defaultCustomerOwner);
   const [createdCustomer, setCreatedCustomer] = useState(null);
@@ -1565,12 +1685,28 @@ function ParkForm() {
     ? [...users, createdCustomer]
     : users;
   const selectedCustomer = customerUsers.find((user) => String(user.user_id || user.userId || user.id) === String(form.ownerUserId));
-  const selectedCustomerName =
-    selectedCustomer?.name ||
-    [selectedCustomer?.first_name || selectedCustomer?.firstName, selectedCustomer?.last_name || selectedCustomer?.lastName].filter(Boolean).join(" ") ||
-    form.owner ||
-    "No customer selected";
+  const selectedCustomerName = getUserName(selectedCustomer) || form.owner || "No customer selected";
   const selectedCustomerEmail = selectedCustomer?.email || form.ownerEmail || "Select or create an owner account";
+  const selectedCustomerPhone = getUserPhone(selectedCustomer) || form.phone || "";
+  const customerByEmail = useMemo(() => {
+    const email = normalizeEmail(form.ownerEmail);
+    if (!email) return null;
+    return customerUsers.find((user) => normalizeEmail(user.email) === email) || null;
+  }, [customerUsers, form.ownerEmail]);
+  const selectedCustomerId = selectedCustomer ? String(selectedCustomer.user_id || selectedCustomer.userId || selectedCustomer.id) : "";
+  const emailCustomerId = customerByEmail ? String(customerByEmail.user_id || customerByEmail.userId || customerByEmail.id) : "";
+  const ownerEmailError =
+    form.ownerEmail && selectedCustomer && normalizeEmail(selectedCustomer.email) !== normalizeEmail(form.ownerEmail)
+      ? "Selected customer account and customer email do not match."
+      : form.ownerEmail && selectedCustomerId && emailCustomerId && selectedCustomerId !== emailCustomerId
+      ? "Selected customer account and customer email do not match."
+      : "";
+  const selectedCountryProfile = getCountryProfile(form.country);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => setCustomerSearch(customerSearchInput.trim()), 250);
+    return () => window.clearTimeout(timer);
+  }, [customerSearchInput]);
 
   useEffect(() => {
     if (data?.park && isEdit) {
@@ -1578,11 +1714,11 @@ function ParkForm() {
       setForm({
         ...defaultForm,
         organizationId: park.organizationId || park.organization?.id || "",
-        organizationName: park.organization?.name || "",
+        organizationName: park.organization?.name || park.organizationName || "",
         name: park.name || "",
         slug: park.slug || "",
         owner: park.owner || "",
-        ownerUserId: park.ownerUserId || park.ownerUser?.id || "",
+        ownerUserId: park.ownerUserId || park.ownerUser?.id || park.ownerUser?.userId || park.organization?.ownerUserId || park.organization?.ownerUser?.id || park.organization?.ownerUser?.userId || "",
         ownerEmail: park.ownerEmail || "",
         phone: park.phone || "",
         city: park.city || "",
@@ -1590,6 +1726,10 @@ function ParkForm() {
         country: park.country || "Canada",
         timezone: park.timezone || "America/Toronto",
         currency: park.currency || "CAD",
+        streetNumberOrBuildingName: park.streetNumberOrBuildingName || "",
+        streetName: park.streetName || "",
+        postalCode: park.postalCode || "",
+        displayAddress: park.displayAddress || "",
         monthlyBaseFee: park.monthlyBaseFee || 0,
       });
     }
@@ -1597,15 +1737,37 @@ function ParkForm() {
 
   const update = (key, value) => setForm((current) => ({ ...current, [key]: value }));
   const updateNewCustomer = (key, value) => setNewCustomer((current) => ({ ...current, [key]: value }));
+  const applyCustomerUser = (user, fallback = {}) => {
+    if (!user) return;
+    const userId = user.user_id || user.userId || user.id;
+    setForm((current) => ({
+      ...current,
+      ownerUserId: String(userId),
+      ownerEmail: user.email || fallback.email || current.ownerEmail,
+      owner: getUserName(user) || current.owner,
+      phone: getUserPhone(user) || current.phone,
+    }));
+  };
+  const updateCountry = (value) => {
+    const profile = getCountryProfile(value);
+    setForm((current) => ({
+      ...current,
+      country: profile.value,
+      timezone: profile.timezone,
+      currency: profile.currency,
+      phone: normalizePhoneForCountry(current.phone, profile.value),
+    }));
+  };
 
   const handleCreateCustomerOwner = async () => {
-    if (!newCustomer.firstName.trim() || !newCustomer.email.trim()) {
-      toast.error("Customer first name and email are required.");
+    if (!newCustomer.firstName.trim() || !newCustomer.email.trim() || !newCustomer.phone.trim()) {
+      toast.error("Customer first name, email, and phone are required.");
       return;
     }
     try {
       const response = await createCustomerOwner({
         ...newCustomer,
+        phone: normalizePhoneForCountry(newCustomer.phone, form.country),
         locationId: isEdit ? parkId : undefined,
         parkId: isEdit ? parkId : undefined,
         parkName: form.name,
@@ -1621,6 +1783,7 @@ function ParkForm() {
       }
       const userId = user.userId || user.user_id || user.id;
       const name = user.name || [newCustomer.firstName, newCustomer.lastName].filter(Boolean).join(" ");
+      const phone = normalizePhoneForCountry(user.phone || newCustomer.phone, form.country);
       setCreatedCustomer(user);
       setTemporaryPassword(password);
       setForm((current) => ({
@@ -1628,12 +1791,14 @@ function ParkForm() {
         ownerUserId: String(userId),
         owner: name || current.owner,
         ownerEmail: user.email || newCustomer.email,
-        phone: newCustomer.phone || current.phone,
+        phone: phone || current.phone,
       }));
       setNewCustomer(defaultCustomerOwner);
       setOwnerModalOpen(false);
       if (welcomeEmail?.sent) {
         toast.success("Customer owner created, selected, and welcome email queued.");
+      } else if (!isEdit && welcomeEmail?.reason === "missing_location") {
+        toast.success("Customer owner created and selected. Welcome email will be sent after the park is created.");
       } else if (password) {
         toast.warning(`Customer owner created and selected, but welcome email was not sent${welcomeEmail?.reason ? `: ${welcomeEmail.reason}` : "."}`);
       } else {
@@ -1646,21 +1811,46 @@ function ParkForm() {
 
   const submit = async (event) => {
     event.preventDefault();
-    if (!form.ownerUserId) {
-      toast.error("Select the customer account that owns this park.");
+    const emailOwner = customerByEmail;
+    const ownerUserId = form.ownerUserId || (emailOwner ? String(emailOwner.user_id || emailOwner.userId || emailOwner.id) : "");
+    const missingMessage = requiredParkProfileFields.find(([key]) => !String(form[key] || "").trim())?.[1];
+    if (missingMessage) {
+      toast.error(missingMessage);
+      return;
+    }
+    if (form.ownerEmail && !isValidEmail(form.ownerEmail)) {
+      toast.error("Enter a valid customer email.");
+      return;
+    }
+    if (ownerEmailError) {
+      toast.error(ownerEmailError);
       return;
     }
     try {
       const payload = {
         ...form,
-        customerUserId: form.ownerUserId,
+        ownerUserId,
+        customerUserId: ownerUserId,
+        phone: normalizePhoneForCountry(form.phone, form.country),
         requireCustomerAssignment: true,
+        autoCreateCustomerOwner: !ownerUserId,
+        appBaseUrl: window.location.origin,
+        temporaryPassword: !isEdit ? temporaryPassword : undefined,
       };
+      delete payload.monthlyBaseFee;
       const response = isEdit
         ? await updatePark({ id: parkId, ...payload }).unwrap()
         : await createPark(payload).unwrap();
       const id = response?.data?.id || response?.id || parkId;
-      toast.success(isEdit ? "Park updated." : "Park created.");
+      const welcomeEmail = response?.welcomeEmail || response?.data?.welcomeEmail || null;
+      const customerOwner = response?.customerOwner || response?.data?.customerOwner || null;
+      if (!isEdit && welcomeEmail && !welcomeEmail.sent) {
+        toast.warning(`Park created, but welcome email was not sent${welcomeEmail.reason ? `: ${welcomeEmail.reason}` : "."}`);
+      } else if (!isEdit && customerOwner?.created) {
+        toast.success("Park and owner account created. Welcome email queued.");
+      } else {
+        toast.success(isEdit ? "Park updated." : "Park created and welcome email queued.");
+      }
       navigate(`/movira-control/parks/${id}`);
     } catch (err) {
       toast.error(err?.data?.message || "Failed to save park.");
@@ -1686,7 +1876,7 @@ function ParkForm() {
             </div>
             <div className="grid gap-4 p-4 md:grid-cols-2">
               <label className="block md:col-span-2">
-                <span className="text-xs font-black uppercase text-stone-500">Organization</span>
+                <span className="text-xs font-black uppercase text-stone-500">Organization *</span>
                 <div className="mt-1 grid gap-2 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
                   <SearchableSelect
                     value={form.organizationId}
@@ -1714,6 +1904,7 @@ function ParkForm() {
                     value={form.organizationName}
                     onChange={(event) => update("organizationName", event.target.value)}
                     placeholder="e.g. Yogesh Sports Group"
+                    required
                     className="input-nexus w-full px-3 py-2.5 text-sm"
                   />
                 </div>
@@ -1723,8 +1914,8 @@ function ParkForm() {
                 ["slug", "Slug", "movira-st-catharines"],
               ].map(([key, label, placeholder]) => (
                 <label key={key} className="block">
-                  <span className="text-xs font-black uppercase text-stone-500">{label}</span>
-                  <input value={form[key]} onChange={(event) => update(key, event.target.value)} placeholder={placeholder} className="input-nexus mt-1 w-full px-3 py-2.5 text-sm" />
+                  <span className="text-xs font-black uppercase text-stone-500">{label}{key === "name" ? " *" : ""}</span>
+                  <input value={form[key]} onChange={(event) => update(key, event.target.value)} placeholder={placeholder} required={key === "name"} className="input-nexus mt-1 w-full px-3 py-2.5 text-sm" />
                 </label>
               ))}
             </div>
@@ -1736,9 +1927,7 @@ function ParkForm() {
                 <p className="text-xs font-black uppercase tracking-[0.18em] text-orange-700">Customer assignment</p>
                 <h2 className="mt-1 text-lg font-black text-stone-950">Assign the account that owns this park</h2>
               </div>
-              <button type="button" onClick={() => setOwnerModalOpen(true)} className={buttonClass("primary", "shrink-0")}>
-                <FaUserPlus /> Create owner
-              </button>
+              <Pill className="border-emerald-200 bg-emerald-50 text-emerald-700">Auto create on save</Pill>
             </div>
             <div className="grid gap-4 p-4 md:grid-cols-[minmax(0,1.1fr)_minmax(0,1.5fr)]">
               <div className="rounded-xl border border-orange-100 bg-orange-50/50 p-4">
@@ -1750,6 +1939,9 @@ function ParkForm() {
                     <p className="text-xs font-black uppercase text-orange-700">Selected owner</p>
                     <p className="mt-1 truncate text-base font-black text-stone-950">{selectedCustomerName}</p>
                     <p className="mt-1 truncate text-sm font-semibold text-stone-600">{selectedCustomerEmail}</p>
+                    {selectedCustomerPhone ? (
+                      <p className="mt-1 truncate text-sm font-semibold text-stone-500">{selectedCustomerPhone}</p>
+                    ) : null}
                   </div>
                 </div>
                 {temporaryPassword ? (
@@ -1765,39 +1957,76 @@ function ParkForm() {
                     value={form.ownerUserId}
                     onChange={(value) => {
                       const selected = customerUsers.find((user) => String(user.user_id || user.userId || user.id) === String(value));
-                      setForm((current) => ({
-                        ...current,
-                        ownerUserId: value,
-                        ownerEmail: selected?.email || current.ownerEmail,
-                        owner: selected ? selected.name || [selected.first_name || selected.firstName, selected.last_name || selected.lastName].filter(Boolean).join(" ") || current.owner : current.owner,
-                      }));
+                      if (selected) {
+                        applyCustomerUser(selected);
+                        return;
+                      }
+                      setForm((current) => ({ ...current, ownerUserId: value }));
                     }}
                     placeholder="Select customer account"
                     searchPlaceholder="Search customer account..."
+                    emptyText={customerSearch ? "No customer matched. Fill the details below and save to create one." : "No customer owners found. Fill the details below and save to create one."}
+                    onSearchChange={setCustomerSearchInput}
                     className="mt-1"
                     buttonClassName="min-h-11 py-2.5"
                     options={[
                       { value: "", label: "Select customer account" },
                       ...customerUsers.map((user) => {
                         const id = user.user_id || user.userId || user.id;
-                        const name = user.name || [user.first_name || user.firstName, user.last_name || user.lastName].filter(Boolean).join(" ") || user.email;
-                        return { value: String(id), label: name, description: user.email };
+                        const name = getUserName(user);
+                        const phone = getUserPhone(user);
+                        const phoneDigits = String(phone || "").replace(/\D/g, "");
+                        return {
+                          value: String(id),
+                          label: name || "Unnamed customer",
+                          description: [user.email, phone].filter(Boolean).join(" | "),
+                          searchText: [name, user.email, phone, phoneDigits].filter(Boolean).join(" "),
+                        };
                       }),
                     ]}
                   />
                 </label>
-                {[
-                  ["owner", "Customer name", "Yogesh Niranjan"],
-                  ["phone", "Phone", "9055550101"],
-                ].map(([key, label, placeholder]) => (
-                  <label key={key} className="block">
-                    <span className="text-xs font-black uppercase text-stone-500">{label}</span>
-                    <input value={form[key]} onChange={(event) => update(key, event.target.value)} placeholder={placeholder} className="input-nexus mt-1 w-full px-3 py-2.5 text-sm" />
-                  </label>
-                ))}
+                <label className="block">
+                  <span className="text-xs font-black uppercase text-stone-500">Customer name *</span>
+                  <input value={form.owner} onChange={(event) => update("owner", event.target.value)} placeholder="Yogesh Niranjan" required className="input-nexus mt-1 w-full px-3 py-2.5 text-sm" />
+                </label>
+                <label className="block">
+                  <span className="text-xs font-black uppercase text-stone-500">Phone *</span>
+                  <div className="mt-1 flex min-h-11 overflow-hidden rounded-lg border-2 border-[#d6c8b8] bg-white shadow-[0_2px_0_rgba(23,21,18,0.08)] transition focus-within:border-orange-400 focus-within:ring-4 focus-within:ring-orange-500/15">
+                    <span className="grid min-w-14 place-items-center border-r border-stone-200 bg-stone-50 px-3 text-sm font-black text-stone-600">
+                      {selectedCountryProfile.dialCode}
+                    </span>
+                    <input
+                      value={phoneLocalValue(form.phone, form.country)}
+                      onChange={(event) => update("phone", phoneLocalValue(event.target.value, form.country))}
+                      onBlur={(event) => update("phone", phoneLocalValue(event.target.value, form.country))}
+                      placeholder="9055550101"
+                      required
+                      className="unstyled-input min-h-11 w-full rounded-none border-0 bg-transparent px-3 py-2.5 text-sm font-bold text-stone-950 outline-none placeholder:text-stone-400 focus:border-0 focus:outline-none focus:ring-0"
+                      style={{ border: 0, boxShadow: "none", outline: "none", WebkitAppearance: "none" }}
+                    />
+                  </div>
+                </label>
                 <label className="block md:col-span-2">
-                  <span className="text-xs font-black uppercase text-stone-500">Customer email</span>
-                  <input value={form.ownerEmail} onChange={(event) => update("ownerEmail", event.target.value)} placeholder="owner@example.com" className="input-nexus mt-1 w-full px-3 py-2.5 text-sm" />
+                  <span className="text-xs font-black uppercase text-stone-500">Customer email *</span>
+                  <input
+                    value={form.ownerEmail}
+                    onChange={(event) => update("ownerEmail", event.target.value)}
+                    onBlur={(event) => {
+                      const matched = customerUsers.find((user) => normalizeEmail(user.email) === normalizeEmail(event.target.value));
+                      applyCustomerUser(matched, { email: event.target.value });
+                    }}
+                    placeholder="owner@example.com"
+                    required
+                    className={`input-nexus mt-1 w-full px-3 py-2.5 text-sm ${ownerEmailError ? "border-red-300 bg-red-50/40" : ""}`}
+                  />
+                  {ownerEmailError ? (
+                    <p className="mt-1 text-xs font-bold text-red-700">{ownerEmailError}</p>
+                  ) : (
+                    <p className="mt-1 text-xs font-semibold text-stone-500">
+                      Search existing owner by name, phone, or email. If no match exists, this owner is created when the park is saved.
+                    </p>
+                  )}
                 </label>
               </div>
             </div>
@@ -1809,28 +2038,45 @@ function ParkForm() {
               <h2 className="mt-1 text-lg font-black text-stone-950">Operating region</h2>
             </div>
             <div className="grid gap-4 p-4 md:grid-cols-3">
-              {[
-                ["city", "City", "St. Catharines"],
-                ["state", "State / province", "Ontario"],
-                ["country", "Country", "Canada"],
-                ["timezone", "Timezone", "America/Toronto"],
-                ["currency", "Currency", "CAD"],
-              ].map(([key, label, placeholder]) => (
-                <label key={key} className="block">
-                  <span className="text-xs font-black uppercase text-stone-500">{label}</span>
-                  <input value={form[key]} onChange={(event) => update(key, event.target.value)} placeholder={placeholder} className="input-nexus mt-1 w-full px-3 py-2.5 text-sm" />
-                </label>
-              ))}
               <label className="block">
-                <span className="text-xs font-black uppercase text-stone-500">Base platform fee</span>
-                <input
-                  type="number"
-                  min="0"
-                  value={form.monthlyBaseFee}
-                  onChange={(event) => update("monthlyBaseFee", event.target.value)}
-                  placeholder="0"
-                  className="input-nexus mt-1 w-full px-3 py-2.5 text-sm"
+                <span className="text-xs font-black uppercase text-stone-500">Country *</span>
+                <SearchableSelect
+                  value={form.country}
+                  onChange={updateCountry}
+                  placeholder="Select country"
+                  searchPlaceholder="Search countries..."
+                  className="mt-1"
+                  buttonClassName="min-h-11 py-2.5"
+                  options={countryOptions}
                 />
+              </label>
+              <label className="block">
+                <span className="text-xs font-black uppercase text-stone-500">Timezone *</span>
+                <input value={form.timezone} readOnly required className="input-nexus mt-1 w-full bg-stone-50 px-3 py-2.5 text-sm text-stone-600" />
+              </label>
+              <label className="block">
+                <span className="text-xs font-black uppercase text-stone-500">Currency *</span>
+                <input value={form.currency} readOnly required className="input-nexus mt-1 w-full bg-stone-50 px-3 py-2.5 text-sm text-stone-600" />
+              </label>
+              <label className="block">
+                <span className="text-xs font-black uppercase text-stone-500">City *</span>
+                <input value={form.city} onChange={(event) => update("city", event.target.value)} placeholder={selectedCountryProfile.cityPlaceholder} required className="input-nexus mt-1 w-full px-3 py-2.5 text-sm" />
+              </label>
+              <label className="block">
+                <span className="text-xs font-black uppercase text-stone-500">State / province *</span>
+                <input value={form.state} onChange={(event) => update("state", event.target.value)} placeholder={selectedCountryProfile.statePlaceholder} required className="input-nexus mt-1 w-full px-3 py-2.5 text-sm" />
+              </label>
+              <label className="block">
+                <span className="text-xs font-black uppercase text-stone-500">Postal / ZIP code *</span>
+                <input value={form.postalCode} onChange={(event) => update("postalCode", event.target.value)} placeholder={selectedCountryProfile.postalPlaceholder} required className="input-nexus mt-1 w-full px-3 py-2.5 text-sm" />
+              </label>
+              <label className="block">
+                <span className="text-xs font-black uppercase text-stone-500">Building / street no. *</span>
+                <input value={form.streetNumberOrBuildingName} onChange={(event) => update("streetNumberOrBuildingName", event.target.value)} placeholder="123" required className="input-nexus mt-1 w-full px-3 py-2.5 text-sm" />
+              </label>
+              <label className="block md:col-span-2">
+                <span className="text-xs font-black uppercase text-stone-500">Street / address line *</span>
+                <input value={form.streetName} onChange={(event) => update("streetName", event.target.value)} placeholder="Sports Avenue" required className="input-nexus mt-1 w-full px-3 py-2.5 text-sm" />
               </label>
             </div>
           </section>
@@ -1883,7 +2129,7 @@ function ParkForm() {
               <div className="grid gap-4 p-5 md:grid-cols-2">
                 <label className="block">
                   <span className="text-xs font-black uppercase text-stone-500">First name *</span>
-                  <input value={newCustomer.firstName} onChange={(event) => updateNewCustomer("firstName", event.target.value)} placeholder="Yogesh" className="input-nexus mt-1 w-full px-3 py-2.5 text-sm" />
+                  <input value={newCustomer.firstName} onChange={(event) => updateNewCustomer("firstName", event.target.value)} placeholder="Yogesh" required className="input-nexus mt-1 w-full px-3 py-2.5 text-sm" />
                 </label>
                 <label className="block">
                   <span className="text-xs font-black uppercase text-stone-500">Last name</span>
@@ -1891,11 +2137,24 @@ function ParkForm() {
                 </label>
                 <label className="block">
                   <span className="text-xs font-black uppercase text-stone-500">Email *</span>
-                  <input type="email" value={newCustomer.email} onChange={(event) => updateNewCustomer("email", event.target.value)} placeholder="owner@example.com" className="input-nexus mt-1 w-full px-3 py-2.5 text-sm" />
+                  <input type="email" value={newCustomer.email} onChange={(event) => updateNewCustomer("email", event.target.value)} placeholder="owner@example.com" required className="input-nexus mt-1 w-full px-3 py-2.5 text-sm" />
                 </label>
                 <label className="block">
-                  <span className="text-xs font-black uppercase text-stone-500">Phone</span>
-                  <input value={newCustomer.phone} onChange={(event) => updateNewCustomer("phone", event.target.value)} placeholder="9055550101" className="input-nexus mt-1 w-full px-3 py-2.5 text-sm" />
+                  <span className="text-xs font-black uppercase text-stone-500">Phone *</span>
+                  <div className="mt-1 flex min-h-11 overflow-hidden rounded-lg border-2 border-[#d6c8b8] bg-white shadow-[0_2px_0_rgba(23,21,18,0.08)] transition focus-within:border-orange-400 focus-within:ring-4 focus-within:ring-orange-500/15">
+                    <span className="grid min-w-14 place-items-center border-r border-stone-200 bg-stone-50 px-3 text-sm font-black text-stone-600">
+                      {selectedCountryProfile.dialCode}
+                    </span>
+                    <input
+                      value={phoneLocalValue(newCustomer.phone, form.country)}
+                      onChange={(event) => updateNewCustomer("phone", phoneLocalValue(event.target.value, form.country))}
+                      onBlur={(event) => updateNewCustomer("phone", phoneLocalValue(event.target.value, form.country))}
+                      placeholder="9055550101"
+                      required
+                      className="unstyled-input min-h-11 w-full rounded-none border-0 bg-transparent px-3 py-2.5 text-sm font-bold text-stone-950 outline-none placeholder:text-stone-400 focus:border-0 focus:outline-none focus:ring-0"
+                      style={{ border: 0, boxShadow: "none", outline: "none", WebkitAppearance: "none" }}
+                    />
+                  </div>
                 </label>
                 <label className="block md:col-span-2">
                   <span className="text-xs font-black uppercase text-stone-500">Temporary password</span>

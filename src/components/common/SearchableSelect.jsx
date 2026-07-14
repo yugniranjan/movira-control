@@ -13,6 +13,7 @@ export default function SearchableSelect({
   className = "",
   buttonClassName = "",
   menuMinWidth,
+  onSearchChange,
 }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -36,10 +37,14 @@ export default function SearchableSelect({
     const needle = query.trim().toLowerCase();
     if (!needle) return normalizedOptions;
     return normalizedOptions.filter((option) => {
-      const haystack = `${option.label || ""} ${option.description || ""} ${option.value || ""}`.toLowerCase();
+      const haystack = `${option.label || ""} ${option.description || ""} ${option.searchText || ""} ${option.value || ""}`.toLowerCase();
       return haystack.includes(needle);
     });
   }, [normalizedOptions, query]);
+
+  useEffect(() => {
+    onSearchChange?.(query);
+  }, [onSearchChange, query]);
 
   useEffect(() => {
     if (!open) return undefined;
@@ -119,9 +124,9 @@ export default function SearchableSelect({
                       {active ? <FaCheck className="text-xs" /> : null}
                     </span>
                     <span className="min-w-0 flex-1">
-                      <span className="block truncate font-black leading-5">{option.label}</span>
+                      <span className="block break-words font-black leading-5">{option.label}</span>
                       {option.description ? (
-                        <span className="block truncate text-xs font-semibold leading-4 text-stone-500">
+                        <span className="block break-words text-xs font-semibold leading-4 text-stone-500">
                           {option.description}
                         </span>
                       ) : null}
