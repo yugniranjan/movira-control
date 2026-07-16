@@ -6,18 +6,21 @@ import SearchableSelect from "../../components/common/SearchableSelect";
 
 export function Button({ variant = "primary", size = "md", className = "", ...props }) {
   const base =
-    "inline-flex items-center justify-center gap-2 font-black rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[var(--brand-primary)]";
+    "inline-flex min-w-0 items-center justify-center gap-2 whitespace-nowrap rounded-lg font-black shadow-sm transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-50 focus:outline-none focus-visible:ring-4 focus-visible:ring-[var(--brand-primary)]/15";
   const sizes = {
-    sm: "text-xs min-h-9 px-3 py-1.5",
-    md: "text-sm min-h-10 px-4 py-2",
-    lg: "text-base min-h-11 px-5 py-2.5",
+    sm: "min-h-8 px-2.5 py-1 text-xs",
+    md: "min-h-9 px-3 py-1.5 text-sm",
+    lg: "min-h-10 px-4 py-2 text-sm",
   };
   const variants = {
     primary: "btn-nexus",
-    secondary: "border border-stone-200 bg-white text-stone-700 shadow-sm hover:bg-stone-50",
-    outline: "border border-stone-300 bg-white text-stone-800 shadow-sm hover:border-orange-300 hover:bg-orange-50",
-    ghost: "border border-transparent text-stone-700 hover:bg-stone-100",
-    danger: "border border-red-200 bg-red-50 text-red-700 shadow-sm hover:bg-red-100",
+    secondary:
+      "border border-[var(--stroke-soft)] bg-[var(--surface-panel)] text-[var(--text-base)] hover:border-[var(--brand-primary-border)] hover:bg-[var(--surface-muted)] hover:text-[var(--text-strong)]",
+    outline:
+      "border border-[var(--stroke-soft)] bg-[var(--surface-panel)] text-[var(--text-strong)] hover:border-[var(--brand-primary-border)] hover:bg-[var(--brand-primary-soft)]",
+    ghost:
+      "border border-transparent bg-transparent text-[var(--text-base)] shadow-none hover:bg-[var(--surface-muted)] hover:text-[var(--text-strong)]",
+    danger: "border border-red-200 bg-red-50 text-red-700 hover:border-red-300 hover:bg-red-100",
   };
   return <button className={`${base} ${sizes[size]} ${variants[variant]} ${className}`} {...props} />;
 }
@@ -25,7 +28,7 @@ export function Button({ variant = "primary", size = "md", className = "", ...pr
 export function Card({ className = "", children }) {
   return (
     <div
-      className={`bg-white border border-stone-200 rounded-lg shadow-[0_8px_20px_rgba(38,25,12,0.06)] ${className}`}
+      className={`min-w-0 rounded-lg border border-[var(--stroke-soft)] bg-[var(--surface-panel)] shadow-[var(--shadow-card)] ${className}`}
     >
       {children}
     </div>
@@ -69,7 +72,7 @@ export function ProviderBadge({ provider, size = 40 }) {
 export function Field({ label, hint, error, children }) {
   return (
     <label className="block">
-      {label && <span className="block text-sm font-semibold text-[var(--text-strong)] mb-1.5">{label}</span>}
+      {label && <span className="mb-1 block text-sm font-semibold text-[var(--text-strong)]">{label}</span>}
       {children}
       {hint && !error && <span className="block text-xs text-[var(--text-muted)] mt-1">{hint}</span>}
       {error && <span className="block text-xs text-[var(--err)] mt-1">{error}</span>}
@@ -78,7 +81,7 @@ export function Field({ label, hint, error, children }) {
 }
 
 const inputClass =
-  "w-full rounded-lg border-2 border-[#d6c8b8] bg-white px-3 py-2.5 text-sm font-semibold text-stone-950 placeholder:text-stone-400 shadow-[0_2px_0_rgba(23,21,18,0.08)] focus:outline-none focus:border-stone-950 focus:ring-4 focus:ring-orange-500/15";
+  "w-full rounded-lg border-2 border-[var(--input-border)] bg-[var(--input-bg)] px-3 py-2 text-sm font-semibold text-[var(--text-strong)] placeholder:text-[var(--input-placeholder)] shadow-[0_2px_0_rgba(23,21,18,0.08)] transition focus:border-[var(--brand-primary-border)] focus:outline-none focus:ring-4 focus:ring-[var(--brand-primary)]/15";
 
 export function Input({ className = "", ...props }) {
   return <input className={`${inputClass} ${className}`} {...props} />;
@@ -102,7 +105,7 @@ export function Select({ className = "", children, value, onChange, ...props }) 
       value={value}
       onChange={(nextValue) => onChange?.({ target: { value: nextValue } })}
       className={className}
-      buttonClassName="min-h-11 py-2.5"
+      buttonClassName="min-h-10 py-2"
       menuMinWidth={320}
       options={options.filter((option) => !option.disabled)}
     />
@@ -124,48 +127,35 @@ export function Modal({ open, onClose, title, subtitle, children, maxWidth = "ma
     document.getElementById("root") ||
     document.body;
   return createPortal(
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center overflow-hidden p-4 text-stone-950 sm:p-8"
-      style={{
-        "--surface-panel": "#ffffff",
-        "--surface-muted": "#fffaf2",
-        "--stroke-soft": "#e4d8c9",
-        "--text-strong": "#111111",
-        "--text-base": "#3f3a34",
-        "--text-muted": "#6c6257",
-        "--brand-primary": "#ff6a13",
-        "--brand-primary-deep": "#c2410c",
-        "--err": "#b91c1c",
-      }}
-    >
+    <div className="fixed inset-0 z-50 flex items-center justify-center overflow-hidden p-3 text-[var(--text-strong)] sm:p-5">
       <div
         className="fixed inset-0"
         style={{
-          backgroundColor: "rgba(255, 250, 242, 0.34)",
-          backdropFilter: "blur(2px)",
-          WebkitBackdropFilter: "blur(2px)",
+          background: "var(--modal-backdrop, rgba(15, 23, 42, 0.42))",
+          backdropFilter: "blur(3px)",
+          WebkitBackdropFilter: "blur(3px)",
           transform: "translateZ(0)",
           willChange: "backdrop-filter",
         }}
         onClick={onClose}
       />
       <div
-        className={`relative flex max-h-[calc(100vh-48px)] w-full ${maxWidth} flex-col overflow-hidden rounded-lg border border-[#d6c8b8] bg-white shadow-[0_18px_50px_rgba(38,25,12,0.18)]`}
+        className={`relative flex max-h-[calc(100vh-32px)] w-full ${maxWidth} flex-col overflow-hidden rounded-lg border border-[var(--stroke-soft)] bg-[var(--surface-panel)] shadow-[var(--shadow-soft)]`}
       >
-        <div className="flex items-start justify-between gap-4 border-b border-stone-200 bg-[#fffaf2] px-5 py-4">
+        <div className="flex items-start justify-between gap-3 border-b border-[var(--stroke-soft)] bg-[var(--surface-panel-strong)] px-4 py-3">
           <div className="min-w-0">
-            <h3 className="font-display text-xl font-black leading-tight text-stone-950">{title}</h3>
-            {subtitle && <p className="mt-1 max-w-3xl text-sm font-semibold leading-6 text-stone-600">{subtitle}</p>}
+            <h3 className="font-display text-lg font-black leading-tight text-[var(--text-strong)]">{title}</h3>
+            {subtitle && <p className="mt-1 max-w-3xl text-sm font-semibold leading-5 text-[var(--text-base)]">{subtitle}</p>}
           </div>
           <button
             onClick={onClose}
-            className="grid h-10 w-10 shrink-0 place-items-center rounded-lg border border-stone-200 bg-white text-stone-700 shadow-sm transition hover:border-stone-300 hover:bg-stone-50 focus:outline-none focus:ring-4 focus:ring-orange-500/15"
+            className="grid h-10 w-10 shrink-0 place-items-center rounded-lg border border-[var(--stroke-soft)] bg-[var(--surface-panel)] text-[var(--text-base)] shadow-sm transition hover:border-[var(--stroke-strong)] hover:bg-[var(--surface-muted)] hover:text-[var(--text-strong)] focus:outline-none focus:ring-4 focus:ring-[var(--brand-primary)]/15"
             aria-label="Close"
           >
             <FiX size={22} />
           </button>
         </div>
-        <div className="max-h-[calc(100vh-190px)] overflow-y-auto px-5 py-4">{children}</div>
+        <div className="max-h-[calc(100vh-160px)] overflow-y-auto px-4 py-3">{children}</div>
       </div>
     </div>,
     root
@@ -174,21 +164,21 @@ export function Modal({ open, onClose, title, subtitle, children, maxWidth = "ma
 
 export function PageShell({ eyebrow = "Payment Console", title, description, actions, children }) {
   return (
-    <section className="space-y-4">
-      <div className="rounded-lg border border-stone-200 bg-white px-4 py-3 shadow-[0_8px_20px_rgba(38,25,12,0.06)] sm:px-5">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+    <section className="space-y-3">
+      <div className="rounded-lg border border-[var(--stroke-soft)] bg-[var(--surface-panel)] px-3 py-2.5 shadow-[var(--shadow-card)] sm:px-4">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <div className="min-w-0">
             <p className="section-kicker">{eyebrow}</p>
-            <h1 className="mt-1 truncate font-display text-2xl font-black tracking-tight text-stone-950">
+            <h1 className="mt-0.5 break-words font-display text-lg font-black tracking-tight text-[var(--text-strong)] sm:text-xl">
               {title}
             </h1>
             {description ? (
-              <p className="mt-1 max-w-3xl text-sm font-semibold text-stone-500">
+              <p className="mt-0.5 max-w-3xl text-sm font-semibold text-[var(--text-muted)]">
                 {description}
               </p>
             ) : null}
           </div>
-          {actions ? <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div> : null}
+          {actions ? <div className="flex w-full min-w-0 flex-wrap items-center gap-2 sm:w-auto sm:shrink-0 sm:justify-end">{actions}</div> : null}
         </div>
       </div>
       {children}
@@ -206,7 +196,7 @@ export function Spinner({ className = "" }) {
 
 export function EmptyState({ icon, title, children }) {
   return (
-    <div className="text-center py-12 px-6">
+    <div className="px-5 py-9 text-center">
       {icon && <div className="mx-auto mb-3 text-[var(--text-muted)]">{icon}</div>}
       <p className="font-semibold text-[var(--text-strong)]">{title}</p>
       {children && <p className="text-sm text-[var(--text-base)] mt-1 max-w-sm mx-auto">{children}</p>}

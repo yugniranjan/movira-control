@@ -112,11 +112,11 @@ export default function RoutingMatrix({
   }
 
   return (
-    <div className="overflow-x-auto -mx-5 px-5">
-      <table className="w-full border-separate border-spacing-0 min-w-[900px]">
-        <thead>
+    <div className="-mx-5 max-h-[min(68vh,760px)] overflow-auto px-5">
+      <table className="w-full min-w-[900px] border-separate border-spacing-0">
+        <thead className="sticky top-0 z-20 bg-[var(--surface-panel-strong)] shadow-[0_1px_0_var(--stroke-soft)]">
           <tr>
-            <th className="sticky left-0 bg-[var(--surface-panel)] text-left align-bottom pb-3 pr-4 z-10 border-b border-[var(--stroke-soft)]">
+            <th className="sticky left-0 z-30 border-b border-[var(--stroke-soft)] bg-[var(--surface-panel-strong)] py-3 pr-4 text-left align-bottom">
               <span className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wide">
                 Venue
               </span>
@@ -124,7 +124,7 @@ export default function RoutingMatrix({
             {channels.map((c) => (
               <th
                 key={c.key}
-                className="text-left align-bottom pb-3 pr-3 border-b border-[var(--stroke-soft)] min-w-[180px]"
+                className="min-w-[180px] border-b border-[var(--stroke-soft)] py-3 pr-3 text-left align-bottom"
               >
                 <div className="flex items-center gap-1.5">
                   <div className="text-xs font-semibold text-[var(--text-strong)]">{c.label}</div>
@@ -137,13 +137,13 @@ export default function RoutingMatrix({
                 </div>
               </th>
             ))}
-            <th className="border-b border-[var(--stroke-soft)] pb-3" />
+            <th className="border-b border-[var(--stroke-soft)] py-3" />
           </tr>
         </thead>
         <tbody>
           {venues.map((v) => (
             <tr key={v.locationId} className="hover:bg-[var(--surface-muted)]/30">
-              <td className="sticky left-0 bg-[var(--surface-panel)] align-middle py-3 pr-4 border-b border-[var(--stroke-soft)] z-10">
+              <td className="sticky left-0 z-10 border-b border-[var(--stroke-soft)] bg-[var(--surface-panel)] py-3 pr-4 align-middle">
                 <div className="flex items-center gap-2 min-w-[180px]">
                   <FiMapPin className="text-[var(--brand-primary-deep)]" />
                   <div>

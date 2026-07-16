@@ -52,10 +52,14 @@ export default function SearchableSelect({
       const rect = rootRef.current?.getBoundingClientRect();
       if (!rect) return;
       const minWidth = Number(menuMinWidth) || 0;
+      const viewportPadding = 12;
+      const desiredWidth = Math.max(rect.width, minWidth);
+      const width = Math.min(desiredWidth, window.innerWidth - viewportPadding * 2);
+      const left = Math.min(Math.max(rect.left, viewportPadding), window.innerWidth - width - viewportPadding);
       setMenuStyle({
-        left: rect.left,
+        left,
         top: rect.bottom + 6,
-        width: Math.max(rect.width, minWidth),
+        width,
         maxHeight: Math.max(220, window.innerHeight - rect.bottom - 18),
       });
     };
@@ -92,21 +96,21 @@ export default function SearchableSelect({
           <div
             ref={menuRef}
             style={menuStyle}
-            className="fixed z-[9999] overflow-hidden rounded-lg border border-[#dccfbe] bg-white shadow-[0_14px_34px_rgba(38,25,12,0.16)]"
+            className="fixed z-[9999] overflow-hidden rounded-lg border border-[var(--stroke-soft)] bg-[var(--surface-panel-strong)] shadow-[var(--shadow-soft)]"
           >
-            <div className="border-b border-stone-200 bg-[#fffaf2] p-2">
+            <div className="border-b border-[var(--stroke-soft)] bg-[var(--surface-muted)] p-1.5">
               <div className="relative">
-                <FaSearch className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-stone-500" />
+                <FaSearch className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-[var(--text-muted)]" />
                 <input
                   ref={searchRef}
                   value={query}
                   onChange={(event) => setQuery(event.target.value)}
                   placeholder={searchPlaceholder}
-                  className="h-10 w-full rounded-md border border-stone-300 bg-white px-9 text-sm font-bold text-stone-950 shadow-[0_1px_0_rgba(23,21,18,0.06)] outline-none placeholder:text-stone-400 focus:border-orange-400 focus:ring-3 focus:ring-orange-500/15"
+                  className="h-9 w-full rounded-md border border-[var(--input-border)] bg-[var(--input-bg)] px-9 text-sm font-bold text-[var(--text-strong)] shadow-[0_1px_0_rgba(23,21,18,0.06)] outline-none placeholder:text-[var(--input-placeholder)] focus:border-[var(--brand-primary)] focus:ring-3 focus:ring-[var(--brand-primary-soft)]"
                 />
               </div>
             </div>
-            <div className="overflow-y-auto p-1.5" style={{ maxHeight: menuStyle.maxHeight ? menuStyle.maxHeight - 54 : 288 }} role="listbox">
+            <div className="overflow-y-auto p-1.5" style={{ maxHeight: menuStyle.maxHeight ? menuStyle.maxHeight - 48 : 288 }} role="listbox">
               {filteredOptions.map((option) => {
                 const active = String(option.value) === String(value);
                 return (
@@ -115,7 +119,7 @@ export default function SearchableSelect({
                     type="button"
                     onClick={() => choose(option)}
                     className={`flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-sm transition ${
-                      active ? "bg-orange-50 text-orange-700" : "text-stone-700 hover:bg-stone-50"
+                      active ? "bg-[var(--brand-primary-soft)] text-[var(--brand-primary-deep)]" : "text-[var(--text-base)] hover:bg-[var(--surface-muted)]"
                     }`}
                     role="option"
                     aria-selected={active}
@@ -124,9 +128,9 @@ export default function SearchableSelect({
                       {active ? <FaCheck className="text-xs" /> : null}
                     </span>
                     <span className="min-w-0 flex-1">
-                      <span className="block break-words font-black leading-5">{option.label}</span>
+                      <span className="block truncate font-black leading-5">{option.label}</span>
                       {option.description ? (
-                        <span className="block break-words text-xs font-semibold leading-4 text-stone-500">
+                        <span className="block truncate text-xs font-semibold leading-4 text-[var(--text-muted)]">
                           {option.description}
                         </span>
                       ) : null}
@@ -135,7 +139,7 @@ export default function SearchableSelect({
                 );
               })}
               {filteredOptions.length === 0 ? (
-                <div className="px-3 py-5 text-center text-sm font-bold text-stone-500">{emptyText}</div>
+                <div className="px-3 py-5 text-center text-sm font-bold text-[var(--text-muted)]">{emptyText}</div>
               ) : null}
             </div>
           </div>,
@@ -149,14 +153,14 @@ export default function SearchableSelect({
         type="button"
         disabled={disabled}
         onClick={() => setOpen((current) => !current)}
-        className={`flex min-h-9 w-full items-center justify-between gap-3 rounded-lg border-2 border-[#d6c8b8] bg-white px-3 py-1.5 text-left text-sm font-bold text-stone-950 shadow-[0_2px_0_rgba(23,21,18,0.08)] transition hover:border-orange-300 focus:outline-none focus:border-stone-950 focus:ring-4 focus:ring-orange-500/15 disabled:pointer-events-none disabled:opacity-50 ${buttonClassName}`}
+        className={`flex min-h-9 w-full items-center justify-between gap-3 rounded-lg border-2 border-[var(--input-border)] bg-[var(--input-bg)] px-3 py-1.5 text-left text-sm font-bold text-[var(--text-strong)] shadow-[0_2px_0_rgba(23,21,18,0.08)] transition hover:border-[var(--brand-primary-border)] focus:border-[var(--stroke-strong)] focus:outline-none focus:ring-4 focus:ring-[var(--brand-primary-soft)] disabled:pointer-events-none disabled:opacity-50 ${buttonClassName}`}
         aria-haspopup="listbox"
         aria-expanded={open}
       >
-        <span className={`min-w-0 flex-1 truncate ${selected ? "text-stone-950" : "text-stone-400"}`}>
+        <span className={`min-w-0 flex-1 truncate ${selected ? "text-[var(--text-strong)]" : "text-[var(--input-placeholder)]"}`}>
           {selected?.label || placeholder}
         </span>
-        <FaChevronDown className={`shrink-0 text-xs text-stone-500 transition ${open ? "rotate-180" : ""}`} />
+        <FaChevronDown className={`shrink-0 text-xs text-[var(--text-muted)] transition ${open ? "rotate-180" : ""}`} />
       </button>
       {menu}
     </div>

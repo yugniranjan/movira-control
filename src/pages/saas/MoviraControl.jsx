@@ -398,7 +398,7 @@ function optionLabel(options, value) {
 
 function Pill({ children, className = "" }) {
   return (
-    <span className={`inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-bold ${className}`}>
+    <span className={`inline-flex max-w-full items-center rounded-full border px-2 py-0.5 text-xs font-bold ${className}`}>
       {children}
     </span>
   );
@@ -406,7 +406,7 @@ function Pill({ children, className = "" }) {
 
 function buttonClass(variant = "secondary", extra = "") {
   const base =
-    "inline-flex min-h-10 items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-bold transition disabled:pointer-events-none disabled:opacity-50";
+    "inline-flex min-h-9 min-w-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-lg px-3 py-1.5 text-sm font-bold transition disabled:pointer-events-none disabled:opacity-50";
   const variants = {
     primary: "btn-nexus",
     secondary: "border border-stone-200 bg-white text-stone-700 hover:bg-stone-50",
@@ -419,28 +419,44 @@ function buttonClass(variant = "secondary", extra = "") {
 
 function iconButtonClass(variant = "secondary", extra = "") {
   const base =
-    "inline-grid h-10 w-10 place-items-center rounded-lg border text-sm transition disabled:pointer-events-none disabled:opacity-50";
+    "inline-grid h-9 w-9 place-items-center rounded-lg border text-sm shadow-sm transition hover:-translate-y-0.5 focus:outline-none focus:ring-4 focus:ring-[var(--brand-primary)]/15 disabled:pointer-events-none disabled:opacity-50";
   const variants = {
-    secondary: "border-stone-200 bg-white text-stone-700 hover:border-orange-200 hover:bg-orange-50",
-    danger: "border-red-200 bg-white text-red-700 hover:bg-red-50",
+    secondary: "border-[var(--stroke-soft)] bg-[var(--surface-panel)] text-[var(--text-base)] hover:border-[var(--brand-primary-border)] hover:bg-[var(--surface-muted)] hover:text-[var(--text-strong)]",
+    danger: "border-red-200 bg-red-50 text-red-700 hover:border-red-300 hover:bg-red-100",
   };
   return `${base} ${variants[variant] || variants.secondary} ${extra}`;
 }
 
+const listingShellClass =
+  "min-w-0 overflow-hidden rounded-xl border border-[var(--stroke-soft)] bg-[var(--surface-panel)] shadow-[var(--shadow-card)]";
+const listingToolbarClass =
+  "sticky top-0 z-30 flex flex-wrap items-center justify-between gap-2 border-b border-[var(--stroke-soft)] bg-[var(--surface-panel-strong)]/95 p-2.5 backdrop-blur sm:p-3";
+const listingScrollClass = "max-h-[min(68vh,760px)] overflow-auto";
+const listingTableClass = (minWidth = "min-w-[900px]") =>
+  `w-full ${minWidth} border-separate border-spacing-0 text-sm`;
+const listingHeadClass =
+  "sticky top-0 z-20 bg-[var(--brand-primary-deep)] text-left text-[11px] font-black uppercase tracking-[0.12em] text-white shadow-[0_1px_0_var(--stroke-soft)]";
+const listingThClass = (extra = "") => `whitespace-nowrap border-b border-[var(--stroke-soft)] px-3 py-2.5 align-middle ${extra}`;
+const listingBodyClass =
+  "divide-y divide-[var(--stroke-soft)] bg-[var(--surface-panel)] text-[var(--text-base)] [&_p.font-black]:text-[var(--text-strong)] [&_td.font-black]:text-[var(--text-strong)] [&_td]:text-[var(--text-base)]";
+const listingRowClass = "transition hover:bg-[var(--brand-primary-soft)]/45 [&>td]:border-b [&>td]:border-[var(--stroke-soft)]";
+const listingFooterClass =
+  "sticky bottom-0 z-20 flex flex-wrap items-center justify-end gap-2 border-t border-[var(--stroke-soft)] bg-[var(--surface-panel-strong)]/95 p-2.5 backdrop-blur";
+
 function StatCard({ icon: Icon, label, value, detail, compact = false }) {
   return (
-    <div className={`rounded-xl border border-stone-200 bg-white shadow-sm ${compact ? "p-3" : "p-4"}`}>
+    <div className={`min-w-0 rounded-xl border border-stone-200 bg-white shadow-sm ${compact ? "p-3" : "p-4"}`}>
       <div className={`flex items-center ${compact ? "gap-2.5" : "gap-3"}`}>
         <div className={`grid shrink-0 place-items-center rounded-lg bg-orange-50 text-orange-700 ${compact ? "h-9 w-9 text-sm" : "h-11 w-11"}`}>
           {createElement(Icon)}
         </div>
-        <div>
-        <div className={`min-w-0 ${compact ? "flex flex-1 items-baseline gap-2" : ""}`}>
-          <p className={`shrink-0 font-black leading-none text-stone-950 ${compact ? "text-xl" : "text-2xl"}`}>{value}</p>
-          <p className={`truncate font-bold text-stone-600 ${compact ? "text-sm" : "text-sm"}`}>{label}</p>
+        <div className="min-w-0 flex-1">
+          <div className={`min-w-0 ${compact ? "flex flex-1 items-baseline gap-2" : ""}`}>
+            <p className={`min-w-0 truncate font-black leading-none text-stone-950 ${compact ? "text-xl" : "text-2xl"}`}>{value}</p>
+            <p className={`truncate font-bold text-stone-600 ${compact ? "text-sm" : "text-sm"}`}>{label}</p>
+          </div>
+          {detail ? <p className={`${compact ? "mt-1" : "mt-2"} truncate text-xs font-semibold text-stone-500`}>{detail}</p> : null}
         </div>
-         {detail ? <p className={`${compact ? "mt-1" : "mt-2"} truncate text-xs font-semibold text-stone-500`}>{detail}</p> : null}
-      </div>
       </div>
     </div>
   );
@@ -492,7 +508,7 @@ function LaunchRail({ park }) {
 
   return (
     <div className="rounded-lg border border-stone-200 bg-white p-3 shadow-sm">
-      <div className="grid gap-3 xl:grid-cols-[260px_minmax(0,1fr)_auto] xl:items-center">
+      <div className="grid min-w-0 gap-3 xl:grid-cols-[260px_minmax(0,1fr)_auto] xl:items-center">
         <div className="flex items-center gap-3">
           <div className="grid h-11 w-11 shrink-0 place-items-center rounded-lg bg-orange-50 text-orange-700">
             <FaRocket />
@@ -501,8 +517,8 @@ function LaunchRail({ park }) {
             <p className="text-[11px] font-black uppercase tracking-[0.14em] text-stone-500">
               Launch readiness
             </p>
-            <div className="mt-1 flex items-baseline gap-2">
-              <p className="text-2xl font-black leading-none text-stone-950">{score}%</p>
+            <div className="mt-1 flex min-w-0 items-baseline gap-2">
+              <p className="shrink-0 text-2xl font-black leading-none text-stone-950">{score}%</p>
               <span className="text-sm font-black text-stone-500">complete</span>
             </div>
           </div>
@@ -546,7 +562,7 @@ function LaunchRail({ park }) {
               >
                 {done ? <FaCheckCircle className="text-[8px]" /> : index + 1}
               </span>
-              <span>{step.label}</span>
+              <span className="truncate">{step.label}</span>
             </Link>
           );
         })}
@@ -734,10 +750,10 @@ function PlansManager() {
           <StatCard compact icon={FaCreditCard} label="Starts at" value={cheapestPlan ? money(cheapestPlan.monthlyBaseFee) : "$0"} detail="monthly base fee" />
         </section>
 
-        <section className="overflow-hidden rounded-xl border border-stone-200 bg-white shadow-sm">
-          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-stone-200 p-4">
+        <section className={listingShellClass}>
+          <div className={listingToolbarClass}>
             <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
-              <div className="relative min-w-[260px] flex-1 md:max-w-md">
+              <div className="relative min-w-full flex-1 sm:min-w-[260px] md:max-w-md">
                 <FaSearch className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-stone-400" />
                 <input
                   value={search}
@@ -766,21 +782,21 @@ function PlansManager() {
             <Pill className="border-stone-200 bg-stone-50 text-stone-600">{filteredPlans.length} plans</Pill>
           </div>
 
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-stone-200 text-sm">
-              <thead className="bg-stone-950 text-left text-xs font-black uppercase tracking-wide text-white">
+          <div className={listingScrollClass}>
+            <table className={listingTableClass("min-w-[900px]")}>
+              <thead className={listingHeadClass}>
                 <tr>
-                  <th className="px-4 py-3">Plan</th>
-                  <th className="px-4 py-3">Base fee</th>
-                  <th className="px-4 py-3">Park limit</th>
-                  <th className="px-4 py-3">Status</th>
-                  <th className="px-4 py-3">Flags</th>
-                  <th className="px-4 py-3 text-right">Actions</th>
+                  <th className={listingThClass()}>Plan</th>
+                  <th className={listingThClass()}>Base fee</th>
+                  <th className={listingThClass()}>Park limit</th>
+                  <th className={listingThClass()}>Status</th>
+                  <th className={listingThClass()}>Flags</th>
+                  <th className={listingThClass("text-right")}>Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-stone-100 bg-white">
+              <tbody className={listingBodyClass}>
                 {filteredPlans.map((plan) => (
-                  <tr key={plan.key} className="hover:bg-orange-50/30">
+                  <tr key={plan.key} className={listingRowClass}>
                     <td className="px-4 py-3">
                       <p className="font-black text-stone-950">{plan.label}</p>
                       <p className="text-xs font-bold text-stone-500">{plan.key}</p>
@@ -1050,9 +1066,9 @@ function ModulePricingPanel() {
         <StatCard compact icon={FaCheckCircle} label="Catalog rows" value={moduleList.length} detail="managed modules" />
       </section>
 
-      <section className="overflow-hidden rounded-xl border border-stone-200 bg-white shadow-sm">
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-stone-200 p-4">
-          <div className="relative min-w-[260px] flex-1 md:max-w-md">
+      <section className={listingShellClass}>
+        <div className={listingToolbarClass}>
+          <div className="relative min-w-full flex-1 sm:min-w-[260px] md:max-w-md">
             <FaSearch className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-stone-400" />
             <input
               value={search}
@@ -1064,20 +1080,20 @@ function ModulePricingPanel() {
           <Pill className="border-stone-200 bg-stone-50 text-stone-600">{filteredModules.length} modules</Pill>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-stone-200 text-sm">
-            <thead className="bg-stone-950 text-left text-xs font-black uppercase tracking-wide text-white">
+        <div className={listingScrollClass}>
+          <table className={listingTableClass("min-w-[860px]")}>
+            <thead className={listingHeadClass}>
               <tr>
-                <th className="px-4 py-3">Module</th>
-                <th className="px-4 py-3">Monthly price</th>
-                <th className="px-4 py-3">Status</th>
-                <th className="px-4 py-3">Sort</th>
-                <th className="px-4 py-3 text-right">Actions</th>
+                <th className={listingThClass()}>Module</th>
+                <th className={listingThClass()}>Monthly price</th>
+                <th className={listingThClass()}>Status</th>
+                <th className={listingThClass()}>Sort</th>
+                <th className={listingThClass("text-right")}>Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-stone-100 bg-white">
+            <tbody className={listingBodyClass}>
               {filteredModules.map((module) => (
-                <tr key={module.key} className="hover:bg-orange-50/30">
+                <tr key={module.key} className={listingRowClass}>
                   <td className="px-4 py-3">
                     <p className="font-black text-stone-950">{module.label}</p>
                     <p className="text-xs font-bold text-stone-500">{module.key}</p>
@@ -1495,29 +1511,9 @@ function ParksList() {
           <StatCard compact icon={FaBuilding} label="Organizations" value={summary.organizations || 0} detail="own one or more parks" />
         </section>
 
-        <div className="rounded-xl border border-stone-200 bg-white shadow-sm">
-          <div className="flex items-center gap-3 border-b border-stone-200 p-3">
-            <div className="inline-flex shrink-0 rounded-lg border border-stone-200 bg-stone-50 p-1">
-                {[
-                  ["active", "Active"],
-                  ["archived", "Archived"],
-                ].map(([value, label]) => (
-                  <button
-                    key={value}
-                    type="button"
-                    onClick={() => {
-                      setStatusFilter(value);
-                      setPage(1);
-                    }}
-                    className={`rounded-md px-3 py-1.5 text-sm font-black transition ${
-                      statusFilter === value ? "bg-white text-orange-700 shadow-sm" : "text-stone-500 hover:text-stone-800"
-                    }`}
-                  >
-                    {label}
-                  </button>
-                ))}
-            </div>
-            <div className="relative min-w-0 flex-1 max-w-sm">
+        <div className={listingShellClass}>
+          <div className="sticky top-0 z-30 grid gap-2 border-b border-[var(--stroke-soft)] bg-[var(--surface-panel-strong)]/95 p-3 backdrop-blur sm:grid-cols-[minmax(180px,320px)_minmax(180px,260px)_1fr_auto] sm:items-center">
+            <div className="relative min-w-0">
               <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-stone-400" />
               <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search parks..." className="input-nexus w-full py-1.5 pl-8 pr-3 text-sm" />
             </div>
@@ -1529,7 +1525,7 @@ function ParksList() {
               }}
               placeholder="All organizations"
               searchPlaceholder="Search organizations..."
-              className="w-56"
+              className="min-w-0"
               options={[
                 { value: "", label: "All organizations" },
                 ...organizations.map((org) => ({
@@ -1538,30 +1534,50 @@ function ParksList() {
                 })),
               ]}
             />
-            <p className="ml-auto shrink-0 text-sm font-bold text-stone-500">{pagination.totalRecords || 0} parks</p>
+            <p className="text-right text-sm font-bold text-stone-500 sm:whitespace-nowrap">{pagination.totalRecords || 0} parks</p>
+            <div className="inline-flex w-fit justify-self-end rounded-lg border border-stone-200 bg-stone-50 p-1">
+              {[
+                ["active", "Active"],
+                ["archived", "Archived"],
+              ].map(([value, label]) => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => {
+                    setStatusFilter(value);
+                    setPage(1);
+                  }}
+                  className={`rounded-md px-3 py-1.5 text-sm font-black transition ${
+                    statusFilter === value ? "bg-white text-orange-700 shadow-sm" : "text-stone-500 hover:text-stone-800"
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
           </div>
           {parks.length ? (
-            <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-stone-200 text-sm">
-              <thead className="bg-stone-50 text-left text-xs font-black uppercase text-stone-500">
+            <div className={listingScrollClass}>
+            <table className={listingTableClass("min-w-[980px]")}>
+              <thead className={listingHeadClass}>
                 <tr>
-                  <th className="px-4 py-2.5">Park</th>
-                  <th className="px-4 py-2.5">Organization</th>
-                  <th className="px-4 py-2.5">Customer</th>
-                  <th className="px-4 py-2.5">Status</th>
-                  <th className="px-4 py-2.5">Base fee</th>
-                  <th className="px-4 py-2.5">Billing</th>
-                  <th className="px-4 py-2.5">Onboarding</th>
-                  <th className="px-4 py-2.5 text-right">Actions</th>
+                  <th className={listingThClass("py-2.5")}>Park</th>
+                  <th className={listingThClass("py-2.5")}>Organization</th>
+                  <th className={listingThClass("py-2.5")}>Customer</th>
+                  <th className={listingThClass("py-2.5")}>Status</th>
+                  <th className={listingThClass("py-2.5")}>Base fee</th>
+                  <th className={listingThClass("py-2.5")}>Billing</th>
+                  <th className={listingThClass("py-2.5")}>Onboarding</th>
+                  <th className={listingThClass("py-2.5 text-right")}>Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-stone-100">
+              <tbody className={listingBodyClass}>
                 {parks.map((park) => {
                   const isArchived = statusFilter === "archived" || Boolean(park.archivedAt) || park.status === "archived";
                   const displayStatus = isArchived ? "archived" : park.status;
 
                   return (
-                    <tr key={park.id} className="hover:bg-stone-50">
+                    <tr key={park.id} className={listingRowClass}>
                       <td className="px-4 py-3">
                         <p className="font-black text-stone-950">{park.name}</p>
                         <p className="text-xs font-semibold text-stone-500">{park.location}</p>
@@ -1582,7 +1598,7 @@ function ParksList() {
                         <p className="mt-1 text-xs font-bold text-stone-500">{park.onboardingScore || 0}%</p>
                       </td>
                       <td className="px-4 py-3">
-                        <div className="flex justify-end gap-2">
+                        <div className="flex justify-end gap-1.5">
                           <Link to={`/movira-control/parks/${park.id}`} className={iconButtonClass("secondary", "h-8 w-8 rounded-md text-base")} title="Open"><FaEye /></Link>
                           <Link to={`/movira-control/parks/${park.id}/edit`} className={iconButtonClass("secondary", "h-8 w-8 rounded-md text-base")} title="Edit"><FaEdit /></Link>
                           {isArchived ? (
@@ -1616,7 +1632,7 @@ function ParksList() {
             </div>
           )}
           {pagination.totalPages > 1 ? (
-            <div className="flex items-center justify-end gap-2 border-t border-stone-200 p-3">
+            <div className={listingFooterClass}>
               <button disabled={page <= 1} onClick={() => setPage((value) => value - 1)} className={buttonClass("secondary", "min-h-10 px-3")}>Prev</button>
               <span className="text-sm font-bold text-stone-500">{page} / {pagination.totalPages}</span>
               <button disabled={page >= pagination.totalPages} onClick={() => setPage((value) => value + 1)} className={buttonClass("secondary", "min-h-10 px-3")}>Next</button>
@@ -1862,15 +1878,15 @@ function ParkForm() {
   return (
     <ControlShell
       title={isEdit ? "Edit park" : "New park"}
-      actions={<Link to="/movira-control/parks" className={buttonClass("secondary")}><FaArrowLeft /> Parks</Link>}
+      actions={<Link to="/movira-control/parks" className={buttonClass("secondary", "w-full sm:w-auto")}><FaArrowLeft /> Parks</Link>}
     >
       <form onSubmit={submit} className="grid max-w-7xl gap-4 xl:grid-cols-[minmax(0,1fr)_300px]">
-        <div className="space-y-4">
-          <section className="overflow-hidden rounded-xl border border-stone-200 bg-white shadow-sm">
+        <div className="min-w-0 space-y-4">
+          <section className="min-w-0 overflow-hidden rounded-xl border border-stone-200 bg-white shadow-sm">
             <div className="flex flex-wrap items-start justify-between gap-3 border-b border-stone-200 bg-gradient-to-r from-orange-50/80 to-white px-4 py-3">
-              <div>
+              <div className="min-w-0">
                 <p className="text-xs font-black uppercase tracking-[0.18em] text-orange-700">Park profile</p>
-                <h2 className="mt-1 text-lg font-black text-stone-950">Workspace identity</h2>
+                <h2 className="mt-1 break-words text-lg font-black text-stone-950">Workspace identity</h2>
               </div>
               <Pill className="border-orange-200 bg-white text-orange-700">{isEdit ? "Editing" : "New setup"}</Pill>
             </div>
@@ -1921,11 +1937,11 @@ function ParkForm() {
             </div>
           </section>
 
-          <section className="overflow-hidden rounded-xl border border-stone-200 bg-white shadow-sm">
+          <section className="min-w-0 overflow-hidden rounded-xl border border-stone-200 bg-white shadow-sm">
             <div className="flex flex-wrap items-start justify-between gap-3 border-b border-stone-200 bg-gradient-to-r from-stone-50 to-white px-4 py-3">
-              <div>
+              <div className="min-w-0">
                 <p className="text-xs font-black uppercase tracking-[0.18em] text-orange-700">Customer assignment</p>
-                <h2 className="mt-1 text-lg font-black text-stone-950">Assign the account that owns this park</h2>
+                <h2 className="mt-1 break-words text-lg font-black text-stone-950">Assign the account that owns this park</h2>
               </div>
               <Pill className="border-emerald-200 bg-emerald-50 text-emerald-700">Auto create on save</Pill>
             </div>
@@ -2032,7 +2048,7 @@ function ParkForm() {
             </div>
           </section>
 
-          <section className="overflow-hidden rounded-xl border border-stone-200 bg-white shadow-sm">
+          <section className="min-w-0 overflow-hidden rounded-xl border border-stone-200 bg-white shadow-sm">
             <div className="border-b border-stone-200 bg-gradient-to-r from-stone-50 to-white px-4 py-3">
               <p className="text-xs font-black uppercase tracking-[0.18em] text-orange-700">Location</p>
               <h2 className="mt-1 text-lg font-black text-stone-950">Operating region</h2>
@@ -2082,7 +2098,7 @@ function ParkForm() {
           </section>
         </div>
 
-        <aside className="h-fit rounded-xl border border-stone-200 bg-white p-4 shadow-sm xl:sticky xl:top-4">
+        <aside className="h-fit min-w-0 rounded-xl border border-stone-200 bg-white p-4 shadow-sm xl:sticky xl:top-4">
           <p className="text-xs font-black uppercase text-stone-500">Setup starts here</p>
           <h3 className="mt-1 text-xl font-black text-stone-950">{isEdit ? "Save profile changes" : "Create workspace"}</h3>
           <div className="mt-4 space-y-3 text-sm font-bold text-stone-600">
@@ -2185,7 +2201,7 @@ function ParkForm() {
 function ParkTabs({ park }) {
   const { pathname } = useLocation();
   return (
-    <div className="sticky top-[76px] z-30 mb-3 flex gap-1.5 overflow-x-auto rounded-lg border border-stone-200 bg-white/95 p-1.5 shadow-sm backdrop-blur">
+    <div className="sticky top-[72px] z-30 mb-3 flex gap-1.5 overflow-x-auto rounded-lg border border-stone-200 bg-white/95 p-1.5 shadow-sm backdrop-blur">
       {parkDetailTabs.map(({ suffix, label }) => {
         const to = `/movira-control/parks/${park.id}${suffix ? `/${suffix}` : ""}`;
         const active = pathname === to;
@@ -2242,9 +2258,9 @@ function ParkDetail() {
     <ControlShell
       title={park.name}
       actions={
-        <div className="flex gap-2">
-          <Link to="/movira-control/parks" className={buttonClass("secondary")}><FaArrowLeft /> Parks</Link>
-          <Link to={`/movira-control/parks/${park.id}/edit`} className={buttonClass("primary")}><FaEdit /> Edit</Link>
+        <div className="flex w-full flex-wrap gap-2 sm:w-auto">
+          <Link to="/movira-control/parks" className={buttonClass("secondary", "flex-1 sm:flex-none")}><FaArrowLeft /> Parks</Link>
+          <Link to={`/movira-control/parks/${park.id}/edit`} className={buttonClass("primary", "flex-1 sm:flex-none")}><FaEdit /> Edit</Link>
         </div>
       }
     >
@@ -2441,8 +2457,8 @@ function BillingPanel({ park, plans = [], moduleCatalog = modules, planUsage = n
 
   return (
     <div className="space-y-4">
-      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
-        <form onSubmit={submit} className="rounded-xl border border-stone-200 bg-white p-5 shadow-sm">
+      <div className="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
+        <form onSubmit={submit} className="min-w-0 rounded-xl border border-stone-200 bg-white p-4 shadow-sm sm:p-5">
         <div className="flex flex-wrap items-start justify-between gap-3 border-b border-stone-200 pb-4">
           <div>
             <p className="text-xs font-black uppercase text-orange-700">Billing setup</p>
@@ -2453,7 +2469,7 @@ function BillingPanel({ park, plans = [], moduleCatalog = modules, planUsage = n
         </div>
 
         <div className="mt-5 rounded-xl border border-orange-100 bg-orange-50/50 p-4">
-          <div className="grid gap-4 lg:grid-cols-[minmax(260px,360px)_1fr]">
+          <div className="grid min-w-0 gap-4 lg:grid-cols-[minmax(220px,360px)_1fr]">
             <label>
               <span className="flex items-center justify-between gap-2 text-xs font-black uppercase text-stone-500">
                 <span>Customer plan</span>
@@ -2469,7 +2485,7 @@ function BillingPanel({ park, plans = [], moduleCatalog = modules, planUsage = n
                 options={planOptions}
               />
             </label>
-            <div className="grid gap-3 md:grid-cols-3">
+            <div className="grid min-w-0 gap-3 sm:grid-cols-3">
               <div className="rounded-lg border border-orange-100 bg-white p-3">
                 <p className="text-xs font-black uppercase text-stone-500">Base fee</p>
                 <p className="mt-1 text-lg font-black text-stone-950">{money(selectedPlan?.monthlyBaseFee || 0, park.currency)}/mo</p>
@@ -2489,7 +2505,7 @@ function BillingPanel({ park, plans = [], moduleCatalog = modules, planUsage = n
           <p className="mt-3 text-sm font-semibold text-stone-600">{selectedPlan?.description}</p>
         </div>
 
-        <div className="mt-5 grid gap-4 md:grid-cols-4">
+        <div className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <label>
             <span className="text-xs font-black uppercase text-stone-500">Base platform fee</span>
             <input
@@ -2521,7 +2537,7 @@ function BillingPanel({ park, plans = [], moduleCatalog = modules, planUsage = n
             <input type="number" value={form.discountAmount} onChange={(event) => setForm({ ...form, discountAmount: event.target.value })} className="input-nexus mt-1 w-full px-3 py-2.5 text-sm" />
           </label>
         </div>
-        <div className="mt-4 grid gap-4 md:grid-cols-3">
+        <div className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           <label>
             <span className="text-xs font-black uppercase text-stone-500">Tax label</span>
             <SearchableSelect
@@ -2544,8 +2560,8 @@ function BillingPanel({ park, plans = [], moduleCatalog = modules, planUsage = n
           </label>
         </div>
 
-        <div className="mt-5 overflow-hidden rounded-xl border border-stone-200">
-          <table className="min-w-full divide-y divide-stone-200 text-sm">
+        <div className="mt-5 overflow-x-auto rounded-xl border border-stone-200">
+          <table className="min-w-[640px] divide-y divide-stone-200 text-sm">
             <thead className="bg-stone-50 text-left text-xs font-black uppercase text-stone-500">
               <tr>
                 <th className="px-4 py-3">Item</th>
@@ -2601,10 +2617,10 @@ function BillingPanel({ park, plans = [], moduleCatalog = modules, planUsage = n
           </table>
         </div>
 
-        <button className={buttonClass("primary", "mt-5")}>Save billing</button>
+        <button className={buttonClass("primary", "mt-5 w-full sm:w-auto")}>Save billing</button>
         </form>
 
-        <aside className="rounded-xl border border-stone-200 bg-white p-5 shadow-sm">
+        <aside className="min-w-0 rounded-xl border border-stone-200 bg-white p-4 shadow-sm sm:p-5">
         <p className="text-xs font-black uppercase text-stone-500">Monthly invoice preview</p>
         <div className="mt-4 space-y-3 text-sm font-bold">
           <div className="flex justify-between gap-3">
@@ -2832,13 +2848,13 @@ function InvoiceHistoryTable({ park, invoices }) {
   };
 
   return (
-    <section className="overflow-hidden rounded-xl border border-stone-200 bg-white shadow-sm">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-stone-200 px-5 py-4">
-        <div>
+    <section className={listingShellClass}>
+      <div className="sticky top-0 z-30 flex flex-wrap items-center justify-between gap-3 border-b border-[var(--stroke-soft)] bg-[var(--surface-panel-strong)]/95 px-5 py-4 backdrop-blur">
+        <div className="min-w-0">
           <p className="text-xs font-black uppercase text-orange-700">Billing history</p>
-          <h3 className="text-lg font-black text-stone-950">Generated SaaS invoices and collection status</h3>
+          <h3 className="break-words text-lg font-black text-stone-950">Generated SaaS invoices and collection status</h3>
         </div>
-        <div className="flex flex-wrap items-center justify-end gap-2">
+        <div className="flex w-full flex-wrap items-center justify-end gap-2 sm:w-auto">
           <button
             type="button"
             disabled={refreshLifecycleState.isLoading}
@@ -2850,20 +2866,20 @@ function InvoiceHistoryTable({ park, invoices }) {
           <Pill className="border-stone-200 bg-stone-50 text-stone-600">{invoices.length} invoices</Pill>
         </div>
       </div>
-      <div className="overflow-x-auto">
-        <table className="min-w-full divide-y divide-stone-200 text-sm">
-          <thead className="bg-stone-50 text-left text-xs font-black uppercase text-stone-500">
+      <div className={listingScrollClass}>
+        <table className={listingTableClass("min-w-[960px]")}>
+          <thead className={listingHeadClass}>
             <tr>
-              <th className="px-4 py-3">Invoice</th>
-              <th className="px-4 py-3">Period</th>
-              <th className="px-4 py-3">Due</th>
-              <th className="px-4 py-3">Status</th>
-              <th className="px-4 py-3 text-right">Total</th>
-              <th className="px-4 py-3 text-right">Paid</th>
-              <th className="px-4 py-3 text-right">Action</th>
+              <th className={listingThClass()}>Invoice</th>
+              <th className={listingThClass()}>Period</th>
+              <th className={listingThClass()}>Due</th>
+              <th className={listingThClass()}>Status</th>
+              <th className={listingThClass("text-right")}>Total</th>
+              <th className={listingThClass("text-right")}>Paid</th>
+              <th className={listingThClass("text-right")}>Action</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-stone-100 bg-white">
+          <tbody className={listingBodyClass}>
             {invoices.map((invoice) => {
               const remaining = Math.max(0, Number(invoice.totalAmount || 0) - Number(invoice.paidAmount || 0));
               const terminalStatuses = ["paid", "void", "refunded"];
@@ -2872,7 +2888,7 @@ function InvoiceHistoryTable({ park, invoices }) {
               const paidAmount = Number(invoice.paidAmount || 0);
               const canRefund = paidAmount > 0 && !["void", "refunded"].includes(invoice.status);
               return (
-                <tr key={invoice.invoiceId}>
+                <tr key={invoice.invoiceId} className={listingRowClass}>
                   <td className="px-4 py-3">
                     <p className="font-black text-stone-950">{invoice.invoiceNumber}</p>
                     <p className="text-xs font-semibold text-stone-500">{invoice.billingCycle || "monthly"}</p>
@@ -3057,15 +3073,15 @@ function PaymentsPanel({ park }) {
   };
   return (
     <div className="space-y-4">
-      <form onSubmit={submit} className="rounded-xl border border-stone-200 bg-white p-4 shadow-sm">
+      <form onSubmit={submit} className="min-w-0 rounded-xl border border-stone-200 bg-white p-4 shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-stone-200 pb-3">
-          <div>
+          <div className="min-w-0">
             <p className="text-xs font-black uppercase text-orange-700">Payment control</p>
-            <h2 className="mt-1 text-lg font-black text-stone-950">Platform billing and guest payment rails</h2>
+            <h2 className="mt-1 break-words text-lg font-black text-stone-950">Platform billing and guest payment rails</h2>
           </div>
           <Pill className={platformStatusClass}>{platformStatusLabel}</Pill>
         </div>
-        <div className="mt-4 grid gap-3 lg:grid-cols-[0.85fr_0.85fr_1.3fr]">
+        <div className="mt-4 grid min-w-0 gap-3 lg:grid-cols-[0.85fr_0.85fr_1.3fr]">
           <div className="rounded-lg border border-stone-200 bg-stone-50 p-3">
             <p className="text-xs font-black uppercase text-stone-500">Platform billing method</p>
             <p className="mt-1 text-base font-black capitalize text-stone-950">{platformMethodLabel}</p>
@@ -3088,7 +3104,7 @@ function PaymentsPanel({ park }) {
                 buttonClassName="min-h-10 py-2"
                 options={guestPaymentStatusOptions}
               />
-              <button className={buttonClass("primary", "min-h-10 shrink-0 px-4 py-2")}>Save</button>
+              <button className={buttonClass("primary", "min-h-10 px-4 py-2 sm:shrink-0")}>Save</button>
             </div>
             <span className="mt-2 block text-xs font-semibold text-stone-500">Controls checkout/POS acceptance for this park.</span>
           </div>
@@ -3120,16 +3136,16 @@ function PaymentHistoryPanel({ park, paymentEvents }) {
   const pagination = data.pagination || { totalRecords: events.length, totalPages: 1, currentPage: 1 };
 
   return (
-    <section className="rounded-xl border border-stone-200 bg-white shadow-sm">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-stone-200 px-5 py-4">
-        <div>
+    <section className={listingShellClass}>
+      <div className="sticky top-0 z-30 flex flex-wrap items-center justify-between gap-3 border-b border-[var(--stroke-soft)] bg-[var(--surface-panel-strong)]/95 px-5 py-4 backdrop-blur">
+        <div className="min-w-0">
           <p className="text-xs font-black uppercase text-orange-700">Payment history</p>
-          <h3 className="text-lg font-black text-stone-950">SaaS billing events</h3>
+          <h3 className="break-words text-lg font-black text-stone-950">SaaS billing events</h3>
         </div>
         <Pill className="border-stone-200 bg-stone-50 text-stone-600">{pagination.totalRecords || events.length} events</Pill>
       </div>
-      <div className="flex flex-wrap items-center gap-2 border-b border-stone-100 px-5 py-3">
-        <div className="relative min-w-[220px] flex-1 max-w-sm">
+      <div className="flex flex-wrap items-center gap-2 border-b border-[var(--stroke-soft)] bg-[var(--surface-panel)]/95 px-5 py-3">
+        <div className="relative min-w-full flex-1 sm:min-w-[220px] sm:max-w-sm">
           <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-stone-400" />
           <input
             value={search}
@@ -3163,7 +3179,7 @@ function PaymentHistoryPanel({ park, paymentEvents }) {
         />
         {isFetching ? <span className="text-xs font-black uppercase text-stone-400">Loading...</span> : null}
       </div>
-      <div className="divide-y divide-stone-100">
+      <div className="max-h-[min(62vh,700px)] overflow-auto divide-y divide-stone-100">
         {events.map((event) => (
           <div key={event.eventId} className="grid gap-3 px-5 py-4 md:grid-cols-[1fr_160px_140px] md:items-center">
             <div>
@@ -3185,7 +3201,7 @@ function PaymentHistoryPanel({ park, paymentEvents }) {
         ) : null}
       </div>
       {pagination.totalPages > 1 ? (
-        <div className="flex items-center justify-end gap-2 border-t border-stone-200 px-5 py-3">
+        <div className={listingFooterClass}>
           <button disabled={page <= 1} onClick={() => setPage((value) => value - 1)} className={buttonClass("secondary", "min-h-9 px-3 py-1.5 text-xs")}>Prev</button>
           <span className="text-xs font-bold text-stone-500">{page} / {pagination.totalPages}</span>
           <button disabled={page >= pagination.totalPages} onClick={() => setPage((value) => value + 1)} className={buttonClass("secondary", "min-h-9 px-3 py-1.5 text-xs")}>Next</button>
@@ -3312,10 +3328,10 @@ function AuditPanel({ park, initialLogs = [] }) {
         <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_auto] xl:items-center">
           <div className="min-w-0">
             <p className="section-kicker">Production audit</p>
-            <h2 className="mt-1 truncate font-display text-xl font-black tracking-tight text-stone-950">
+            <h2 className="mt-1 break-words font-display text-xl font-black tracking-tight text-stone-950">
               Operator and system activity trail
             </h2>
-            <p className="mt-0.5 truncate text-sm font-semibold text-stone-500">
+            <p className="mt-0.5 break-words text-sm font-semibold text-stone-500">
               Review billing, onboarding, lifecycle, and payment changes for {park.name}.
             </p>
           </div>
@@ -3344,9 +3360,9 @@ function AuditPanel({ park, initialLogs = [] }) {
         </div>
       </div>
 
-      <div className="rounded-lg border border-stone-200 bg-white shadow-sm">
-        <div className="flex flex-wrap items-center gap-3 border-b border-stone-200 p-4">
-          <div className="relative min-w-[240px] flex-1">
+      <div className={listingShellClass}>
+        <div className="sticky top-0 z-30 flex flex-wrap items-center gap-3 border-b border-[var(--stroke-soft)] bg-[var(--surface-panel-strong)]/95 p-4 backdrop-blur">
+          <div className="relative min-w-full flex-1 sm:min-w-[240px]">
             <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-stone-400" />
             <input
               value={search}
@@ -3371,7 +3387,7 @@ function AuditPanel({ park, initialLogs = [] }) {
           />
         </div>
 
-        <div className="divide-y divide-stone-100">
+        <div className="max-h-[min(64vh,720px)] overflow-auto divide-y divide-stone-100">
           {logs.map((item) => (
             <article key={item.id} className="grid gap-4 px-4 py-4 lg:grid-cols-[minmax(0,1fr)_220px]">
               <div className="flex min-w-0 gap-3">
@@ -3426,7 +3442,7 @@ function AuditPanel({ park, initialLogs = [] }) {
         </div>
 
         {pagination.totalPages > 1 ? (
-          <div className="flex flex-wrap items-center justify-between gap-2 border-t border-stone-200 px-4 py-3">
+          <div className="sticky bottom-0 z-20 flex flex-wrap items-center justify-between gap-2 border-t border-[var(--stroke-soft)] bg-[var(--surface-panel-strong)]/95 px-4 py-3 backdrop-blur">
             <span className="text-xs font-bold text-stone-500">
               Page {page} of {pagination.totalPages}
             </span>

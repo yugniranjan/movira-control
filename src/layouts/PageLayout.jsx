@@ -21,24 +21,24 @@ const PageLayout = ({
 
   const header = (
     <div
-      className="z-20 rounded-lg px-3 py-2.5 sm:px-4"
+      className="z-20 min-w-0 rounded-lg px-3 py-2 sm:px-3.5"
       style={{
         background: "var(--surface-panel)",
         border: "1px solid var(--stroke-soft)",
         boxShadow: "var(--shadow-header)",
       }}
     >
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0">
           <p className="section-kicker">{sectionKicker}</p>
           <h1
-            className={`mt-0.5 font-display text-xl font-black tracking-tight sm:text-2xl ${headingClassName}`}
+            className={`mt-0.5 break-words font-display text-lg font-black tracking-tight sm:text-xl ${headingClassName}`}
             style={{ color: "var(--text-strong)" }}
           >
             {heading}
           </h1>
           {breadcrumb.length > 0 && (
-            <nav className="mt-1 flex flex-wrap items-center gap-y-1 text-xs font-semibold" style={{ color: "var(--text-muted)" }}>
+            <nav className="mt-0.5 flex flex-wrap items-center gap-y-1 text-xs font-semibold" style={{ color: "var(--text-muted)" }}>
               {breadcrumb.map((item, idx) => (
                 <span key={idx} className="flex items-center">
                   {item.link ? (
@@ -62,13 +62,13 @@ const PageLayout = ({
           )}
         </div>
         {topButton && (
-          <div className="flex shrink-0 flex-wrap items-center gap-2 sm:justify-end">
+          <div className="flex w-full min-w-0 flex-wrap items-center gap-2 sm:w-auto sm:shrink-0 sm:justify-end [&>*]:min-w-0">
             {topButton}
           </div>
         )}
       </div>
 
-      {headerbar && <div className="mt-2">{headerbar}</div>}
+      {headerbar && <div className="mt-1.5">{headerbar}</div>}
     </div>
   );
 
@@ -81,18 +81,18 @@ const PageLayout = ({
 
       <div className="flex-1">
         {headerScrolls && header}
-        <div className="py-3">{children}</div>
+        <div className="py-2.5">{children}</div>
       </div>
 
       {bottomButton && (
         <div
-          className="page-layout-bottom-bar sticky bottom-0 left-0 right-0 z-20 px-6 py-4 backdrop-blur-xl"
+          className="page-layout-bottom-bar sticky bottom-0 left-0 right-0 z-20 px-3 py-2.5 backdrop-blur-xl sm:px-4 sm:py-3"
           style={{
             background: "var(--surface-bottom)",
             borderTop: "1px solid var(--stroke-soft)",
           }}
         >
-          <div className="flex items-center justify-end gap-3">
+          <div className="flex flex-col items-stretch justify-end gap-2 sm:flex-row sm:items-center sm:gap-3">
             {bottomButton}
           </div>
         </div>

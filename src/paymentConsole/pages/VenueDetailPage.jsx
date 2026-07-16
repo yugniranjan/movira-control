@@ -344,7 +344,7 @@ export default function VenueDetailPage() {
             <FiMapPin size={22} />
           </span>
           <div className="min-w-0">
-            <h2 className="truncate font-display text-xl font-black text-[var(--text-strong)]">{venue.name}</h2>
+            <h2 className="break-words font-display text-xl font-black text-[var(--text-strong)]">{venue.name}</h2>
             <p className="text-sm font-semibold text-[var(--text-base)]">
               {venue.city} · {venue.country}
             </p>

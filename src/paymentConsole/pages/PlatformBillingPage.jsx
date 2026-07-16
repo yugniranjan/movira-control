@@ -80,8 +80,8 @@ function PlatformBillingGatewayPanel({ credentials, platformGateway, onSave, sav
   }
 
   return (
-    <Card className="overflow-visible p-4">
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+    <Card className="overflow-visible p-3 sm:p-4">
+      <div className="flex min-w-0 flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
         <div className="flex min-w-0 items-start gap-3">
           {provider ? (
             <ProviderBadge provider={provider.key} size={38} />
@@ -109,12 +109,13 @@ function PlatformBillingGatewayPanel({ credentials, platformGateway, onSave, sav
           </div>
         </div>
 
-        <div className="grid w-full gap-2 sm:grid-cols-[minmax(240px,1fr)_minmax(190px,220px)_auto_auto] lg:max-w-5xl">
+        <div className="grid w-full min-w-0 gap-2 sm:grid-cols-2 xl:max-w-5xl xl:grid-cols-[minmax(240px,1fr)_minmax(180px,220px)_minmax(120px,140px)_minmax(96px,120px)]">
           <Select
             value={selected}
             onChange={(e) => setSelected(e.target.value)}
             disabled={orgCredentials.length === 0}
             aria-label="Movira SaaS billing credential"
+            className="min-w-0"
           >
             {orgCredentials.length === 0 ? (
               <option value="">No Movira org-wide Stripe/Razorpay credential</option>
@@ -134,6 +135,7 @@ function PlatformBillingGatewayPanel({ credentials, platformGateway, onSave, sav
             onChange={(e) => setCurrency(e.target.value)}
             aria-label="Currency"
             searchPlaceholder="Search currency..."
+            className="min-w-0"
           >
             {CURRENCY_OPTIONS.map((option) => (
               <option key={option.value || "any"} value={option.value}>
@@ -144,7 +146,7 @@ function PlatformBillingGatewayPanel({ credentials, platformGateway, onSave, sav
           <button
             type="button"
             onClick={() => setEnabled((v) => !v)}
-            className={`min-h-11 rounded-lg border px-3 text-sm font-black transition-colors ${
+            className={`min-h-11 w-full rounded-lg border px-3 text-sm font-black transition-colors ${
               enabled
                 ? "border-green-200 bg-green-50 text-green-700"
                 : "border-stone-200 bg-white text-stone-500"
@@ -152,7 +154,7 @@ function PlatformBillingGatewayPanel({ credentials, platformGateway, onSave, sav
           >
             {enabled ? "Enabled" : "Disabled"}
           </button>
-          <Button onClick={handleSave} disabled={saving || orgCredentials.length === 0} className="min-w-24">
+          <Button onClick={handleSave} disabled={saving || orgCredentials.length === 0} className="w-full min-w-0">
             {saving ? <Spinner /> : null}
             Save
           </Button>

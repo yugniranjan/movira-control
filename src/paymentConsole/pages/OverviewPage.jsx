@@ -31,15 +31,15 @@ import {
 
 function Stat({ icon: Icon, label, value, hint, to }) {
   const body = (
-    <Card className="p-5 h-full hover:border-[var(--brand-primary)] transition-colors">
-      <div className="flex items-center justify-between">
-        <span className="inline-flex items-center justify-center w-10 h-10 rounded-xl bg-orange-50 text-[var(--brand-primary-deep)]">
-          {createElement(Icon, { size: 20 })}
+    <Card className="h-full p-3 transition-colors hover:border-[var(--brand-primary)]">
+      <div className="flex items-center justify-between gap-3">
+        <span className="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-orange-50 text-[var(--brand-primary-deep)]">
+          {createElement(Icon, { size: 18 })}
         </span>
         {to && <FiArrowRight className="text-[var(--text-muted)]" />}
       </div>
-      <div className="mt-4 font-display text-3xl font-extrabold text-[var(--text-strong)]">{value}</div>
-      <div className="text-sm text-[var(--text-base)]">{label}</div>
+      <div className="mt-2 font-display text-2xl font-extrabold leading-none text-[var(--text-strong)]">{value}</div>
+      <div className="mt-1 text-sm font-semibold text-[var(--text-base)]">{label}</div>
       {hint && <div className="text-xs text-[var(--text-muted)] mt-0.5">{hint}</div>}
     </Card>
   );
@@ -144,7 +144,7 @@ export default function OverviewPage() {
         </Card>
       )}
 
-      <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <Stat icon={FiMapPin} label="Venues" value={data.venues.length} to="/payment-console/venues" />
         <Stat
           icon={FiCreditCard}
@@ -173,20 +173,20 @@ export default function OverviewPage() {
         />
       </div>
 
-      <div className="grid lg:grid-cols-2 gap-4">
+      <div className="grid gap-3 lg:grid-cols-2">
         {/* ── Needs attention: empty + broken venues ─────────────────────── */}
-        <Card className="p-5">
-          <div className="flex items-center justify-between gap-3 mb-3">
+        <Card className="p-3.5">
+          <div className="mb-2.5 flex items-center justify-between gap-3">
             <div>
               <h2 className="font-display font-bold text-[var(--text-strong)]">Needs attention</h2>
               <p className="text-xs text-[var(--text-muted)]">Live channels with no route, or routes that won't resolve.</p>
             </div>
-            <Link to="/payment-console/payments" className="text-sm font-semibold text-[var(--brand-primary-deep)] hover:underline">
+            <Link to="/payment-console/payments" className="shrink-0 text-sm font-semibold text-[var(--brand-primary-deep)] hover:underline">
               Fix in routing →
             </Link>
           </div>
           {needsAttention.length === 0 ? (
-            <div className="flex items-center gap-2 p-3 rounded-xl bg-green-50 text-green-800">
+            <div className="flex items-center gap-2 rounded-lg bg-green-50 p-2.5 text-green-800">
               <FiCheckCircle />
               <span className="text-sm font-semibold">Every venue has at least one live channel routed.</span>
             </div>
@@ -196,7 +196,7 @@ export default function OverviewPage() {
                 <li key={entry.venue.locationId}>
                   <Link
                     to={`/payment-console/venues/${entry.venue.locationId}`}
-                    className="flex items-center justify-between gap-3 p-3 rounded-xl border border-[var(--stroke-soft)] hover:border-[var(--brand-primary)] transition-colors"
+                    className="flex items-center justify-between gap-3 rounded-lg border border-[var(--stroke-soft)] p-2.5 transition-colors hover:border-[var(--brand-primary)]"
                   >
                     <div className="flex items-center gap-2.5 min-w-0">
                       <FiMapPin className="text-[var(--brand-primary-deep)] shrink-0" />
@@ -231,8 +231,8 @@ export default function OverviewPage() {
         </Card>
 
         {/* ── Partial / fine venues ──────────────────────────────────────── */}
-        <Card className="p-5">
-          <div className="flex items-center justify-between gap-3 mb-3">
+        <Card className="p-3.5">
+          <div className="mb-2.5 flex items-center justify-between gap-3">
             <div>
               <h2 className="font-display font-bold text-[var(--text-strong)]">Partially configured</h2>
               <p className="text-xs text-[var(--text-muted)]">Some live channels routed, others not yet.</p>
@@ -240,7 +240,7 @@ export default function OverviewPage() {
             <span className="text-xs text-[var(--text-muted)]">{partial.length}</span>
           </div>
           {partial.length === 0 ? (
-            <div className="text-sm text-[var(--text-muted)] py-6 text-center">
+            <div className="py-5 text-center text-sm text-[var(--text-muted)]">
               No venues are mid-configuration.
             </div>
           ) : (
@@ -249,7 +249,7 @@ export default function OverviewPage() {
                 <li key={entry.venue.locationId}>
                   <Link
                     to={`/payment-console/venues/${entry.venue.locationId}`}
-                    className="flex items-center justify-between gap-3 p-3 rounded-xl border border-[var(--stroke-soft)] hover:border-[var(--brand-primary)] transition-colors"
+                    className="flex items-center justify-between gap-3 rounded-lg border border-[var(--stroke-soft)] p-2.5 transition-colors hover:border-[var(--brand-primary)]"
                   >
                     <div className="flex items-center gap-2.5 min-w-0">
                       <FiMapPin className="text-[var(--brand-primary-deep)] shrink-0" />
@@ -278,14 +278,14 @@ export default function OverviewPage() {
       </div>
 
       {/* ── Channel coverage summary ───────────────────────────────────── */}
-      <Card className="p-5">
-        <div className="flex items-center justify-between gap-3 mb-4">
+      <Card className="p-3.5">
+        <div className="mb-3 flex items-center justify-between gap-3">
           <h2 className="font-display font-bold text-[var(--text-strong)]">Channel coverage</h2>
           <Link to="/payment-console/payments" className="text-sm font-semibold text-[var(--brand-primary-deep)] hover:underline">
             Manage
           </Link>
         </div>
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+        <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
           {CHANNELS.map((ch) => {
             // How many venues have this channel routed, and what providers
             // are in use across the org for this channel?
@@ -297,7 +297,7 @@ export default function OverviewPage() {
             return (
               <div
                 key={ch.key}
-                className={`p-3 rounded-xl border ${
+                className={`rounded-lg border p-2.5 ${
                   live ? "border-[var(--stroke-soft)]" : "border-dashed border-[var(--stroke-soft)] opacity-70"
                 }`}
               >
@@ -341,7 +341,7 @@ export default function OverviewPage() {
       </Card>
 
       {/* ── Footer link to the matrix ──────────────────────────────────── */}
-      <Card className="p-4 flex items-center gap-3">
+      <Card className="flex items-center gap-3 p-3">
         <FiGlobe className="text-[var(--brand-primary-deep)]" />
         <div className="text-sm text-[var(--text-base)] flex-1">
           Want the whole venue × channel grid in one view?
