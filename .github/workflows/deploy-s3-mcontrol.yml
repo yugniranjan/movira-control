@@ -1,15 +1,7 @@
 name: Deploy Movira Control to S3 and CloudFront
 
 on:
-  workflow_dispatch:
-    inputs:
-      environment:
-        description: Deployment target
-        required: true
-        default: production
-        type: choice
-        options:
-          - production
+  workflow_dispatch: {}
 
 permissions:
   contents: read
@@ -29,7 +21,6 @@ jobs:
   deploy:
     name: Build and deploy Movira Control
     runs-on: ubuntu-latest
-    environment: ${{ inputs.environment }}
 
     steps:
       - name: Checkout
