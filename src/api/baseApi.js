@@ -1,8 +1,8 @@
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
-import { decryptWithAES, encryptWithAES } from "../utils/secureCrypto";
-import { logout } from "../features/auth/authSlice";
+import { logout, tokenRefreshed } from "../features/auth/authSlice";
 import Cookies from "js-cookie";
 import { resolveApiBaseUrl } from "./resolveApiBaseUrl";
+import { refreshAccessToken } from "./authSession";
 
 const API_BASE_URL = resolveApiBaseUrl();
 
@@ -55,11 +55,7 @@ function normalizeApiErrorPayload(data, fallbackStatus) {
   };
 }
 
-export const customEncryptedBaseQuery = async (args, api, extraOptions) => {
-  // Encrypt ONLY in production builds. import.meta.env.PROD is set by Vite
-  // automatically: true for "vite build" (prod), false for the "vite" dev
-  // server — so the dev server never encrypts, regardless of any .env toggle.
-  const isProduction = import.meta.env.PROD;
+export const customBaseQuery = async (args, api, extraOptions) => {
   const locationId = Cookies.get("locationId");
   const tokenAtRequestStart = api.getState()?.auth?.token || null;
 
@@ -68,25 +64,14 @@ export const customEncryptedBaseQuery = async (args, api, extraOptions) => {
   let { url, body, ...rest } = request;
   const requestUrl = String(url || "");
 
-  // always add locationId
+  // Always send the active location as a normal query parameter.
   if (locationId) {
-    try {
-      if (isProduction) {
-        const encryptedLocationId = await encryptWithAES({ locationId });
-        url = appendQueryParam(url, "encrypted", encryptedLocationId.encrypted);
-        url = appendQueryParam(url, "iv", encryptedLocationId.iv);
-      } else {
-        url = appendQueryParam(url, "locationId", locationId);
-      }
-    } catch (err) {
-      console.error("LocationId encryption error:", err);
-    }
+    url = appendQueryParam(url, "locationId", locationId);
   }
 
   let result;
 
   try {
-    // --- Case 1: FormData ---
     if (extraOptions?.isFormData) {
       result = await rawBaseQuery(
         {
@@ -103,11 +88,7 @@ export const customEncryptedBaseQuery = async (args, api, extraOptions) => {
       );
     } else if (body && body.json && (body.image || body.files)) {
       const formData = new FormData();
-
-      const encryptedJson = isProduction
-        ? await encryptWithAES(body.json)
-        : body.json;
-      formData.append("payload", JSON.stringify(encryptedJson));
+      formData.append("payload", JSON.stringify(body.json));
 
       if (Array.isArray(body.image)) {
         body.image.forEach((imgObj) => {
@@ -135,40 +116,12 @@ export const customEncryptedBaseQuery = async (args, api, extraOptions) => {
         api,
         { ...extraOptions, isFormData: true }
       );
-
-    // --- Case 2: JSON body ---
-    } else if (body) {
-      const requestBody = isProduction
-        ? await encryptWithAES(body)
-        : body;
-      result = await rawBaseQuery({ ...rest, url, body: requestBody }, api, extraOptions);
-
-    // --- Case 3: GET ---
     } else {
-      result = await rawBaseQuery({ ...rest, url }, api, extraOptions);
+      result = await rawBaseQuery({ ...rest, url, body }, api, extraOptions);
     }
-
-    // decrypt if needed
-    if (isProduction && result?.data?.encrypted && result?.data?.iv) {
-      result.data = await decryptWithAES(result.data);
-    }
-
   } catch (err) {
     console.error("Base query error:", err);
     result = { error: err };
-  }
-
-  // In production the backend encrypts error bodies (4xx/5xx) just like
-  // success bodies, so decrypt before normalizing — otherwise every prod
-  // error is masked as the generic "Request failed" fallback. The decryption
-  // middleware's own 400s are plaintext (no encrypted/iv keys), so the guard
-  // skips them, and the try/catch tolerates anything that won't decrypt.
-  if (isProduction && result?.error?.data?.encrypted && result?.error?.data?.iv) {
-    try {
-      result.error.data = await decryptWithAES(result.error.data);
-    } catch (decErr) {
-      console.error("Error-response decryption failed:", decErr);
-    }
   }
 
   // handle unauthorized globally
@@ -182,19 +135,32 @@ export const customEncryptedBaseQuery = async (args, api, extraOptions) => {
   if (result?.error?.status === 401) {
     const currentToken = api.getState()?.auth?.token || null;
     const isAuthEndpoint = requestUrl.startsWith("/auth/");
-    const shouldLogoutCurrentSession =
-      tokenAtRequestStart &&
-      currentToken &&
-      currentToken === tokenAtRequestStart &&
-      !isAuthEndpoint;
+    if (isAuthEndpoint || !tokenAtRequestStart || !currentToken) return result;
 
-    if (!shouldLogoutCurrentSession) {
-      return result;
+    if (
+      currentToken !== tokenAtRequestStart &&
+      !extraOptions?.__authRetried
+    ) {
+      return customBaseQuery(args, api, {
+        ...extraOptions,
+        __authRetried: true,
+      });
+    }
+
+    const refreshedToken = extraOptions?.__authRetried
+      ? null
+      : await refreshAccessToken();
+    if (refreshedToken) {
+      api.dispatch(tokenRefreshed({ token: refreshedToken }));
+      return customBaseQuery(args, api, {
+        ...extraOptions,
+        __authRetried: true,
+      });
     }
 
     api.dispatch(logout());
-    if (typeof window !== "undefined") {
-      window.location.href = "/login";
+    if (typeof window !== "undefined" && window.location.pathname !== "/login") {
+      window.location.assign("/login");
     }
   }
 
@@ -203,7 +169,7 @@ export const customEncryptedBaseQuery = async (args, api, extraOptions) => {
 
 export const baseApi = createApi({
   reducerPath: "api",
-  baseQuery: customEncryptedBaseQuery,
+  baseQuery: customBaseQuery,
   tagTypes: [
     "Booking",
     "Roles",

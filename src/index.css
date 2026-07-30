@@ -2832,15 +2832,21 @@ select option {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  overflow: hidden;
   color: #fff;
   font-size: 14px;
   font-weight: 800;
-  background: linear-gradient(
-    135deg,
-    var(--admin-accent, var(--aero-orange-500)),
-    var(--admin-accent-deep, var(--aero-orange-700))
-  );
-  box-shadow: 0 2px 8px var(--admin-accent-shadow, rgba(244, 91, 10, 0.30));
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid var(--admin-border-strong, rgba(15, 23, 42, 0.12));
+  box-shadow: 0 2px 8px var(--admin-accent-shadow, rgba(244, 91, 10, 0.18));
+}
+
+[data-app="admin"].login-shell .login-brand-badge img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: contain;
+  padding: 4px;
 }
 
 [data-app="admin"].login-shell .login-theme-switcher {

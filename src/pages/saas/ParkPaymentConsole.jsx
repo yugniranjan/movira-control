@@ -1,6 +1,8 @@
-import { Children, useMemo, useState } from "react";
+import { Children, useId, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import { toast } from "sonner";
 import {
+  FaArrowRight,
   FaCheckCircle,
   FaCreditCard,
   FaExclamationTriangle,
@@ -100,9 +102,10 @@ function ProviderMark({ provider, size = "md" }) {
 
 function resolveCredential({ provider, locationId, mode, credentials }) {
   if (!provider || !mode) return null;
+  const usable = credentials.filter((item) => item.status !== "disabled");
   return (
-    credentials.find((item) => item.provider === provider && Number(item.locationId) === Number(locationId) && item.mode === mode) ||
-    credentials.find((item) => item.provider === provider && item.locationId == null && item.mode === mode) ||
+    usable.find((item) => item.provider === provider && Number(item.locationId) === Number(locationId) && item.mode === mode) ||
+    usable.find((item) => item.provider === provider && item.locationId == null && item.mode === mode) ||
     null
   );
 }
@@ -147,20 +150,29 @@ function Field({ label, children, hint, error }) {
 }
 
 function Modal({ title, subtitle, children, onClose }) {
-  return (
+  const titleId = useId();
+  const content = (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm"
+      data-payment-modal-backdrop
+      data-app="admin"
+      className="fixed inset-0 z-[10000] flex h-[100dvh] w-screen items-center justify-center overflow-y-auto p-4 backdrop-blur-sm"
       style={{ background: "var(--modal-backdrop, rgba(15, 23, 42, 0.42))" }}
     >
-      <div className="max-h-[92vh] w-full max-w-3xl overflow-hidden rounded-lg border border-[var(--stroke-soft)] bg-[var(--surface-panel)] text-[var(--text-strong)] shadow-[var(--shadow-soft)]">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        className="max-h-[92vh] w-full max-w-3xl overflow-hidden rounded-lg border border-[var(--stroke-soft)] bg-[var(--surface-panel)] text-[var(--text-strong)] shadow-[var(--shadow-soft)]"
+      >
         <div className="flex items-start justify-between gap-4 border-b border-[var(--stroke-soft)] bg-[var(--surface-panel-strong)] p-5">
           <div>
-            <h3 className="text-xl font-black text-[var(--text-strong)]">{title}</h3>
+            <h3 id={titleId} className="text-xl font-black text-[var(--text-strong)]">{title}</h3>
             {subtitle ? <p className="mt-1 text-sm font-semibold text-[var(--text-base)]">{subtitle}</p> : null}
           </div>
           <button
             type="button"
             onClick={onClose}
+            aria-label="Close modal"
             className="grid h-10 w-10 place-items-center rounded-lg border border-[var(--stroke-soft)] bg-[var(--surface-panel)] text-[var(--text-base)] shadow-sm transition hover:border-[var(--stroke-strong)] hover:bg-[var(--surface-muted)] hover:text-[var(--text-strong)] focus:outline-none focus:ring-4 focus:ring-[var(--brand-primary)]/15"
           >
             <FaTimes />
@@ -170,6 +182,8 @@ function Modal({ title, subtitle, children, onClose }) {
       </div>
     </div>
   );
+
+  return typeof document === "undefined" ? content : createPortal(content, document.body);
 }
 
 function AddGatewayModal({ park, schemas, onClose }) {
@@ -204,7 +218,7 @@ function AddGatewayModal({ park, schemas, onClose }) {
   async function runTest() {
     if (!validate()) return;
     try {
-      const result = await testCredential({ provider, values }).unwrap();
+      const result = await testCredential({ provider, mode, values }).unwrap();
       setTestResult(result?.data || result);
     } catch (err) {
       toast.error(err?.data?.message || "Connection test failed.");
@@ -213,6 +227,10 @@ function AddGatewayModal({ park, schemas, onClose }) {
 
   async function save() {
     if (!validate()) return;
+    if (!testResult?.ok) {
+      toast.error("Test the connection successfully before saving this gateway.");
+      return;
+    }
     try {
       await createCredential({
         provider,
@@ -255,7 +273,13 @@ function AddGatewayModal({ park, schemas, onClose }) {
             <Input value={label} onChange={(event) => setLabel(event.target.value)} placeholder={`${providerMap[provider]?.name || provider} - ${park.name}`} />
           </Field>
           <Field label="Mode">
-            <Select value={mode} onChange={(event) => setMode(event.target.value)}>
+            <Select
+              value={mode}
+              onChange={(event) => {
+                setMode(event.target.value);
+                setTestResult(null);
+              }}
+            >
               <option value="sandbox">Sandbox</option>
               <option value="live">Live</option>
             </Select>
@@ -302,12 +326,17 @@ function AddGatewayModal({ park, schemas, onClose }) {
             {testResult.message || (testResult.ok ? "Connection test passed." : "Connection test failed.")}
           </div>
         ) : null}
+        {!testResult?.ok ? (
+          <p className="text-right text-xs font-bold text-amber-700">
+            A successful connection test is required before this gateway can be saved.
+          </p>
+        ) : null}
 
         <div className="flex flex-wrap items-center justify-end gap-2 border-t border-stone-200 pt-4">
           <button type="button" onClick={runTest} disabled={testState.isLoading || !fields.length} className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-stone-200 bg-white px-4 py-2 text-sm font-black text-stone-700 disabled:opacity-50">
             {testState.isLoading ? "Testing..." : "Test connection"}
           </button>
-          <button type="button" onClick={save} disabled={createState.isLoading || !fields.length} className="btn-nexus inline-flex min-h-10 items-center gap-2 rounded-lg px-4 py-2 text-sm font-black disabled:opacity-50">
+          <button type="button" onClick={save} disabled={createState.isLoading || !fields.length || !testResult?.ok} className="btn-nexus inline-flex min-h-10 items-center gap-2 rounded-lg px-4 py-2 text-sm font-black disabled:opacity-50">
             <FaSave /> {createState.isLoading ? "Saving..." : "Save gateway"}
           </button>
         </div>
@@ -404,7 +433,7 @@ function RouteModal({ park, channel, currentRoute, credentials, compatibility, o
           ) : (
             <span />
           )}
-          <button type="button" onClick={save} disabled={!provider || upsertState.isLoading} className="btn-nexus inline-flex min-h-10 items-center gap-2 rounded-lg px-4 py-2 text-sm font-black disabled:opacity-50">
+          <button type="button" onClick={save} disabled={!provider || !resolved || upsertState.isLoading} className="btn-nexus inline-flex min-h-10 items-center gap-2 rounded-lg px-4 py-2 text-sm font-black disabled:opacity-50">
             <FaSave /> Save route
           </button>
         </div>
@@ -431,7 +460,6 @@ function RouteModal({ park, channel, currentRoute, credentials, compatibility, o
 function EditGatewayModal({ credential, onClose }) {
   const [form, setForm] = useState({
     label: credential.label || "",
-    mode: credential.mode || "sandbox",
     status: credential.status || "active",
   });
   const [updateCredential, updateState] = useUpdatePaymentCredentialMutation();
@@ -461,10 +489,9 @@ function EditGatewayModal({ credential, onClose }) {
             <Input value={form.label} onChange={(event) => setForm({ ...form, label: event.target.value })} />
           </Field>
           <Field label="Mode">
-            <Select value={form.mode} onChange={(event) => setForm({ ...form, mode: event.target.value })}>
-              <option value="sandbox">Sandbox</option>
-              <option value="live">Live</option>
-            </Select>
+            <div className="input-nexus flex min-h-10 items-center px-3 py-2.5 text-sm font-black capitalize text-stone-700">
+              {credential.mode}
+            </div>
           </Field>
           <Field label="Status">
             <Select value={form.status} onChange={(event) => setForm({ ...form, status: event.target.value })}>
@@ -486,7 +513,7 @@ function EditGatewayModal({ credential, onClose }) {
   );
 }
 
-function PosTree({ park }) {
+function PosTree({ park, onConfigurePos }) {
   const { data: tree = {}, isLoading, isError } = useGetVenuePosTreeQuery(park.locationId);
   const [terminalName, setTerminalName] = useState("");
   const [readerDraft, setReaderDraft] = useState({});
@@ -555,19 +582,33 @@ function PosTree({ park }) {
           <h3 className="mt-1 break-words text-lg font-black text-stone-950">Tills and card readers</h3>
           <p className="mt-1 text-sm font-semibold text-stone-500">POS readers are available after the POS channel is routed.</p>
         </div>
-        <div className="flex w-full min-w-0 flex-col gap-2 sm:w-auto sm:min-w-[280px] sm:flex-row">
-          <Input value={terminalName} onChange={(event) => setTerminalName(event.target.value)} placeholder="Terminal name" />
-          <button type="button" onClick={createTill} disabled={createTerminalState.isLoading || !terminalName.trim()} className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm font-black text-stone-700 disabled:opacity-50">
-            <FaPlus /> Add
+        {routed ? (
+          <div className="flex w-full min-w-0 flex-col gap-2 sm:w-auto sm:min-w-[280px] sm:flex-row">
+            <Input value={terminalName} onChange={(event) => setTerminalName(event.target.value)} placeholder="Terminal name" />
+            <button type="button" onClick={createTill} disabled={createTerminalState.isLoading || !terminalName.trim()} className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm font-black text-stone-700 disabled:opacity-50">
+              <FaPlus /> Add terminal
+            </button>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={onConfigurePos}
+            className="btn-nexus inline-flex min-h-10 items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-black"
+          >
+            Configure POS route <FaArrowRight />
           </button>
-        </div>
+        )}
       </div>
 
       {isLoading ? <p className="mt-4 text-sm font-bold text-stone-500">Loading terminals...</p> : null}
-      {isError ? <p className="mt-4 text-sm font-bold text-red-600">Terminals could not be loaded.</p> : null}
+      {isError && routed ? <p className="mt-4 text-sm font-bold text-red-600">Terminals could not be loaded.</p> : null}
       {!isLoading && !routed ? (
-        <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm font-bold text-amber-800">
-          Route the POS / card terminal channel first, then attach card readers.
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4">
+          <div>
+            <p className="text-sm font-black text-amber-900">POS route required first</p>
+            <p className="mt-1 text-xs font-semibold text-amber-800">Choose a gateway for the POS / card terminal channel before creating tills or attaching readers.</p>
+          </div>
+          <Badge tone="orange">Step 2 required</Badge>
         </div>
       ) : null}
       {!isLoading && routed && terminals.length === 0 ? (
@@ -693,6 +734,7 @@ export default function ParkPaymentConsole({ park }) {
     const route = routes[channel.key];
     return route && !resolveCredential({ provider: route.provider, mode: route.mode, locationId, credentials });
   });
+  const availableCredentials = parkCredentials.length + inheritedCredentials.length;
 
   async function removeCredential(credential) {
     try {
@@ -706,37 +748,68 @@ export default function ParkPaymentConsole({ park }) {
 
   return (
     <div className="space-y-4">
-      <section className="rounded-xl border border-stone-200 bg-white p-5 shadow-sm">
+      <section className="rounded-xl border border-stone-200 bg-white p-4 shadow-sm sm:p-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <p className="text-xs font-black uppercase text-orange-700">Guest payment console</p>
-            <h3 className="mt-1 text-lg font-black text-stone-950">Gateway credentials and payment routes</h3>
+            <h3 className="mt-1 text-lg font-black text-stone-950">Payment setup progress</h3>
             <p className="mt-1 text-sm font-semibold text-stone-500">
-              Payment Console features scoped to {park.name}. Routes write to this park's payment settings.
+              Configure gateway access, route each payment channel, then attach POS terminals for {park.name}.
             </p>
           </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <Badge tone={unresolvedChannels.length ? "red" : configuredChannels ? "green" : "stone"}>
-              {configuredChannels}/{channels.length} routes
-            </Badge>
-            <button type="button" onClick={() => setAddGatewayOpen(true)} className="btn-nexus inline-flex min-h-10 items-center gap-2 rounded-lg px-4 py-2 text-sm font-black">
-              <FaPlus /> Add gateway
-            </button>
-          </div>
+          <button type="button" onClick={() => setAddGatewayOpen(true)} className="btn-nexus inline-flex min-h-10 items-center gap-2 rounded-lg px-4 py-2 text-sm font-black">
+            <FaPlus /> Add park gateway
+          </button>
+        </div>
+        <div className="mt-4 grid gap-2 sm:grid-cols-3">
+          {[
+            {
+              step: "1",
+              label: "Gateway access",
+              value: availableCredentials ? `${availableCredentials} available` : "Not configured",
+              ready: availableCredentials > 0,
+            },
+            {
+              step: "2",
+              label: "Channel routes",
+              value: `${configuredChannels}/${channels.length} configured`,
+              ready: configuredChannels === channels.length,
+            },
+            {
+              step: "3",
+              label: "Route health",
+              value: unresolvedChannels.length ? `${unresolvedChannels.length} need attention` : configuredChannels ? "Healthy" : "Waiting for routes",
+              ready: configuredChannels > 0 && unresolvedChannels.length === 0,
+            },
+          ].map((item) => (
+            <div key={item.step} className={`flex items-center gap-3 rounded-xl border px-3 py-2.5 ${item.ready ? "border-emerald-200 bg-emerald-50" : "border-stone-200 bg-stone-50"}`}>
+              <span className={`grid h-8 w-8 shrink-0 place-items-center rounded-lg text-xs font-black ${item.ready ? "bg-emerald-600 text-white" : "bg-white text-stone-500 shadow-sm"}`}>
+                {item.ready ? <FaCheckCircle /> : item.step}
+              </span>
+              <div className="min-w-0">
+                <p className="text-[11px] font-black uppercase tracking-wide text-stone-500">{item.label}</p>
+                <p className="truncate text-sm font-black text-stone-900">{item.value}</p>
+              </div>
+            </div>
+          ))}
         </div>
       </section>
 
-      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
-        <section className="rounded-xl border border-stone-200 bg-white p-5 shadow-sm">
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <p className="text-xs font-black uppercase text-stone-500">Park gateways</p>
-              <h3 className="mt-1 text-lg font-black text-stone-950">Credentials</h3>
-            </div>
-            {credentialsLoading || schemasLoading ? <Badge>Loading</Badge> : null}
+      <section className="rounded-xl border border-stone-200 bg-white p-4 shadow-sm sm:p-5">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p className="text-xs font-black uppercase text-stone-500">Step 1 · Gateway access</p>
+            <h3 className="mt-1 text-lg font-black text-stone-950">Available credentials</h3>
           </div>
-
-          <div className="mt-4 divide-y divide-stone-100">
+          {credentialsLoading || schemasLoading ? <Badge>Loading</Badge> : <Badge tone={availableCredentials ? "green" : "stone"}>{availableCredentials} available</Badge>}
+        </div>
+        <div className="mt-4 grid gap-4 lg:grid-cols-2">
+          <div className="min-w-0 rounded-xl border border-stone-200 p-3">
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-xs font-black uppercase text-stone-500">Park-specific</p>
+              <Badge tone={parkCredentials.length ? "green" : "stone"}>{parkCredentials.length}</Badge>
+            </div>
+            <div className="mt-2 divide-y divide-stone-100">
             {parkCredentials.map((credential) => (
               <div key={credential.credentialId} className="flex items-center justify-between gap-3 py-3">
                 <div className="flex min-w-0 items-center gap-3">
@@ -761,18 +834,20 @@ export default function ParkPaymentConsole({ park }) {
               </div>
             ))}
             {!parkCredentials.length ? (
-              <div className="rounded-xl border border-dashed border-stone-300 bg-stone-50 p-4 text-sm font-bold text-stone-500">
-                No park-specific gateway yet. This park can still inherit organization gateways.
+              <div className="rounded-lg border border-dashed border-stone-300 bg-stone-50 p-3 text-sm font-bold text-stone-500">
+                No park-specific gateway. Organization credentials can be used as fallback.
               </div>
             ) : null}
           </div>
-        </section>
-
-        <aside className="rounded-xl border border-stone-200 bg-white p-5 shadow-sm">
-          <p className="text-xs font-black uppercase text-stone-500">Inherited gateways</p>
-          <div className="mt-3 space-y-2">
+          </div>
+          <div className="min-w-0 rounded-xl border border-stone-200 p-3">
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-xs font-black uppercase text-stone-500">Inherited from organization</p>
+              <Badge tone={inheritedCredentials.length ? "blue" : "stone"}>{inheritedCredentials.length}</Badge>
+            </div>
+            <div className="mt-2 space-y-2">
             {inheritedCredentials.map((credential) => (
-              <div key={credential.credentialId} className="flex items-center gap-2 rounded-lg bg-stone-50 p-2">
+              <div key={credential.credentialId} className="flex items-center gap-2 rounded-lg border border-stone-100 bg-stone-50 p-2">
                 <ProviderMark provider={credential.provider} size="sm" />
                 <div className="min-w-0">
                   <p className="truncate text-sm font-black text-stone-900">{credential.label}</p>
@@ -783,23 +858,25 @@ export default function ParkPaymentConsole({ park }) {
             ))}
             {!inheritedCredentials.length ? <p className="text-sm font-bold text-stone-500">No organization gateway configured.</p> : null}
           </div>
-        </aside>
-      </div>
+          </div>
+        </div>
+      </section>
 
-      <section className="rounded-xl border border-stone-200 bg-white p-5 shadow-sm">
+      <section className="rounded-xl border border-stone-200 bg-white p-4 shadow-sm sm:p-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <p className="text-xs font-black uppercase text-orange-700">Channel routing</p>
+            <p className="text-xs font-black uppercase text-orange-700">Step 2 · Channel routing</p>
             <h3 className="mt-1 text-lg font-black text-stone-950">Where each payment channel sends money</h3>
+            <p className="mt-1 text-sm font-semibold text-stone-500">Open a channel to choose its provider, mode, and adapter.</p>
           </div>
           {routesLoading ? <Badge>Loading routes</Badge> : null}
         </div>
-        <div className="mt-4 grid gap-3 lg:grid-cols-2">
+        <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
           {channels.map((channel) => {
             const route = routes[channel.key];
             const resolved = route ? resolveCredential({ provider: route.provider, mode: route.mode, locationId, credentials }) : null;
             return (
-              <button key={channel.key} type="button" onClick={() => setRouteEditing(channel)} className="rounded-xl border border-stone-200 p-4 text-left transition hover:border-orange-200 hover:bg-orange-50/40">
+              <button key={channel.key} type="button" onClick={() => setRouteEditing(channel)} className="group rounded-xl border border-stone-200 p-3 text-left transition hover:-translate-y-0.5 hover:border-orange-200 hover:bg-orange-50/40 hover:shadow-sm">
                 <div className="flex items-start gap-3">
                   <div className="grid h-10 w-10 place-items-center rounded-lg bg-orange-50 text-orange-700">
                     {route ? <ProviderMark provider={route.provider} size="sm" /> : <FaCreditCard />}
@@ -815,6 +892,9 @@ export default function ParkPaymentConsole({ park }) {
                         {providerMap[route.provider]?.name || route.provider} · {route.mode} · {route.adapterKey}
                       </p>
                     ) : null}
+                    <span className="mt-3 inline-flex items-center gap-1 text-xs font-black text-orange-700">
+                      {route ? "Edit route" : "Configure route"} <FaArrowRight className="transition group-hover:translate-x-0.5" />
+                    </span>
                   </div>
                 </div>
               </button>
@@ -829,7 +909,10 @@ export default function ParkPaymentConsole({ park }) {
         ) : null}
       </section>
 
-      <PosTree park={scopedPark} />
+      <PosTree
+        park={scopedPark}
+        onConfigurePos={() => setRouteEditing(channels.find((channel) => channel.key === "pos"))}
+      />
 
       {addGatewayOpen ? <AddGatewayModal park={scopedPark} schemas={schemas} onClose={() => setAddGatewayOpen(false)} /> : null}
       {editingGateway ? <EditGatewayModal credential={editingGateway} onClose={() => setEditingGateway(null)} /> : null}

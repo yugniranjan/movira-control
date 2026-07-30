@@ -5,8 +5,11 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:local": "vite --mode development",
     "build": "vite build",
+    "build:production": "vite build --mode production",
     "lint": "eslint .",
+    "test": "node --test src/api/*.test.js src/auth/*.test.js src/routes/*.test.js src/features/saas/*.test.js",
     "preview": "vite preview"
   },
   "dependencies": {

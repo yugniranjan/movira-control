@@ -2,7 +2,11 @@
 import { configureStore } from '@reduxjs/toolkit';
 import { setupListeners } from '@reduxjs/toolkit/query';
 import { baseApi } from '../api/baseApi';
-import authReducer, { authStateCleared, authStateSynced } from '../features/auth/authSlice';
+import authReducer, {
+  authStateCleared,
+  authStateSynced,
+  tokenRefreshed,
+} from '../features/auth/authSlice';
 
 export const store = configureStore({
   reducer: {
@@ -16,6 +20,14 @@ export const store = configureStore({
 // Enable refetchOnFocus and refetchOnReconnect
 setupListeners(store.dispatch);
 
+window.addEventListener('movira:token-refreshed', (event) => {
+  const token = event.detail?.token;
+  if (token) store.dispatch(tokenRefreshed({ token }));
+});
+
+window.addEventListener('movira:auth-cleared', () => {
+  store.dispatch(authStateCleared());
+});
 
 // 🔹 Multi-tab sync for login + logout
 window.addEventListener('storage', (event) => {

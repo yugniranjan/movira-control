@@ -7,6 +7,7 @@
 
 import { createElement, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
+import { useSelector } from "react-redux";
 import {
   FiAlertTriangle,
   FiArrowRight,
@@ -17,7 +18,6 @@ import {
   FiZap,
 } from "react-icons/fi";
 import { api } from "../api";
-import { useAuth } from "../auth/useAuth";
 import { CHANNELS, channelByKey } from "../constants/channels";
 import { providerByKey } from "../constants/providers";
 import { Badge, Card, PageShell, ProviderBadge, Spinner } from "../components/ui";
@@ -47,7 +47,7 @@ function Stat({ icon: Icon, label, value, hint, to }) {
 }
 
 export default function OverviewPage() {
-  const { user } = useAuth();
+  const user = useSelector((state) => state.auth.user);
   const [data, setData] = useState(null);
   const [loadError, setLoadError] = useState(null);
   const [reloadKey, setReloadKey] = useState(0);

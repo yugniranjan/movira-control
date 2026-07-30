@@ -28,7 +28,7 @@ export const themeOptions = [
     id: "light",
     label: "Porcelain",
     shortLabel: "Porcelain",
-    swatch: "linear-gradient(135deg, #FBFAF7 0%, #4F46E5 56%, #D97706 100%)",
+    swatch: "linear-gradient(135deg, #FBFAF7 0%, var(--brand-primary) 56%, #D97706 100%)",
     canonical: "pos-bright",
   },
   {

@@ -3,8 +3,8 @@
 // A venue has many Terminals (tills / checkout stations); each Terminal has one
 // or more Readers (the physical card machine — a Stripe reader or a Nuvei TID),
 // one marked default for charges. Backed by:
-//   GET    /payments/config/venues/:id/pos-tree
-//   POST   /payments/config/venues/:id/terminals/:posDeviceId/readers
+//   GET    /payments/config/locations/:id/pos-tree
+//   POST   /payments/config/locations/:id/terminals/:posDeviceId/readers
 //   PATCH  /payments/config/readers/:terminalId   (rename / set default)
 //   DELETE /payments/config/readers/:terminalId
 //   POST   /pos/devices                           (create a Terminal/till)

@@ -1,4 +1,5 @@
 import { baseApi } from "../../api/baseApi";
+import { paymentConfigPaths } from "./paymentConfigPaths";
 
 export const moviraControlApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
@@ -201,13 +202,13 @@ export const moviraControlApi = baseApi.injectEndpoints({
       }),
     }),
     getVenuePaymentRoutes: builder.query({
-      query: (locationId) => `/payments/config/routes/venue/${locationId}`,
+      query: (locationId) => paymentConfigPaths.routeList(locationId),
       providesTags: (result, error, locationId) => [{ type: "Payment", id: `routes-${locationId}` }],
       transformResponse: (response) => response?.data || response || {},
     }),
     upsertVenuePaymentRoute: builder.mutation({
       query: ({ locationId, channel, ...body }) => ({
-        url: `/payments/config/routes/venue/${locationId}/${channel}`,
+        url: paymentConfigPaths.route(locationId, channel),
         method: "PUT",
         body,
       }),
@@ -216,13 +217,13 @@ export const moviraControlApi = baseApi.injectEndpoints({
     }),
     deleteVenuePaymentRoute: builder.mutation({
       query: ({ locationId, channel }) => ({
-        url: `/payments/config/routes/venue/${locationId}/${channel}`,
+        url: paymentConfigPaths.route(locationId, channel),
         method: "DELETE",
       }),
       invalidatesTags: (result, error, { locationId }) => ["Payment", { type: "Payment", id: `routes-${locationId}` }],
     }),
     getVenuePosTree: builder.query({
-      query: (locationId) => `/payments/config/venues/${locationId}/pos-tree`,
+      query: (locationId) => paymentConfigPaths.posTree(locationId),
       providesTags: (result, error, locationId) => [{ type: "Payment", id: `pos-${locationId}` }],
       transformResponse: (response) => response?.data || response || { routed: false, terminals: [] },
     }),
@@ -246,7 +247,7 @@ export const moviraControlApi = baseApi.injectEndpoints({
     }),
     addVenueReader: builder.mutation({
       query: ({ locationId, posDeviceId, ...body }) => ({
-        url: `/payments/config/venues/${locationId}/terminals/${posDeviceId}/readers`,
+        url: paymentConfigPaths.terminalReaders(locationId, posDeviceId),
         method: "POST",
         body,
       }),

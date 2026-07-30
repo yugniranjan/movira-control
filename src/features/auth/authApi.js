@@ -53,6 +53,7 @@ export const authApi = baseApi.injectEndpoints({
               user: data.user,
               sidebar: data.sidebar || [],
               permissions: data.permissions || [],
+              actionPermissions: data.actionPermissions || [],
               allowedRoutes: data.allowedRoutes || [],
               locations: data.locations || [],
             })

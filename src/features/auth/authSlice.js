@@ -2,7 +2,7 @@
 import { createSlice } from '@reduxjs/toolkit';
 import Cookies from 'js-cookie';
 
-const AUTH_STATE_VERSION = 9;
+const AUTH_STATE_VERSION = 10;
 
 // Load state from localStorage
 const loadAuthState = () => {
@@ -26,6 +26,7 @@ const saveAuthState = (state) => {
         user: state.user,
         sidebar: state.sidebar,
         permissions: state.permissions,
+        actionPermissions: state.actionPermissions,
         allowedRoutes: state.allowedRoutes,
         locations: state.locations,
       })
@@ -40,6 +41,7 @@ const initialState = loadAuthState() || {
   token: null,
   sidebar: [],
   permissions: [],
+  actionPermissions: [],
   allowedRoutes: [],
   locations: [],
   error: null,
@@ -54,6 +56,7 @@ const authSlice = createSlice({
       state.user = action.payload.user;
       state.sidebar = action.payload.sidebar || [];
       state.permissions = action.payload.permissions || [];
+      state.actionPermissions = action.payload.actionPermissions || [];
       state.allowedRoutes = action.payload.allowedRoutes || [];
       state.locations = action.payload.locations || [];
       state.error = null;
@@ -69,6 +72,7 @@ const authSlice = createSlice({
       state.user = action.payload.user || null;
       state.sidebar = action.payload.sidebar || [];
       state.permissions = action.payload.permissions || [];
+      state.actionPermissions = action.payload.actionPermissions || [];
       state.allowedRoutes = action.payload.allowedRoutes || [];
       state.locations = action.payload.locations || [];
       state.error = null;
@@ -78,6 +82,7 @@ const authSlice = createSlice({
       state.token = null;
       state.sidebar = [];
       state.permissions = [];
+      state.actionPermissions = [];
       state.allowedRoutes = [];
       state.locations = [];
       state.error = null;
@@ -88,6 +93,7 @@ const authSlice = createSlice({
       state.token = null;
       state.sidebar = [];
       state.permissions = [];
+      state.actionPermissions = [];
       state.allowedRoutes = [];
       state.locations = [];
       state.error = null;

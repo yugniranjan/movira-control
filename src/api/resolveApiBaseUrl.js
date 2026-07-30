@@ -15,8 +15,8 @@ function tryParseUrl(value) {
 }
 
 export function resolveApiBaseUrl() {
-  const configuredBaseUrl = import.meta.env.VITE_API_BASE_URL?.trim();
-  const proxyTarget = import.meta.env.VITE_API_PROXY_TARGET?.trim();
+  const configuredBaseUrl = import.meta.env?.VITE_API_BASE_URL?.trim();
+  const proxyTarget = import.meta.env?.VITE_API_PROXY_TARGET?.trim();
 
   if (typeof window === "undefined") {
     return configuredBaseUrl || DEFAULT_API_BASE_URL;

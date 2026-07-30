@@ -9,7 +9,7 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, cwd(), "");
   const apiTarget = env.VITE_API_PROXY_TARGET || "http://localhost:5171";
   const crmApiTarget = env.VITE_CRM_API_PROXY_TARGET || "http://localhost:4100";
-  const port = Number(env.VITE_PORT || 5172);
+  const port = Number(env.VITE_PORT || 5175);
 
   return {
     plugins: [

@@ -1,19 +1,23 @@
-import { createElement, useEffect, useMemo, useState } from "react";
-import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
+import { createElement, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
 import {
   FaArrowLeft,
   FaBuilding,
   FaCheckCircle,
   FaCreditCard,
+  FaDownload,
   FaEdit,
   FaFileInvoiceDollar,
   FaEye,
   FaLayerGroup,
+  FaLock,
   FaMapMarkerAlt,
   FaPause,
   FaPlay,
   FaPlus,
+  FaPrint,
   FaRocket,
   FaSearch,
   FaTimes,
@@ -57,6 +61,14 @@ import {
   usePermanentDeleteSaasParkMutation,
 } from "../../features/saas/moviraControlApi";
 import { useGetAllUsersQuery } from "../../features/user/userApi";
+import {
+  expandModuleSelection,
+  fallbackModuleWorkflows,
+  getRemovalBlockers,
+  getWorkflowState,
+  modulesForCompleteWorkflow,
+  normalizeModuleCatalog,
+} from "../../features/saas/moduleAccessModel";
 import ParkPaymentConsole from "./ParkPaymentConsole";
 
 const modules = [
@@ -75,8 +87,8 @@ const onboardingLabels = {
   ownerAccess: "Owner access",
   moduleAccess: "Module access",
   billingPlan: "Billing setup",
-  paymentMethod: "Payment method",
-  guestPayments: "Guest payments",
+  paymentMethod: "Platform payment",
+  customerPayments: "Customer payments",
   catalogReady: "Ticket catalog",
   bookingPortal: "Booking portal",
   staffHandoff: "Staff handoff",
@@ -317,23 +329,63 @@ const setupSteps = [
   { key: "ownerAccess", label: "Owner", route: "edit" },
   { key: "moduleAccess", label: "Modules", route: "modules" },
   { key: "billingPlan", label: "Billing", route: "billing" },
-  { key: "paymentMethod", label: "Payment", route: "payments" },
-  { key: "guestPayments", label: "Guest payments", route: "payments" },
-  { key: "catalogReady", label: "Catalog", route: "" },
-  { key: "bookingPortal", label: "Portal", route: "" },
-  { key: "staffHandoff", label: "Staff", route: "" },
+  { key: "paymentMethod", label: "Platform payment", route: "payments" },
+  { key: "customerPayments", label: "Customer payments", route: "payments" },
+  { key: "catalogReady", label: "Catalog", route: "onboarding" },
+  { key: "bookingPortal", label: "Portal", route: "onboarding" },
+  { key: "staffHandoff", label: "Staff", route: "onboarding" },
   { key: "goLiveApproval", label: "Go live", route: "onboarding" },
 ];
 
-const parkDetailTabs = [
-  { suffix: "", label: "Overview" },
-  { suffix: "modules", label: "Modules", requiredStep: "parkWorkspace", requiredLabel: "Workspace" },
-  { suffix: "billing", label: "Billing", requiredStep: "moduleAccess", requiredLabel: "Modules" },
-  { suffix: "billing-history", label: "Billing History", requiredStep: "billingPlan", requiredLabel: "Billing" },
-  { suffix: "payments", label: "Payments", requiredStep: "billingPlan", requiredLabel: "Billing" },
-  { suffix: "payment-history", label: "Payment History", requiredStep: "paymentMethod", requiredLabel: "Payments" },
-  { suffix: "onboarding", label: "Onboarding", requiredStep: "guestPayments", requiredLabel: "Guest payments" },
-  { suffix: "audit", label: "Audit", requiredStep: "goLiveApproval", requiredLabel: "Go live" },
+const manualOnboardingKeys = new Set(["catalogReady", "bookingPortal", "staffHandoff"]);
+
+const setupStages = [
+  {
+    suffix: "",
+    label: "Workspace",
+    description: "Park and owner",
+    keys: ["parkWorkspace", "ownerAccess"],
+  },
+  {
+    suffix: "modules",
+    label: "Modules",
+    description: "Product access",
+    keys: ["moduleAccess"],
+  },
+  {
+    suffix: "billing",
+    label: "Billing",
+    description: "Plan and pricing",
+    keys: ["billingPlan"],
+  },
+  {
+    suffix: "payments",
+    label: "Payments",
+    description: "Platform and guests",
+    keys: ["paymentMethod", "customerPayments"],
+  },
+  {
+    suffix: "onboarding",
+    label: "Launch",
+    description: "Operations and go-live",
+    keys: ["catalogReady", "bookingPortal", "staffHandoff", "goLiveApproval"],
+  },
+];
+
+const parkRecordViews = [
+  {
+    suffix: "billing-history",
+    label: "Billing history",
+    requiredStep: "billingPlan",
+    requiredLabel: "Billing",
+  },
+  {
+    suffix: "payment-history",
+    label: "Payment history",
+    requiredStep: "paymentMethod",
+    requiredLabel: "Platform payment",
+  },
+  { suffix: "audit", label: "Audit log" },
 ];
 
 function money(value, currency = "CAD") {
@@ -443,6 +495,37 @@ const listingRowClass = "transition hover:bg-[var(--brand-primary-soft)]/45 [&>t
 const listingFooterClass =
   "sticky bottom-0 z-20 flex flex-wrap items-center justify-end gap-2 border-t border-[var(--stroke-soft)] bg-[var(--surface-panel-strong)]/95 p-2.5 backdrop-blur";
 
+function CompactListingMetric({ label, value }) {
+  return (
+    <span className="inline-flex min-h-8 max-w-[190px] items-center gap-1.5 rounded-lg border border-[var(--stroke-soft)] bg-[var(--surface-muted)] px-2 py-1 text-xs">
+      <span className="shrink-0 font-bold text-[var(--text-muted)]">{label}</span>
+      <strong className="truncate font-black text-[var(--text-strong)]">{value}</strong>
+    </span>
+  );
+}
+
+function CompactListingHeader({ eyebrow, title, description, controls, meta }) {
+  return (
+    <div className="sticky top-0 z-30 border-b border-[var(--stroke-soft)] bg-[var(--surface-panel-strong)]/95 px-3 py-2.5 backdrop-blur">
+      <div className="flex min-w-0 flex-col gap-2 xl:flex-row xl:items-center">
+        <div className="min-w-0 xl:w-[310px] xl:shrink-0">
+          <div className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-0.5">
+            <p className="shrink-0 text-[10px] font-black uppercase tracking-[0.14em] text-[var(--brand-primary)]">
+              {eyebrow}
+            </p>
+            <h2 className="min-w-0 truncate text-base font-black text-[var(--text-strong)]">{title}</h2>
+          </div>
+          {description ? (
+            <p className="mt-0.5 truncate text-xs font-semibold text-[var(--text-muted)]">{description}</p>
+          ) : null}
+        </div>
+        {controls ? <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">{controls}</div> : null}
+        {meta ? <div className="flex shrink-0 flex-wrap items-center gap-1.5 xl:justify-end">{meta}</div> : null}
+      </div>
+    </div>
+  );
+}
+
 function StatCard({ icon: Icon, label, value, detail, compact = false }) {
   return (
     <div className={`min-w-0 rounded-xl border border-stone-200 bg-white shadow-sm ${compact ? "p-3" : "p-4"}`}>
@@ -492,46 +575,181 @@ function stepHref(parkId, step) {
   return `/movira-control/parks/${parkId}${step?.route ? `/${step.route}` : ""}`;
 }
 
-function getParkTabLock(park, suffix = "") {
-  const tab = parkDetailTabs.find((item) => item.suffix === suffix);
-  if (!tab?.requiredStep) return null;
-  if (park?.onboarding?.[tab.requiredStep]) return null;
+function parkSectionHref(parkId, suffix = "") {
+  return `/movira-control/parks/${parkId}${suffix ? `/${suffix}` : ""}`;
+}
+
+function isSetupStageComplete(park, stage) {
+  return stage.keys.every((key) => Boolean(park?.onboarding?.[key]));
+}
+
+function isSetupStageAvailable(park, stageIndex) {
+  return setupStages.slice(0, stageIndex).every((stage) => isSetupStageComplete(park, stage));
+}
+
+function getCurrentSetupStage(park) {
+  return setupStages.find((stage) => !isSetupStageComplete(park, stage)) || setupStages[setupStages.length - 1];
+}
+
+function getParkSectionLock(park, suffix = "") {
+  const recordView = parkRecordViews.find((item) => item.suffix === suffix);
+  if (recordView?.requiredStep && !park?.onboarding?.[recordView.requiredStep]) {
+    return {
+      message: `Complete ${recordView.requiredLabel} before opening ${recordView.label}.`,
+    };
+  }
+
+  const stageIndex = setupStages.findIndex((stage) => stage.suffix === suffix);
+  if (stageIndex < 0 || isSetupStageAvailable(park, stageIndex)) return null;
+  const prerequisite = setupStages[stageIndex - 1];
   return {
-    tab,
-    message: `Complete ${tab.requiredLabel} before opening ${tab.label}.`,
+    message: `Complete ${prerequisite.label} before opening ${setupStages[stageIndex].label}.`,
   };
 }
 
-function LaunchRail({ park }) {
-  const score = Number(park.onboardingScore || 0);
-  const completedSteps = setupSteps.filter((step) => Boolean(park.onboarding?.[step.key])).length;
+function ParkRecordsMenu({ park, section, isRecordView }) {
+  const [open, setOpen] = useState(false);
+  const [position, setPosition] = useState(null);
+  const triggerRef = useRef(null);
+  const menuRef = useRef(null);
+
+  useEffect(() => {
+    if (!open) return undefined;
+
+    const updatePosition = () => {
+      const trigger = triggerRef.current;
+      if (!trigger) return;
+
+      const rect = trigger.getBoundingClientRect();
+      const menuWidth = 224;
+      const menuHeight = 132;
+      const gap = 8;
+      const viewportPadding = 12;
+      const left = Math.min(
+        window.innerWidth - menuWidth - viewportPadding,
+        Math.max(viewportPadding, rect.right - menuWidth)
+      );
+      const fitsBelow = rect.bottom + gap + menuHeight <= window.innerHeight - viewportPadding;
+
+      setPosition({
+        left,
+        top: fitsBelow ? rect.bottom + gap : Math.max(viewportPadding, rect.top - menuHeight - gap),
+      });
+    };
+
+    const closeOnOutsideClick = (event) => {
+      if (triggerRef.current?.contains(event.target) || menuRef.current?.contains(event.target)) return;
+      setOpen(false);
+    };
+    const closeOnEscape = (event) => {
+      if (event.key === "Escape") setOpen(false);
+    };
+
+    updatePosition();
+    document.addEventListener("pointerdown", closeOnOutsideClick);
+    document.addEventListener("keydown", closeOnEscape);
+    window.addEventListener("resize", updatePosition);
+    window.addEventListener("scroll", updatePosition, true);
+
+    return () => {
+      document.removeEventListener("pointerdown", closeOnOutsideClick);
+      document.removeEventListener("keydown", closeOnEscape);
+      window.removeEventListener("resize", updatePosition);
+      window.removeEventListener("scroll", updatePosition, true);
+    };
+  }, [open]);
 
   return (
-    <div className="rounded-lg border border-stone-200 bg-white p-3 shadow-sm">
-      <div className="grid min-w-0 gap-3 xl:grid-cols-[260px_minmax(0,1fr)_auto] xl:items-center">
-        <div className="flex items-center gap-3">
-          <div className="grid h-11 w-11 shrink-0 place-items-center rounded-lg bg-orange-50 text-orange-700">
+    <>
+      <button
+        ref={triggerRef}
+        type="button"
+        aria-haspopup="menu"
+        aria-expanded={open}
+        onClick={() => setOpen((current) => !current)}
+        className={`${buttonClass("secondary")} ${
+          isRecordView
+            ? "border-[var(--brand-primary-border)] bg-[var(--brand-primary-soft)] text-[var(--brand-primary)]"
+            : ""
+        }`}
+      >
+        <FaFileInvoiceDollar /> Records
+      </button>
+      {open && position
+        ? createPortal(
+            <div
+              ref={menuRef}
+              role="menu"
+              style={{ left: position.left, top: position.top }}
+              className="fixed z-[1000] w-56 rounded-xl border border-[var(--stroke-soft)] bg-[var(--surface-panel-strong)] p-1.5 shadow-[0_18px_45px_rgba(15,23,42,0.2)]"
+            >
+              {parkRecordViews.map((view) => {
+                const locked = getParkSectionLock(park, view.suffix);
+                return (
+                  <Link
+                    key={view.suffix}
+                    role="menuitem"
+                    to={parkSectionHref(park.id, view.suffix)}
+                    onClick={(event) => {
+                      if (locked) {
+                        event.preventDefault();
+                        toast.error(locked.message);
+                        return;
+                      }
+                      setOpen(false);
+                    }}
+                    className={`flex min-h-9 items-center gap-2 rounded-lg px-3 text-sm font-bold transition ${
+                      section === view.suffix
+                        ? "bg-[var(--brand-primary-soft)] text-[var(--brand-primary)]"
+                        : locked
+                          ? "cursor-not-allowed text-[var(--text-muted)] opacity-60"
+                          : "text-[var(--text-base)] hover:bg-[var(--surface-muted)]"
+                    }`}
+                  >
+                    {locked ? <FaLock className="text-xs" /> : <FaEye className="text-xs" />}
+                    {view.label}
+                  </Link>
+                );
+              })}
+            </div>,
+            document.body
+          )
+        : null}
+    </>
+  );
+}
+
+function SetupNavigation({ park, section }) {
+  const score = Number(park.onboardingScore || 0);
+  const completedSteps = setupSteps.filter((step) => Boolean(park.onboarding?.[step.key])).length;
+  const isRecordView = parkRecordViews.some((item) => item.suffix === section);
+
+  return (
+    <div className="sticky top-[72px] z-30 mb-3 overflow-visible rounded-xl border border-[var(--stroke-soft)] bg-[var(--surface-panel)]/95 p-2.5 shadow-[var(--shadow-card)] backdrop-blur">
+      <div className="grid min-w-0 gap-2 xl:grid-cols-[190px_minmax(260px,1fr)_auto] xl:items-center">
+        <div className="flex min-w-0 items-center gap-2.5">
+          <div className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-[var(--brand-primary-soft)] text-[var(--brand-primary)]">
             <FaRocket />
           </div>
           <div className="min-w-0">
-            <p className="text-[11px] font-black uppercase tracking-[0.14em] text-stone-500">
+            <p className="text-[10px] font-black uppercase tracking-[0.14em] text-[var(--text-muted)]">
               Launch readiness
             </p>
             <div className="mt-1 flex min-w-0 items-baseline gap-2">
-              <p className="shrink-0 text-2xl font-black leading-none text-stone-950">{score}%</p>
-              <span className="text-sm font-black text-stone-500">complete</span>
+              <p className="shrink-0 text-xl font-black leading-none text-[var(--text-strong)]">{score}%</p>
+              <span className="truncate text-xs font-bold text-[var(--text-muted)]">{completedSteps}/{setupSteps.length} checks</span>
             </div>
           </div>
         </div>
 
         <div className="min-w-0">
-          <div className="mb-2 flex items-center justify-between gap-3 text-xs font-black text-stone-500">
-            <span>{completedSteps}/{setupSteps.length} steps complete</span>
+          <div className="mb-1.5 flex items-center justify-between gap-3 text-[11px] font-bold text-[var(--text-muted)]">
+            <span>{score === 100 ? "Setup complete" : "Complete each stage to unlock the next"}</span>
             <span>{score === 100 ? "Ready for launch" : "In progress"}</span>
           </div>
-          <div className="h-2 overflow-hidden rounded-full bg-stone-100">
+          <div className="h-2 overflow-hidden rounded-full bg-[var(--surface-muted)]">
             <div
-              className="h-full rounded-full bg-gradient-to-r from-orange-500 to-orange-600 transition-all"
+              className="h-full rounded-full bg-[var(--brand-primary)] transition-all"
               style={{ width: `${Math.max(0, Math.min(100, score))}%` }}
             />
           </div>
@@ -539,30 +757,50 @@ function LaunchRail({ park }) {
 
         <div className="flex items-center justify-between gap-2 xl:justify-end">
           <Pill className={statusClass(park.status)}>{park.status}</Pill>
+          <ParkRecordsMenu park={park} section={section} isRecordView={isRecordView} />
         </div>
       </div>
 
-      <div className="mt-3 flex flex-wrap gap-2">
-        {setupSteps.map((step, index) => {
-          const done = Boolean(park.onboarding?.[step.key]);
+      <div className="mt-2 grid gap-1.5 border-t border-[var(--stroke-soft)] pt-2 sm:grid-cols-5">
+        {setupStages.map((stage, index) => {
+          const done = isSetupStageComplete(park, stage);
+          const available = isSetupStageAvailable(park, index);
+          const active = !isRecordView && section === stage.suffix;
           return (
             <Link
-              key={step.key}
-              to={stepHref(park.id, step)}
-              className={`inline-flex min-h-8 items-center gap-2 rounded-lg border px-2.5 text-xs font-black transition ${
-                done
-                  ? "border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
-                  : "border-stone-200 bg-stone-50 text-stone-600 hover:border-orange-200 hover:bg-orange-50"
+              key={stage.suffix || "workspace"}
+              to={parkSectionHref(park.id, stage.suffix)}
+              onClick={(event) => {
+                if (available) return;
+                event.preventDefault();
+                toast.error(`Complete ${setupStages[index - 1].label} before opening ${stage.label}.`);
+              }}
+              title={available ? stage.label : `Complete ${setupStages[index - 1]?.label || "the previous stage"} first`}
+              className={`flex min-h-10 min-w-0 items-center gap-2 rounded-lg border px-2.5 py-1.5 transition ${
+                active
+                  ? "border-[var(--brand-primary-border)] bg-[var(--brand-primary-soft)] text-[var(--brand-primary)] shadow-sm"
+                  : done
+                    ? "border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
+                    : available
+                      ? "border-[var(--stroke-soft)] bg-[var(--surface-panel-strong)] text-[var(--text-base)] hover:border-[var(--brand-primary-border)] hover:bg-[var(--surface-muted)]"
+                      : "cursor-not-allowed border-[var(--stroke-soft)] bg-[var(--surface-muted)] text-[var(--text-muted)] opacity-65"
               }`}
             >
               <span
-                className={`grid h-4 w-4 shrink-0 place-items-center rounded-full text-[9px] ${
-                  done ? "bg-emerald-600 text-white" : "bg-white text-stone-400"
+                className={`grid h-6 w-6 shrink-0 place-items-center rounded-full text-[10px] font-black ${
+                  done
+                    ? "bg-emerald-600 text-white"
+                    : active
+                      ? "bg-[var(--brand-primary)] text-white"
+                      : "border border-[var(--stroke-soft)] bg-[var(--surface-panel)] text-[var(--text-muted)]"
                 }`}
               >
-                {done ? <FaCheckCircle className="text-[8px]" /> : index + 1}
+                {done ? <FaCheckCircle className="text-[10px]" /> : available ? index + 1 : <FaLock className="text-[9px]" />}
               </span>
-              <span className="truncate">{step.label}</span>
+              <span className="min-w-0">
+                <span className="block truncate text-xs font-black">{stage.label}</span>
+                <span className="hidden truncate text-[10px] font-semibold opacity-75 2xl:block">{stage.description}</span>
+              </span>
             </Link>
           );
         })}
@@ -627,7 +865,7 @@ function planFormFrom(plan = null) {
   };
 }
 
-function PlansManager() {
+export function PlansManager() {
   const [activeCatalogTab, setActiveCatalogTab] = useState("plans");
   const [search, setSearch] = useState("");
   const [includeArchived, setIncludeArchived] = useState(false);
@@ -1292,7 +1530,7 @@ function Overview() {
   );
 }
 
-function ParksList() {
+export function ParksList() {
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("active");
@@ -1672,7 +1910,7 @@ function ParksList() {
   );
 }
 
-function ParkForm() {
+export function ParkForm() {
   const { parkId } = useParams();
   const navigate = useNavigate();
   const isEdit = Boolean(parkId);
@@ -1682,13 +1920,17 @@ function ParkForm() {
   const [customerSearch, setCustomerSearch] = useState("");
   const { data: usersData = {} } = useGetAllUsersQuery({ search: customerSearch });
   const organizations = listData.catalogs?.organizations || data?.catalogs?.organizations || [];
-  const users = Array.isArray(usersData)
-    ? usersData
-    : Array.isArray(usersData?.data)
-    ? usersData.data
-    : Array.isArray(usersData?.users)
-    ? usersData.users
-    : [];
+  const users = useMemo(
+    () =>
+      Array.isArray(usersData)
+        ? usersData
+        : Array.isArray(usersData?.data)
+        ? usersData.data
+        : Array.isArray(usersData?.users)
+        ? usersData.users
+        : [],
+    [usersData]
+  );
   const [form, setForm] = useState(defaultForm);
   const [newCustomer, setNewCustomer] = useState(defaultCustomerOwner);
   const [createdCustomer, setCreatedCustomer] = useState(null);
@@ -1697,9 +1939,18 @@ function ParkForm() {
   const [createPark, createState] = useCreateSaasParkMutation();
   const [createCustomerOwner, createCustomerState] = useCreateSaasCustomerOwnerMutation();
   const [updatePark, updateState] = useUpdateSaasParkMutation();
-  const customerUsers = createdCustomer && !users.some((user) => String(user.user_id || user.userId || user.id) === String(createdCustomer.userId || createdCustomer.id))
-    ? [...users, createdCustomer]
-    : users;
+  const customerUsers = useMemo(
+    () =>
+      createdCustomer &&
+      !users.some(
+        (user) =>
+          String(user.user_id || user.userId || user.id) ===
+          String(createdCustomer.userId || createdCustomer.id)
+      )
+        ? [...users, createdCustomer]
+        : users,
+    [createdCustomer, users]
+  );
   const selectedCustomer = customerUsers.find((user) => String(user.user_id || user.userId || user.id) === String(form.ownerUserId));
   const selectedCustomerName = getUserName(selectedCustomer) || form.owner || "No customer selected";
   const selectedCustomerEmail = selectedCustomer?.email || form.ownerEmail || "Select or create an owner account";
@@ -2198,41 +2449,7 @@ function ParkForm() {
   );
 }
 
-function ParkTabs({ park }) {
-  const { pathname } = useLocation();
-  return (
-    <div className="sticky top-[72px] z-30 mb-3 flex gap-1.5 overflow-x-auto rounded-lg border border-stone-200 bg-white/95 p-1.5 shadow-sm backdrop-blur">
-      {parkDetailTabs.map(({ suffix, label }) => {
-        const to = `/movira-control/parks/${park.id}${suffix ? `/${suffix}` : ""}`;
-        const active = pathname === to;
-        const locked = getParkTabLock(park, suffix);
-        return (
-          <Link
-            key={label}
-            to={to}
-            onClick={(event) => {
-              if (!locked) return;
-              event.preventDefault();
-              toast.error(locked.message);
-            }}
-            title={locked?.message || label}
-            className={`shrink-0 whitespace-nowrap rounded-lg px-3 py-1.5 text-sm font-black ${
-              active
-                ? "bg-orange-100 text-orange-700"
-                : locked
-                ? "cursor-not-allowed text-stone-400 hover:bg-stone-50"
-                : "text-stone-600 hover:bg-stone-100"
-            }`}
-          >
-            {label}
-          </Link>
-        );
-      })}
-    </div>
-  );
-}
-
-function ParkDetail() {
+export function ParkDetail() {
   const { parkId, section = "" } = useParams();
   const navigate = useNavigate();
   const { data, isLoading, isError, error } = useGetSaasParkByIdQuery(parkId);
@@ -2241,14 +2458,17 @@ function ParkDetail() {
   const invoices = data?.invoices || [];
   const paymentEvents = data?.paymentEvents || [];
   const catalogModules = data?.catalogs?.modules?.length ? data.catalogs.modules : modules;
+  const moduleWorkflows = data?.catalogs?.moduleWorkflows?.length
+    ? data.catalogs.moduleWorkflows
+    : fallbackModuleWorkflows;
 
   useEffect(() => {
     if (!park) return;
-    const lock = getParkTabLock(park, section);
+    const lock = getParkSectionLock(park, section);
     if (!lock) return;
     toast.error(lock.message);
-    const previousTab = parkDetailTabs[Math.max(0, parkDetailTabs.findIndex((tab) => tab.suffix === section) - 1)];
-    navigate(`/movira-control/parks/${park.id}${previousTab?.suffix ? `/${previousTab.suffix}` : ""}`, { replace: true });
+    const currentStage = getCurrentSetupStage(park);
+    navigate(parkSectionHref(park.id, currentStage.suffix), { replace: true });
   }, [navigate, park, section]);
 
   if (isLoading) return <Loader />;
@@ -2264,13 +2484,14 @@ function ParkDetail() {
         </div>
       }
     >
-      <ParkTabs park={park} />
-      {section !== "audit" ? (
-        <div className="mb-4">
-          <LaunchRail park={park} />
-        </div>
+      <SetupNavigation park={park} section={section} />
+      {section === "modules" ? (
+        <ModulesPanel
+          park={park}
+          moduleCatalog={catalogModules}
+          workflows={moduleWorkflows}
+        />
       ) : null}
-      {section === "modules" ? <ModulesPanel park={park} moduleCatalog={catalogModules} /> : null}
       {section === "billing" ? <BillingPanel park={park} plans={data?.catalogs?.plans || []} moduleCatalog={catalogModules} planUsage={data?.planUsage} /> : null}
       {section === "payments" ? <PaymentsPanel park={park} /> : null}
       {section === "payment-history" ? <PaymentHistoryPanel park={park} paymentEvents={paymentEvents} /> : null}
@@ -2354,49 +2575,269 @@ function OverviewPanel({ park }) {
   );
 }
 
-function ModulesPanel({ park, moduleCatalog = modules }) {
-  const [updateModules] = useUpdateSaasParkModulesMutation();
-  const selected = new Set(park.modules || []);
-  const toggle = async (key) => {
-    const next = new Set(selected);
-    if (next.has(key)) next.delete(key);
-    else next.add(key);
+function ModulesPanel({
+  park,
+  moduleCatalog = modules,
+  workflows = fallbackModuleWorkflows,
+}) {
+  const [updateModules, { isLoading: isUpdating }] = useUpdateSaasParkModulesMutation();
+  const [pendingWorkflow, setPendingWorkflow] = useState(null);
+  const normalizedModules = useMemo(
+    () => normalizeModuleCatalog(moduleCatalog),
+    [moduleCatalog]
+  );
+  const moduleMap = useMemo(
+    () => new Map(normalizedModules.map((module) => [module.key, module])),
+    [normalizedModules]
+  );
+  const selected = new Set(expandModuleSelection(park.modules || [], normalizedModules));
+  const moduleLabel = (key) => moduleMap.get(key)?.label || key;
+  const workflowStates = workflows.map((workflow) => ({
+    workflow,
+    state: getWorkflowState(workflow, [...selected], normalizedModules),
+  }));
+  const completeWorkflows = workflowStates.filter(({ state }) => state.complete).length;
+
+  const persistModules = async (nextKeys, successMessage = "Modules updated.") => {
+    const nextModules = expandModuleSelection(nextKeys, normalizedModules);
     try {
-      await updateModules({ id: park.id, modules: [...next] }).unwrap();
-      toast.success("Modules updated.");
+      const result = await updateModules({ id: park.id, modules: nextModules }).unwrap();
+      const activationInvoice =
+        result?.data?.activationInvoice || result?.activationInvoice || null;
+      if (activationInvoice?.status === "open") {
+        toast.success(
+          `${successMessage} Pay ${activationInvoice.invoiceNumber} to activate the added access.`
+        );
+      } else {
+        toast.success(successMessage);
+      }
+      return true;
     } catch (err) {
       toast.error(err?.data?.message || "Failed to update modules.");
+      return false;
     }
   };
-  const enabledTotal = moduleCatalog
+
+  const toggle = async (key) => {
+    if (isUpdating) return;
+    if (selected.has(key)) {
+      const blockers = getRemovalBlockers(key, [...selected], normalizedModules);
+      if (blockers.length) {
+        toast.error(
+          `${moduleLabel(key)} is required by ${blockers.map(moduleLabel).join(", ")}. Disable those modules first.`
+        );
+        return;
+      }
+      const next = [...selected].filter((moduleKey) => moduleKey !== key);
+      await persistModules(next, `${moduleLabel(key)} disabled.`);
+      return;
+    }
+
+    const next = expandModuleSelection([...selected, key], normalizedModules);
+    const autoAdded = next.filter(
+      (moduleKey) => !selected.has(moduleKey) && moduleKey !== key
+    );
+    const detail = autoAdded.length
+      ? ` Required access added: ${autoAdded.map(moduleLabel).join(", ")}.`
+      : "";
+    await persistModules(next, `${moduleLabel(key)} enabled.${detail}`);
+  };
+
+  const enableWorkflow = async () => {
+    const workflow = pendingWorkflow;
+    if (!workflow) return;
+    if (isUpdating) return;
+    const workflowModules = modulesForCompleteWorkflow(workflow, normalizedModules);
+    const next = [...new Set([...selected, ...workflowModules])];
+    const saved = await persistModules(next, `${workflow.label} is now a complete process.`);
+    if (saved) setPendingWorkflow(null);
+  };
+
+  const pendingWorkflowModules = pendingWorkflow
+    ? modulesForCompleteWorkflow(pendingWorkflow, normalizedModules)
+    : [];
+  const pendingAddedModules = pendingWorkflowModules.filter((key) => !selected.has(key));
+  const pendingAddedMonthly = pendingAddedModules.reduce(
+    (sum, key) => sum + Number(moduleMap.get(key)?.monthly || 0),
+    0
+  );
+
+  const enabledTotal = normalizedModules
     .filter((module) => selected.has(module.key))
     .reduce((sum, module) => sum + Number(module.monthly || 0), 0);
+
   return (
     <div className="space-y-4">
       <section className="rounded-xl border border-stone-200 bg-white p-5 shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <p className="text-xs font-black uppercase text-orange-700">Module access</p>
-            <h2 className="mt-1 text-xl font-black text-stone-950">Enabled products and monthly add-ons</h2>
+            <h2 className="mt-1 text-xl font-black text-stone-950">Access and complete process map</h2>
+            <p className="mt-1 max-w-3xl text-sm font-semibold text-stone-500">
+              Required modules are enabled automatically. Recommended modules complete the end-to-end customer or operating flow.
+            </p>
           </div>
-          <div className="rounded-xl bg-stone-50 px-4 py-3 text-right">
-            <p className="text-xs font-black uppercase text-stone-500">Module total</p>
-            <p className="text-xl font-black text-stone-950">{money(enabledTotal, park.currency)}/mo</p>
+          <div className="flex flex-wrap gap-2">
+            <div className="rounded-xl bg-stone-50 px-4 py-3 text-right">
+              <p className="text-xs font-black uppercase text-stone-500">Complete flows</p>
+              <p className="text-xl font-black text-stone-950">{completeWorkflows}/{workflows.length}</p>
+            </div>
+            <div className="rounded-xl bg-stone-50 px-4 py-3 text-right">
+              <p className="text-xs font-black uppercase text-stone-500">Module total</p>
+              <p className="text-xl font-black text-stone-950">{money(enabledTotal, park.currency)}/mo</p>
+            </div>
           </div>
         </div>
       </section>
-      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-        {moduleCatalog.map((module) => (
-          <button key={module.key} onClick={() => toggle(module.key)} className={`rounded-xl border p-4 text-left shadow-sm transition hover:-translate-y-0.5 ${selected.has(module.key) ? "border-orange-300 bg-orange-50" : "border-stone-200 bg-white hover:border-orange-200"}`}>
+
+      <section className="rounded-xl border border-stone-200 bg-white p-4 shadow-sm sm:p-5">
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <p className="text-xs font-black uppercase text-orange-700">Process bundles</p>
+            <h3 className="mt-1 text-lg font-black text-stone-950">Choose the outcome you want to run</h3>
+          </div>
+          <p className="text-xs font-bold text-stone-500">Required = minimum working flow · Recommended = complete experience</p>
+        </div>
+        <div className="mt-4 grid gap-3 lg:grid-cols-2">
+          {workflowStates.map(({ workflow, state }) => (
+            <article
+              key={workflow.key}
+              className={`rounded-xl border p-4 ${
+                state.complete
+                  ? "border-emerald-200 bg-emerald-50"
+                  : state.ready
+                    ? "border-amber-200 bg-amber-50"
+                    : "border-stone-200 bg-stone-50"
+              }`}
+            >
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h4 className="font-black text-stone-950">{workflow.label}</h4>
+                    <Pill
+                      className={
+                        state.complete
+                          ? "border-emerald-200 bg-white text-emerald-700"
+                          : state.ready
+                            ? "border-amber-200 bg-white text-amber-700"
+                            : "border-stone-200 bg-white text-stone-600"
+                      }
+                    >
+                      {state.complete ? "Complete" : state.ready ? "Working · add recommended" : `${state.missingRequired.length} required missing`}
+                    </Pill>
+                  </div>
+                  <p className="mt-1 text-sm font-semibold text-stone-600">{workflow.description}</p>
+                </div>
+                {!state.complete ? (
+                  <button
+                    type="button"
+                    disabled={isUpdating}
+                    onClick={() => setPendingWorkflow(workflow)}
+                    className={buttonClass("primary")}
+                  >
+                    <FaCheckCircle /> Enable full process
+                  </button>
+                ) : null}
+              </div>
+              <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                <div>
+                  <p className="text-[11px] font-black uppercase tracking-wide text-stone-500">Required access</p>
+                  <div className="mt-1 flex flex-wrap gap-1.5">
+                    {state.requiredModules.map((key) => (
+                      <span key={key} className={`rounded-md border px-2 py-1 text-xs font-bold ${selected.has(key) ? "border-emerald-200 bg-white text-emerald-700" : "border-red-200 bg-red-50 text-red-700"}`}>
+                        {selected.has(key) ? "✓ " : ""}{moduleLabel(key)}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <p className="text-[11px] font-black uppercase tracking-wide text-stone-500">Recommended</p>
+                  <div className="mt-1 flex flex-wrap gap-1.5">
+                    {state.recommendedModules.map((key) => (
+                      <span key={key} className={`rounded-md border px-2 py-1 text-xs font-bold ${selected.has(key) ? "border-emerald-200 bg-white text-emerald-700" : "border-stone-200 bg-white text-stone-500"}`}>
+                        {selected.has(key) ? "✓ " : ""}{moduleLabel(key)}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <div>
+        <div className="mb-3">
+          <p className="text-xs font-black uppercase text-orange-700">Individual access</p>
+          <h3 className="mt-1 text-lg font-black text-stone-950">What each module unlocks</h3>
+        </div>
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+        {normalizedModules.map((module) => {
+          const enabled = selected.has(module.key);
+          const requiredLabels = (module.requires || []).map(moduleLabel);
+          const relatedLabels = (module.recommendedWith || []).map(moduleLabel);
+          const requiredBy = getRemovalBlockers(module.key, [...selected], normalizedModules).map(moduleLabel);
+          return (
+          <article key={module.key} className={`rounded-xl border p-4 text-left shadow-sm transition ${enabled ? "border-orange-300 bg-orange-50" : "border-stone-200 bg-white"}`}>
             <div className="flex items-center justify-between">
               <h3 className="font-black text-stone-950">{module.label}</h3>
-              <Pill className={selected.has(module.key) ? "border-orange-200 bg-white text-orange-700" : "border-stone-200 text-stone-500"}>{selected.has(module.key) ? "Enabled" : "Off"}</Pill>
+              <Pill className={enabled ? "border-orange-200 bg-white text-orange-700" : "border-stone-200 text-stone-500"}>{enabled ? "Enabled" : "Off"}</Pill>
             </div>
-            <p className="mt-2 min-h-10 text-sm font-semibold text-stone-500">{module.description}</p>
+            <p className="mt-2 text-sm font-semibold text-stone-500">{module.description}</p>
+            <div className="mt-3">
+              <p className="text-[11px] font-black uppercase tracking-wide text-stone-500">Gives access to</p>
+              <ul className="mt-1 space-y-1 text-xs font-bold text-stone-700">
+                {(module.capabilities || []).map((capability) => (
+                  <li key={capability} className="flex gap-1.5"><span className="text-emerald-600">✓</span>{capability}</li>
+                ))}
+              </ul>
+            </div>
+            {requiredLabels.length ? (
+              <p className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-2 text-xs font-bold text-amber-800">
+                <FaLock className="mr-1 inline" /> Requires: {requiredLabels.join(", ")}
+              </p>
+            ) : null}
+            {relatedLabels.length ? (
+              <p className="mt-2 text-xs font-bold text-stone-500">Works best with: {relatedLabels.join(", ")}</p>
+            ) : null}
+            {enabled && requiredBy.length ? (
+              <p className="mt-2 text-xs font-bold text-orange-700">Currently required by: {requiredBy.join(", ")}</p>
+            ) : null}
             <p className="mt-3 text-sm font-black text-stone-950">{money(module.monthly, park.currency)}/month</p>
-          </button>
-        ))}
+            <button
+              type="button"
+              disabled={isUpdating}
+              onClick={() => toggle(module.key)}
+              className={`mt-3 w-full ${buttonClass(enabled ? "secondary" : "primary")}`}
+            >
+              {enabled ? (requiredBy.length ? <><FaLock /> Required</> : "Disable") : <><FaPlus /> Enable</>}
+            </button>
+          </article>
+          );
+        })}
+        </div>
       </div>
+
+      <ConfirmDialog
+        open={Boolean(pendingWorkflow)}
+        tone="info"
+        eyebrow="Complete process"
+        title={`Enable ${pendingWorkflow?.label || "this process"}?`}
+        message="Required and recommended modules will be enabled together. If the park already has a paid invoice, newly added access may create an activation invoice."
+        details={[
+          `Required: ${(pendingWorkflow?.requiredModules || []).map(moduleLabel).join(", ") || "None"}`,
+          `Recommended: ${(pendingWorkflow?.recommendedModules || []).map(moduleLabel).join(", ") || "None"}`,
+          `New access: ${pendingAddedModules.map(moduleLabel).join(", ") || "No additional modules"}`,
+          `Added module price: ${money(pendingAddedMonthly, park.currency)}/month`,
+        ]}
+        confirmLabel="Enable full process"
+        loading={isUpdating}
+        confirmDisabled={!pendingAddedModules.length}
+        onClose={() => setPendingWorkflow(null)}
+        onConfirm={({ type }) => {
+          if (type === "confirm") enableWorkflow();
+        }}
+      />
     </div>
   );
 }
@@ -2422,7 +2863,7 @@ function BillingPanel({ park, plans = [], moduleCatalog = modules, planUsage = n
     taxRatePercent: park.taxRatePercent || 0,
     taxRegistrationNumber: park.taxRegistrationNumber || "",
   });
-  const [updateBilling] = useUpdateSaasParkBillingMutation();
+  const [updateBilling, { isLoading: isSavingBilling }] = useUpdateSaasParkBillingMutation();
   const selectedPlan = availablePlans.find((plan) => plan.key === form.planKey) || currentPlan;
   const planOptions = availablePlans.map((plan) => ({
     value: plan.key,
@@ -2456,20 +2897,35 @@ function BillingPanel({ park, plans = [], moduleCatalog = modules, planUsage = n
   const monthlyTotal = Number((subtotal + taxAmount).toFixed(2));
 
   return (
-    <div className="space-y-4">
-      <div className="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
-        <form onSubmit={submit} className="min-w-0 rounded-xl border border-stone-200 bg-white p-4 shadow-sm sm:p-5">
-        <div className="flex flex-wrap items-start justify-between gap-3 border-b border-stone-200 pb-4">
-          <div>
+    <div className="min-w-0">
+      <div className="grid min-w-0 items-start gap-3 xl:grid-cols-[minmax(0,1fr)_300px] 2xl:grid-cols-[minmax(0,1fr)_320px]">
+        <form
+          id="park-billing-form"
+          onSubmit={submit}
+          className="min-w-0 rounded-lg border border-stone-200 bg-white p-3 shadow-sm sm:p-4"
+        >
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-stone-200 pb-3">
+          <div className="min-w-0">
             <p className="text-xs font-black uppercase text-orange-700">Billing setup</p>
-            <h2 className="mt-1 text-xl font-black text-stone-950">Base fee and invoice controls</h2>
-            <p className="mt-1 text-sm font-semibold text-stone-500">Base platform fee plus enabled module fees creates the monthly bill.</p>
+            <h2 className="mt-0.5 text-lg font-black text-stone-950">Base fee and invoice controls</h2>
+            <p className="mt-0.5 text-xs font-semibold text-stone-500 sm:text-sm">Plan, tax, discount, and enabled modules determine the recurring bill.</p>
           </div>
-          <Pill className="border-orange-200 bg-orange-50 text-orange-700">{park.billingCycle || "monthly"}</Pill>
+          <div className="flex shrink-0 items-center gap-2">
+            <Pill className="hidden border-orange-200 bg-orange-50 text-orange-700 sm:inline-flex">
+              {form.billingCycle || "monthly"}
+            </Pill>
+            <button
+              type="submit"
+              disabled={isSavingBilling}
+              className={buttonClass("primary", "min-h-10 px-4 py-2 text-sm disabled:cursor-wait disabled:opacity-60")}
+            >
+              {isSavingBilling ? "Saving..." : "Save billing"}
+            </button>
+          </div>
         </div>
 
-        <div className="mt-5 rounded-xl border border-orange-100 bg-orange-50/50 p-4">
-          <div className="grid min-w-0 gap-4 lg:grid-cols-[minmax(220px,360px)_1fr]">
+        <div className="mt-3 rounded-lg border border-orange-100 bg-orange-50/50 p-3">
+          <div className="grid min-w-0 gap-3 xl:grid-cols-[minmax(220px,340px)_1fr]">
             <label>
               <span className="flex items-center justify-between gap-2 text-xs font-black uppercase text-stone-500">
                 <span>Customer plan</span>
@@ -2485,27 +2941,27 @@ function BillingPanel({ park, plans = [], moduleCatalog = modules, planUsage = n
                 options={planOptions}
               />
             </label>
-            <div className="grid min-w-0 gap-3 sm:grid-cols-3">
-              <div className="rounded-lg border border-orange-100 bg-white p-3">
+            <div className="grid min-w-0 gap-2 sm:grid-cols-3">
+              <div className="rounded-md border border-orange-100 bg-white px-3 py-2">
                 <p className="text-xs font-black uppercase text-stone-500">Base fee</p>
-                <p className="mt-1 text-lg font-black text-stone-950">{money(selectedPlan?.monthlyBaseFee || 0, park.currency)}/mo</p>
+                <p className="mt-0.5 text-base font-black text-stone-950">{money(selectedPlan?.monthlyBaseFee || 0, park.currency)}/mo</p>
               </div>
-              <div className="rounded-lg border border-orange-100 bg-white p-3">
+              <div className="rounded-md border border-orange-100 bg-white px-3 py-2">
                 <p className="text-xs font-black uppercase text-stone-500">Park limit</p>
-                <p className="mt-1 text-lg font-black text-stone-950">{selectedPlan?.maxParks === null ? "Unlimited" : selectedPlan?.maxParks}</p>
+                <p className="mt-0.5 text-base font-black text-stone-950">{selectedPlan?.maxParks === null ? "Unlimited" : selectedPlan?.maxParks}</p>
               </div>
-              <div className="rounded-lg border border-orange-100 bg-white p-3">
+              <div className="rounded-md border border-orange-100 bg-white px-3 py-2">
                 <p className="text-xs font-black uppercase text-stone-500">Current usage</p>
-                <p className="mt-1 text-lg font-black text-stone-950">
+                <p className="mt-0.5 text-base font-black text-stone-950">
                   {planUsage?.activeParks ?? "-"}{selectedPlan?.maxParks === null ? "" : ` / ${selectedPlan?.maxParks}`}
                 </p>
               </div>
             </div>
           </div>
-          <p className="mt-3 text-sm font-semibold text-stone-600">{selectedPlan?.description}</p>
+          <p className="mt-2 text-xs font-semibold text-stone-600 sm:text-sm">{selectedPlan?.description}</p>
         </div>
 
-        <div className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           <label>
             <span className="text-xs font-black uppercase text-stone-500">Base platform fee</span>
             <input
@@ -2537,7 +2993,7 @@ function BillingPanel({ park, plans = [], moduleCatalog = modules, planUsage = n
             <input type="number" value={form.discountAmount} onChange={(event) => setForm({ ...form, discountAmount: event.target.value })} className="input-nexus mt-1 w-full px-3 py-2.5 text-sm" />
           </label>
         </div>
-        <div className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        <div className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-[0.9fr_0.9fr_1.2fr]">
           <label>
             <span className="text-xs font-black uppercase text-stone-500">Tax label</span>
             <SearchableSelect
@@ -2560,69 +3016,72 @@ function BillingPanel({ park, plans = [], moduleCatalog = modules, planUsage = n
           </label>
         </div>
 
-        <div className="mt-5 overflow-x-auto rounded-xl border border-stone-200">
-          <table className="min-w-[640px] divide-y divide-stone-200 text-sm">
+        <div className="mt-3 w-full max-w-full overflow-x-auto rounded-lg border border-stone-200">
+          <table className="w-full min-w-[620px] table-fixed divide-y divide-stone-200 text-sm">
+            <colgroup>
+              <col className="w-[56%]" />
+              <col className="w-[24%]" />
+              <col className="w-[20%]" />
+            </colgroup>
             <thead className="bg-stone-50 text-left text-xs font-black uppercase text-stone-500">
               <tr>
-                <th className="px-4 py-3">Item</th>
-                <th className="px-4 py-3">Type</th>
-                <th className="px-4 py-3 text-right">Amount</th>
+                <th className="px-3 py-2.5">Item</th>
+                <th className="px-3 py-2.5">Type</th>
+                <th className="px-3 py-2.5 text-right">Amount</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-stone-100 bg-white">
               <tr>
-                <td className="px-4 py-3">
+                <td className="px-3 py-2.5">
                   <p className="font-black text-stone-950">Base platform fee</p>
                   <p className="text-xs font-semibold text-stone-500">Base SaaS platform fee</p>
                 </td>
-                <td className="px-4 py-3 font-bold text-stone-500">Base fee</td>
-                <td className="px-4 py-3 text-right font-black text-stone-950">{money(baseAmount, park.currency)}</td>
+                <td className="px-3 py-2.5 font-bold text-stone-500">Base fee</td>
+                <td className="px-3 py-2.5 text-right font-black text-stone-950">{money(baseAmount, park.currency)}</td>
               </tr>
               {selectedModules.map((module) => (
                 <tr key={module.key}>
-                  <td className="px-4 py-3">
+                  <td className="px-3 py-2.5">
                     <p className="font-black text-stone-950">{module.label}</p>
                     <p className="text-xs font-semibold text-stone-500">Enabled module</p>
                   </td>
-                  <td className="px-4 py-3 font-bold text-stone-500">Module</td>
-                  <td className="px-4 py-3 text-right font-black text-stone-950">{money(module.monthly, park.currency)}</td>
+                  <td className="px-3 py-2.5 font-bold text-stone-500">Module</td>
+                  <td className="px-3 py-2.5 text-right font-black text-stone-950">{money(module.monthly, park.currency)}</td>
                 </tr>
               ))}
               {selectedModules.length === 0 ? (
                 <tr>
-                  <td colSpan="3" className="px-4 py-4 text-sm font-bold text-stone-500">No paid modules enabled.</td>
+                  <td colSpan="3" className="px-3 py-3 text-sm font-bold text-stone-500">No paid modules enabled.</td>
                 </tr>
               ) : null}
               {discount > 0 ? (
                 <tr>
-                  <td className="px-4 py-3">
+                  <td className="px-3 py-2.5">
                     <p className="font-black text-stone-950">Discount</p>
                     <p className="text-xs font-semibold text-stone-500">Manual monthly adjustment</p>
                   </td>
-                  <td className="px-4 py-3 font-bold text-stone-500">Credit</td>
-                  <td className="px-4 py-3 text-right font-black text-emerald-700">-{money(discount, park.currency)}</td>
+                  <td className="px-3 py-2.5 font-bold text-stone-500">Credit</td>
+                  <td className="px-3 py-2.5 text-right font-black text-emerald-700">-{money(discount, park.currency)}</td>
                 </tr>
               ) : null}
               {taxAmount > 0 ? (
                 <tr>
-                  <td className="px-4 py-3">
+                  <td className="px-3 py-2.5">
                     <p className="font-black text-stone-950">{form.taxLabel || "Tax"}</p>
                     <p className="text-xs font-semibold text-stone-500">{taxRatePercent}% applied to subtotal</p>
                   </td>
-                  <td className="px-4 py-3 font-bold text-stone-500">Tax</td>
-                  <td className="px-4 py-3 text-right font-black text-stone-950">{money(taxAmount, park.currency)}</td>
+                  <td className="px-3 py-2.5 font-bold text-stone-500">Tax</td>
+                  <td className="px-3 py-2.5 text-right font-black text-stone-950">{money(taxAmount, park.currency)}</td>
                 </tr>
               ) : null}
             </tbody>
           </table>
         </div>
-
-        <button className={buttonClass("primary", "mt-5 w-full sm:w-auto")}>Save billing</button>
         </form>
 
-        <aside className="min-w-0 rounded-xl border border-stone-200 bg-white p-4 shadow-sm sm:p-5">
+        <aside className="min-w-0 rounded-lg border border-stone-200 bg-white p-4 shadow-sm xl:sticky xl:top-24">
         <p className="text-xs font-black uppercase text-stone-500">Monthly invoice preview</p>
-        <div className="mt-4 space-y-3 text-sm font-bold">
+        <div className="mt-3 space-y-2.5 text-sm font-bold">
           <div className="flex justify-between gap-3">
             <span className="text-stone-500">Base platform fee</span>
             <span className="text-stone-950">{money(baseAmount, park.currency)}</span>
@@ -2640,17 +3099,130 @@ function BillingPanel({ park, plans = [], moduleCatalog = modules, planUsage = n
             <span className="text-stone-950">{money(taxAmount, park.currency)}</span>
           </div>
         </div>
-        <div className="mt-5 rounded-xl bg-orange-50 p-4">
+        <div className="mt-4 rounded-lg bg-orange-50 p-3">
           <p className="text-xs font-black uppercase text-orange-700">Total due</p>
-          <p className="mt-1 text-3xl font-black text-stone-950">{money(monthlyTotal, park.currency)}</p>
-          <p className="mt-1 text-sm font-bold text-stone-500">per month</p>
+          <p className="mt-0.5 text-2xl font-black text-stone-950">{money(monthlyTotal, park.currency)}</p>
+          <p className="mt-0.5 text-xs font-bold text-stone-500">per month</p>
         </div>
-        <div className="mt-4 rounded-xl bg-stone-50 p-4 text-sm font-semibold text-stone-600">
+        <div className="mt-3 rounded-lg bg-stone-50 p-3 text-xs font-semibold text-stone-600">
           {selectedModules.length} module{selectedModules.length === 1 ? "" : "s"} enabled for this park.
         </div>
         </aside>
       </div>
     </div>
+  );
+}
+
+function InvoicePreviewModal({ preview, onClose }) {
+  useEffect(() => {
+    if (!preview) return undefined;
+
+    const previousOverflow = document.body.style.overflow;
+    const handleKeyDown = (event) => {
+      if (event.key === "Escape") onClose();
+    };
+
+    document.body.style.overflow = "hidden";
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [preview, onClose]);
+
+  if (!preview || typeof document === "undefined") return null;
+
+  const { html, invoice } = preview;
+  const downloadInvoice = () => {
+    const blob = new Blob([html], { type: "text/html;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = `${invoice.invoiceNumber || "invoice"}.html`;
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    URL.revokeObjectURL(url);
+  };
+
+  const printInvoice = () => {
+    const frame = document.getElementById("saas-invoice-preview-frame");
+    frame?.contentWindow?.focus();
+    frame?.contentWindow?.print();
+  };
+
+  return createPortal(
+    <div
+      className="fixed inset-0 z-[180] flex items-center justify-center bg-stone-950/35 p-0 backdrop-blur-[3px] sm:p-5"
+      role="presentation"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) onClose();
+      }}
+    >
+      <section
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="invoice-preview-title"
+        className="flex h-full w-full min-w-0 flex-col overflow-hidden border-[color:var(--stroke-soft)] bg-[color:var(--surface-panel)] shadow-2xl sm:h-[min(92vh,920px)] sm:max-w-6xl sm:rounded-xl sm:border"
+      >
+        <header className="flex shrink-0 flex-col gap-3 border-b border-[color:var(--stroke-soft)] bg-[color:var(--surface-panel)] px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-5">
+          <div className="flex min-w-0 items-center gap-3">
+            <span className="grid size-10 shrink-0 place-items-center rounded-lg bg-[color:var(--brand-primary-soft)] text-[color:var(--brand-primary)]">
+              <FaFileInvoiceDollar aria-hidden="true" />
+            </span>
+            <div className="min-w-0">
+              <p className="text-[11px] font-black uppercase tracking-[0.14em] text-[color:var(--text-muted)]">
+                Invoice preview
+              </p>
+              <h2
+                id="invoice-preview-title"
+                className="truncate text-base font-black text-[color:var(--text-strong)] sm:text-lg"
+              >
+                {invoice.invoiceNumber}
+              </h2>
+            </div>
+          </div>
+          <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+            <Pill className={billingStatusClass(invoice.status)}>{invoice.status}</Pill>
+            <button
+              type="button"
+              onClick={printInvoice}
+              className={buttonClass("secondary", "min-h-9 gap-2 px-3 py-1.5 text-xs")}
+            >
+              <FaPrint aria-hidden="true" />
+              Print
+            </button>
+            <button
+              type="button"
+              onClick={downloadInvoice}
+              className={buttonClass("secondary", "min-h-9 gap-2 px-3 py-1.5 text-xs")}
+            >
+              <FaDownload aria-hidden="true" />
+              Download
+            </button>
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="Close invoice preview"
+              title="Close invoice preview"
+              className="grid size-9 shrink-0 place-items-center rounded-lg border border-[color:var(--stroke-soft)] bg-[color:var(--surface-panel)] text-[color:var(--text-strong)] transition hover:border-[color:var(--brand-primary)] hover:bg-[color:var(--brand-primary-soft)]"
+            >
+              <FaTimes aria-hidden="true" />
+            </button>
+          </div>
+        </header>
+        <div className="min-h-0 flex-1 bg-[color:var(--app-background)] p-2 sm:p-4">
+          <iframe
+            id="saas-invoice-preview-frame"
+            title={`Invoice ${invoice.invoiceNumber}`}
+            srcDoc={html}
+            sandbox="allow-same-origin"
+            className="h-full w-full rounded-lg border border-[color:var(--stroke-soft)] bg-white shadow-sm"
+          />
+        </div>
+      </section>
+    </div>,
+    document.body
   );
 }
 
@@ -2664,6 +3236,7 @@ function InvoiceHistoryTable({ park, invoices }) {
   const [actionConfirm, setActionConfirm] = useState(null);
   const [voidConfirm, setVoidConfirm] = useState(null);
   const [refundConfirm, setRefundConfirm] = useState(null);
+  const [invoicePreview, setInvoicePreview] = useState(null);
 
   const handleRefreshLifecycle = async () => {
     try {
@@ -2729,10 +3302,7 @@ function InvoiceHistoryTable({ park, invoices }) {
   const handleOpenInvoiceDocument = async (invoice) => {
     try {
       const html = await getInvoiceDocument({ id: park.id, invoiceId: invoice.invoiceId }).unwrap();
-      const blob = new Blob([html], { type: "text/html;charset=utf-8" });
-      const url = URL.createObjectURL(blob);
-      window.open(url, "_blank", "noopener,noreferrer");
-      window.setTimeout(() => URL.revokeObjectURL(url), 60000);
+      setInvoicePreview({ html, invoice });
     } catch (err) {
       toast.error(err?.data?.message || "Failed to open invoice document.");
     }
@@ -2778,11 +3348,11 @@ function InvoiceHistoryTable({ park, invoices }) {
     if (actionConfirm.type === "open_invoice") {
       return {
         tone: "info",
-        eyebrow: "Open invoice",
-        title: `Open ${invoice.invoiceNumber}?`,
-        message: "This opens the official invoice document in a new browser tab.",
+        eyebrow: "Preview invoice",
+        title: `Preview ${invoice.invoiceNumber}?`,
+        message: "This opens the official invoice document in a secure in-app preview.",
         details: [`Invoice total: ${money(invoice.totalAmount, invoice.currency || park.currency)}`, `Status: ${invoice.status}`],
-        confirmLabel: "Open invoice",
+        confirmLabel: "Preview invoice",
       };
     }
     if (actionConfirm.type === "record_payment") {
@@ -2849,12 +3419,12 @@ function InvoiceHistoryTable({ park, invoices }) {
 
   return (
     <section className={listingShellClass}>
-      <div className="sticky top-0 z-30 flex flex-wrap items-center justify-between gap-3 border-b border-[var(--stroke-soft)] bg-[var(--surface-panel-strong)]/95 px-5 py-4 backdrop-blur">
-        <div className="min-w-0">
-          <p className="text-xs font-black uppercase text-orange-700">Billing history</p>
-          <h3 className="break-words text-lg font-black text-stone-950">Generated SaaS invoices and collection status</h3>
-        </div>
-        <div className="flex w-full flex-wrap items-center justify-end gap-2 sm:w-auto">
+      <CompactListingHeader
+        eyebrow="Billing history"
+        title="Generated SaaS invoices"
+        description="Invoice periods, collection status, and balances."
+        meta={(
+          <>
           <button
             type="button"
             disabled={refreshLifecycleState.isLoading}
@@ -2863,9 +3433,10 @@ function InvoiceHistoryTable({ park, invoices }) {
           >
             {refreshLifecycleState.isLoading ? "Refreshing..." : "Refresh invoices"}
           </button>
-          <Pill className="border-stone-200 bg-stone-50 text-stone-600">{invoices.length} invoices</Pill>
-        </div>
-      </div>
+            <CompactListingMetric label="Invoices" value={invoices.length} />
+          </>
+        )}
+      />
       <div className={listingScrollClass}>
         <table className={listingTableClass("min-w-[960px]")}>
           <thead className={listingHeadClass}>
@@ -2906,7 +3477,7 @@ function InvoiceHistoryTable({ park, invoices }) {
                         onClick={() => setActionConfirm({ type: "open_invoice", invoice })}
                         className={buttonClass("secondary", "min-h-9 px-3 py-1.5 text-xs")}
                       >
-                        Open invoice
+                        Preview invoice
                       </button>
                       <button
                         type="button"
@@ -3045,22 +3616,27 @@ function InvoiceHistoryTable({ park, invoices }) {
           </div>
         ) : null}
       </ConfirmDialog>
+      <InvoicePreviewModal
+        preview={invoicePreview}
+        onClose={() => setInvoicePreview(null)}
+      />
     </section>
   );
 }
 
 function PaymentsPanel({ park }) {
   const [form, setForm] = useState({
-    guestPaymentStatus: park.guestPaymentStatus || "not_configured",
+    customerPaymentStatus: park.customerPaymentStatus || "not_configured",
   });
-  const [updatePayments] = useUpdateSaasParkPaymentsMutation();
+  const [updatePayments, { isLoading: isSavingPayments }] = useUpdateSaasParkPaymentsMutation();
   useEffect(() => {
-    setForm({ guestPaymentStatus: park.guestPaymentStatus || "not_configured" });
-  }, [park.id, park.guestPaymentStatus]);
+    setForm({ customerPaymentStatus: park.customerPaymentStatus || "not_configured" });
+  }, [park.id, park.customerPaymentStatus]);
 
   const platformMethodLabel = optionLabel(platformBillingMethodOptions, park.paymentMethod);
   const platformStatusLabel = optionLabel(platformBillingStatusOptions, park.paymentStatus);
   const platformStatusClass = billingStatusClass(park.paymentStatus);
+  const guestPaymentDirty = form.customerPaymentStatus !== (park.customerPaymentStatus || "not_configured");
 
   const submit = async (event) => {
     event.preventDefault();
@@ -3077,7 +3653,8 @@ function PaymentsPanel({ park }) {
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-stone-200 pb-3">
           <div className="min-w-0">
             <p className="text-xs font-black uppercase text-orange-700">Payment control</p>
-            <h2 className="mt-1 break-words text-lg font-black text-stone-950">Platform billing and guest payment rails</h2>
+            <h2 className="mt-1 break-words text-lg font-black text-stone-950">Park payment status</h2>
+            <p className="mt-1 text-sm font-semibold text-stone-500">Platform billing collects from the park. Guest payments control checkout, POS, refunds, and memberships.</p>
           </div>
           <Pill className={platformStatusClass}>{platformStatusLabel}</Pill>
         </div>
@@ -3098,24 +3675,21 @@ function PaymentsPanel({ park }) {
             <span className="text-xs font-black uppercase text-stone-500">Guest payments</span>
             <div className="mt-1 flex flex-col gap-2 sm:flex-row sm:items-start">
               <SearchableSelect
-                value={form.guestPaymentStatus}
-                onChange={(value) => setForm({ ...form, guestPaymentStatus: value })}
+                value={form.customerPaymentStatus}
+                onChange={(value) => setForm({ ...form, customerPaymentStatus: value })}
                 className="min-w-0 flex-1"
                 buttonClassName="min-h-10 py-2"
                 options={guestPaymentStatusOptions}
               />
-              <button className={buttonClass("primary", "min-h-10 px-4 py-2 sm:shrink-0")}>Save</button>
+              <button
+                disabled={!guestPaymentDirty || isSavingPayments}
+                className={buttonClass("primary", "min-h-10 px-4 py-2 sm:shrink-0 disabled:cursor-not-allowed disabled:opacity-50")}
+              >
+                {isSavingPayments ? "Saving..." : guestPaymentDirty ? "Save change" : "Saved"}
+              </button>
             </div>
             <span className="mt-2 block text-xs font-semibold text-stone-500">Controls checkout/POS acceptance for this park.</span>
           </div>
-        </div>
-        <div className="mt-3 grid gap-2 text-xs font-semibold text-stone-500 md:grid-cols-2">
-          <p className="rounded-lg border border-stone-200 bg-stone-50 px-3 py-2">
-            <span className="font-black uppercase text-stone-600">Movira charges the park:</span> system-managed from billing gateway, invoices, payment links, and lifecycle jobs.
-          </p>
-          <p className="rounded-lg border border-stone-200 bg-stone-50 px-3 py-2">
-            <span className="font-black uppercase text-stone-600">Guests pay the park:</span> checkout, POS, refunds, and guest payment acceptance.
-          </p>
         </div>
       </form>
       <ParkPaymentConsole park={park} />
@@ -3137,48 +3711,53 @@ function PaymentHistoryPanel({ park, paymentEvents }) {
 
   return (
     <section className={listingShellClass}>
-      <div className="sticky top-0 z-30 flex flex-wrap items-center justify-between gap-3 border-b border-[var(--stroke-soft)] bg-[var(--surface-panel-strong)]/95 px-5 py-4 backdrop-blur">
-        <div className="min-w-0">
-          <p className="text-xs font-black uppercase text-orange-700">Payment history</p>
-          <h3 className="break-words text-lg font-black text-stone-950">SaaS billing events</h3>
-        </div>
-        <Pill className="border-stone-200 bg-stone-50 text-stone-600">{pagination.totalRecords || events.length} events</Pill>
-      </div>
-      <div className="flex flex-wrap items-center gap-2 border-b border-[var(--stroke-soft)] bg-[var(--surface-panel)]/95 px-5 py-3">
-        <div className="relative min-w-full flex-1 sm:min-w-[220px] sm:max-w-sm">
-          <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-stone-400" />
-          <input
-            value={search}
-            onChange={(event) => {
-              setSearch(event.target.value);
-              setPage(1);
-            }}
-            placeholder="Search events, provider, reference..."
-            className="input-nexus w-full py-1.5 pl-8 pr-3 text-sm"
-          />
-        </div>
-        <SearchableSelect
-          value={status}
-          onChange={(value) => {
-            setStatus(value);
-            setPage(1);
-          }}
-          searchPlaceholder="Search status..."
-          className="w-full sm:w-40"
-          options={paymentHistoryStatusOptions}
-        />
-        <SearchableSelect
-          value={eventType}
-          onChange={(value) => {
-            setEventType(value);
-            setPage(1);
-          }}
-          searchPlaceholder="Search event type..."
-          className="w-full sm:w-56"
-          options={paymentEventTypeOptions}
-        />
-        {isFetching ? <span className="text-xs font-black uppercase text-stone-400">Loading...</span> : null}
-      </div>
+      <CompactListingHeader
+        eyebrow="Payment history"
+        title="SaaS billing events"
+        description="Provider events, references, and payment outcomes."
+        controls={(
+          <>
+            <div className="relative min-w-[210px] flex-1">
+              <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-[var(--text-muted)]" />
+              <input
+                value={search}
+                onChange={(event) => {
+                  setSearch(event.target.value);
+                  setPage(1);
+                }}
+                placeholder="Search events, provider, reference..."
+                className="input-nexus w-full py-1.5 pl-8 pr-3 text-sm"
+              />
+            </div>
+            <SearchableSelect
+              value={status}
+              onChange={(value) => {
+                setStatus(value);
+                setPage(1);
+              }}
+              searchPlaceholder="Search status..."
+              className="w-full sm:w-36"
+              options={paymentHistoryStatusOptions}
+            />
+            <SearchableSelect
+              value={eventType}
+              onChange={(value) => {
+                setEventType(value);
+                setPage(1);
+              }}
+              searchPlaceholder="Search event type..."
+              className="w-full sm:w-48"
+              options={paymentEventTypeOptions}
+            />
+          </>
+        )}
+        meta={(
+          <>
+            {isFetching ? <Pill className="border-[var(--stroke-soft)] bg-[var(--surface-muted)] text-[var(--text-muted)]">Loading</Pill> : null}
+            <CompactListingMetric label="Events" value={pagination.totalRecords || events.length} />
+          </>
+        )}
+      />
       <div className="max-h-[min(62vh,700px)] overflow-auto divide-y divide-stone-100">
         {events.map((event) => (
           <div key={event.eventId} className="grid gap-3 px-5 py-4 md:grid-cols-[1fr_160px_140px] md:items-center">
@@ -3215,9 +3794,11 @@ function OnboardingPanel({ park }) {
   const [updateOnboarding] = useUpdateSaasParkOnboardingMutation();
   const [goLive, goLiveState] = useApproveSaasParkGoLiveMutation();
   const [goLiveConfirm, setGoLiveConfirm] = useState(false);
+  const missingChecks = Array.isArray(park.onboardingMissingChecks) ? park.onboardingMissingChecks : [];
   const toggle = async (key) => {
+    if (!manualOnboardingKeys.has(key)) return;
     try {
-      await updateOnboarding({ id: park.id, onboarding: { ...park.onboarding, [key]: !park.onboarding?.[key] } }).unwrap();
+      await updateOnboarding({ id: park.id, onboarding: { [key]: !park.onboarding?.[key] } }).unwrap();
       toast.success("Checklist updated.");
     } catch (err) {
       toast.error(err?.data?.message || "Failed to update checklist.");
@@ -3230,7 +3811,13 @@ function OnboardingPanel({ park }) {
       toast.success("Go-live checked.");
       setGoLiveConfirm(false);
     } catch (err) {
-      toast.error(err?.data?.message || "Failed to approve go-live.");
+      const blockedChecks = err?.data?.data?.missingChecks || err?.data?.missingChecks || [];
+      const blockedLabels = blockedChecks.map((key) => onboardingLabels[key] || key);
+      toast.error(
+        blockedLabels.length
+          ? `Complete before go-live: ${blockedLabels.join(", ")}.`
+          : err?.data?.message || "Failed to approve go-live."
+      );
     }
   };
   return (
@@ -3249,21 +3836,49 @@ function OnboardingPanel({ park }) {
         {setupSteps.map((step, index) => {
           const label = onboardingLabels[step.key] || step.label;
           const done = Boolean(park.onboarding?.[step.key]);
-          return (
-            <button key={step.key} onClick={() => toggle(step.key)} className={`flex items-center justify-between rounded-xl border p-4 text-left transition hover:-translate-y-0.5 ${done ? "border-emerald-200 bg-emerald-50" : "border-stone-200 bg-white hover:border-orange-200"}`}>
+          const isManual = manualOnboardingKeys.has(step.key);
+          const content = (
+            <>
               <span>
                 <span className="block text-xs font-black uppercase text-stone-400">Step {index + 1}</span>
                 <span className="font-black text-stone-950">{label}</span>
+                <span className="mt-1 block text-xs font-semibold text-stone-500">
+                  {isManual ? "Operational confirmation" : "Verified automatically"}
+                </span>
               </span>
-              <Pill className={done ? "border-emerald-200 bg-white text-emerald-700" : "border-stone-200 text-stone-500"}>{done ? "Done" : "Open"}</Pill>
-            </button>
+              <Pill className={done ? "border-emerald-200 bg-white text-emerald-700" : "border-stone-200 text-stone-500"}>
+                {done ? "Complete" : isManual ? "Mark done" : "Pending"}
+              </Pill>
+            </>
+          );
+          const className = `flex items-center justify-between rounded-xl border p-4 text-left transition ${
+            done
+              ? "border-emerald-200 bg-emerald-50"
+              : isManual
+                ? "border-stone-200 bg-white hover:-translate-y-0.5 hover:border-orange-200"
+                : "cursor-default border-stone-200 bg-stone-50"
+          }`;
+          return (
+            isManual ? (
+              <button key={step.key} type="button" onClick={() => toggle(step.key)} className={className}>
+                {content}
+              </button>
+            ) : (
+              <div key={step.key} className={className}>
+                {content}
+              </div>
+            )
           );
         })}
       </div>
       <div className="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-xl bg-stone-50 p-4">
         <div>
           <p className="font-black text-stone-950">Go-live gate</p>
-          <p className="text-sm font-semibold text-stone-500">Approving updates the park status based on readiness.</p>
+          <p className="text-sm font-semibold text-stone-500">
+            {missingChecks.length
+              ? `Still required: ${missingChecks.map((key) => onboardingLabels[key] || key).join(", ")}.`
+              : "All prerequisites are complete. Approval will activate the park."}
+          </p>
         </div>
         <button onClick={() => setGoLiveConfirm(true)} className={buttonClass("primary")}><FaRocket /> Approve go-live</button>
       </div>
@@ -3275,7 +3890,9 @@ function OnboardingPanel({ park }) {
         message="This checks readiness and updates the park lifecycle. Use it only when the park is ready for real customer operations."
         details={[
           `${park.onboardingScore || 0}% readiness currently complete.`,
-          "If checks are incomplete, the park may move to needs_checks instead of live.",
+          missingChecks.length
+            ? `Incomplete: ${missingChecks.map((key) => onboardingLabels[key] || key).join(", ")}.`
+            : "All required readiness checks are complete.",
           "This action is recorded in the audit history.",
         ]}
         confirmLabel="Approve go-live"
@@ -3323,71 +3940,57 @@ function AuditPanel({ park, initialLogs = [] }) {
   };
 
   return (
-    <section className="space-y-3">
-      <div className="rounded-lg border border-stone-200 bg-white p-3 shadow-sm">
-        <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_auto] xl:items-center">
-          <div className="min-w-0">
-            <p className="section-kicker">Production audit</p>
-            <h2 className="mt-1 break-words font-display text-xl font-black tracking-tight text-stone-950">
-              Operator and system activity trail
-            </h2>
-            <p className="mt-0.5 break-words text-sm font-semibold text-stone-500">
-              Review billing, onboarding, lifecycle, and payment changes for {park.name}.
-            </p>
-          </div>
-          <div className="grid grid-cols-2 gap-2 sm:flex sm:items-center">
-            <div className="rounded-lg border border-stone-200 bg-stone-50 px-3 py-2">
-              <p className="text-[10px] font-black uppercase tracking-wide text-stone-500">Rows</p>
-              <p className="text-lg font-black leading-none text-stone-950">{auditSummary.visible}</p>
+    <section className={listingShellClass}>
+      <CompactListingHeader
+        eyebrow="Production audit"
+        title="Operator and system activity trail"
+        description={`Billing, onboarding, lifecycle, and payment changes for ${park.name}.`}
+        controls={(
+          <>
+            <div className="relative min-w-[220px] flex-1">
+              <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-[var(--text-muted)]" />
+              <input
+                value={search}
+                onChange={(event) => {
+                  setSearch(event.target.value);
+                  setPage(1);
+                }}
+                placeholder="Search audit activity..."
+                className="input-nexus w-full py-1.5 pl-8 pr-3 text-sm"
+              />
             </div>
-            <div className="rounded-lg border border-stone-200 bg-stone-50 px-3 py-2">
-              <p className="text-[10px] font-black uppercase tracking-wide text-stone-500">Actors</p>
-              <p className="text-lg font-black leading-none text-stone-950">{auditSummary.actorCount}</p>
-            </div>
-            <div className="col-span-2 rounded-lg border border-stone-200 bg-stone-50 px-3 py-2 sm:min-w-44">
-              <p className="text-[10px] font-black uppercase tracking-wide text-stone-500">Latest</p>
-              <p className="truncate text-sm font-black text-stone-950">
-                {auditSummary.latest ? dateTime(auditSummary.latest) : "-"}
-              </p>
-            </div>
-            {isFetching ? (
-              <Pill className="border-orange-200 bg-orange-50 text-orange-700">Refreshing</Pill>
-            ) : null}
-            <Pill className="border-stone-200 bg-stone-50 text-stone-600">
-              {pagination.totalRecords || logs.length} records
-            </Pill>
-          </div>
-        </div>
-      </div>
-
-      <div className={listingShellClass}>
-        <div className="sticky top-0 z-30 flex flex-wrap items-center gap-3 border-b border-[var(--stroke-soft)] bg-[var(--surface-panel-strong)]/95 p-4 backdrop-blur">
-          <div className="relative min-w-full flex-1 sm:min-w-[240px]">
-            <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-stone-400" />
-            <input
-              value={search}
-              onChange={(event) => {
-                setSearch(event.target.value);
+            <SearchableSelect
+              value={action}
+              onChange={(value) => {
+                setAction(value);
                 setPage(1);
               }}
-              placeholder="Search audit activity..."
-              className="input-nexus w-full py-2 pl-9 pr-3 text-sm"
+              searchPlaceholder="Search action..."
+              className="w-full sm:w-48"
+              buttonClassName="min-h-9 py-1.5"
+              options={auditActionOptions}
             />
-          </div>
-          <SearchableSelect
-            value={action}
-            onChange={(value) => {
-              setAction(value);
-              setPage(1);
-            }}
-            searchPlaceholder="Search action..."
-            className="w-full sm:w-64"
-            buttonClassName="min-h-10 py-2"
-            options={auditActionOptions}
-          />
-        </div>
+          </>
+        )}
+        meta={(
+          <>
+            <CompactListingMetric label="Rows" value={auditSummary.visible} />
+            <CompactListingMetric label="Actors" value={auditSummary.actorCount} />
+            <CompactListingMetric
+              label="Latest"
+              value={auditSummary.latest ? dateTime(auditSummary.latest) : "-"}
+            />
+            {isFetching ? (
+              <Pill className="border-[var(--stroke-soft)] bg-[var(--surface-muted)] text-[var(--text-muted)]">
+                Refreshing
+              </Pill>
+            ) : null}
+            <CompactListingMetric label="Records" value={pagination.totalRecords || logs.length} />
+          </>
+        )}
+      />
 
-        <div className="max-h-[min(64vh,720px)] overflow-auto divide-y divide-stone-100">
+      <div className="max-h-[min(68vh,760px)] overflow-auto divide-y divide-stone-100">
           {logs.map((item) => (
             <article key={item.id} className="grid gap-4 px-4 py-4 lg:grid-cols-[minmax(0,1fr)_220px]">
               <div className="flex min-w-0 gap-3">
@@ -3441,30 +4044,17 @@ function AuditPanel({ park, initialLogs = [] }) {
           ) : null}
         </div>
 
-        {pagination.totalPages > 1 ? (
-          <div className="sticky bottom-0 z-20 flex flex-wrap items-center justify-between gap-2 border-t border-[var(--stroke-soft)] bg-[var(--surface-panel-strong)]/95 px-4 py-3 backdrop-blur">
-            <span className="text-xs font-bold text-stone-500">
-              Page {page} of {pagination.totalPages}
-            </span>
-            <div className="flex items-center gap-2">
-              <button disabled={page <= 1} onClick={() => setPage((value) => value - 1)} className={buttonClass("secondary", "min-h-9 px-3 py-1.5 text-xs")}>Prev</button>
-              <button disabled={page >= pagination.totalPages} onClick={() => setPage((value) => value + 1)} className={buttonClass("secondary", "min-h-9 px-3 py-1.5 text-xs")}>Next</button>
-            </div>
+      {pagination.totalPages > 1 ? (
+        <div className="sticky bottom-0 z-20 flex flex-wrap items-center justify-between gap-2 border-t border-[var(--stroke-soft)] bg-[var(--surface-panel-strong)]/95 px-4 py-2 backdrop-blur">
+          <span className="text-xs font-bold text-stone-500">
+            Page {page} of {pagination.totalPages}
+          </span>
+          <div className="flex items-center gap-2">
+            <button disabled={page <= 1} onClick={() => setPage((value) => value - 1)} className={buttonClass("secondary", "min-h-9 px-3 py-1.5 text-xs")}>Prev</button>
+            <button disabled={page >= pagination.totalPages} onClick={() => setPage((value) => value + 1)} className={buttonClass("secondary", "min-h-9 px-3 py-1.5 text-xs")}>Next</button>
           </div>
-        ) : null}
-      </div>
+        </div>
+      ) : null}
     </section>
   );
-}
-
-export default function MoviraControl() {
-  const { pathname } = useLocation();
-  const { parkId } = useParams();
-
-  if (pathname === "/movira-control/plans") return <PlansManager />;
-  if (pathname === "/movira-control" || pathname === "/movira-control/parks") return <ParksList />;
-  if (pathname === "/movira-control/parks/new") return <ParkForm />;
-  if (pathname.endsWith("/edit") && parkId) return <ParkForm />;
-  if (parkId) return <ParkDetail />;
-  return <ParksList />;
 }

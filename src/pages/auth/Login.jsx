@@ -21,9 +21,9 @@ import {
 } from "../../lib/theme";
 
 const trustNotes = [
-  "Bookings, waivers, POS, and reports stay in one place.",
-  "Your saved theme follows you after sign-in.",
-  "Super admins can continue across every park and route.",
+  "Manage SaaS parks, plans, billing, and onboarding.",
+  "Review venue payment routing and gateway health.",
+  "Only sections assigned to your role are shown.",
 ];
 
 const REMEMBERED_EMAIL_KEY = "moviraRememberedLoginEmail";
@@ -94,9 +94,11 @@ export default function MoviraLogin() {
   return (
     <main data-app="admin" className="login-shell">
       <header className="login-admin-header">
-        <div className="login-brand-lockup" aria-label="Movira">
-          <div className="login-brand-badge">A</div>
-          <span>Movira</span>
+        <div className="login-brand-lockup" aria-label="Movira360">
+          <div className="login-brand-badge">
+            <img src="/branding/movira360-mark.png" alt="" />
+          </div>
+          <span>Movira360</span>
         </div>
 
         <div className="login-theme-switcher" aria-label="Choose theme">
@@ -127,8 +129,8 @@ export default function MoviraLogin() {
           <span className="login-eyebrow">Admin Access</span>
           <h1>Good to see you.</h1>
           <p>
-            Sign in to pick up bookings, guests, and the day&apos;s park work
-            without the noise.
+            Sign in to manage parks, subscriptions, onboarding, and payment
+            operations from one control workspace.
           </p>
 
           <div className="login-note">

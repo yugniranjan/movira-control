@@ -10,15 +10,16 @@
 //   PATCH  /api/payments/config/credentials/:id
 //   DELETE /api/payments/config/credentials/:id
 //   POST   /api/payments/config/test-connection
-//   GET    /api/payments/config/routes/venue/:id         → location_payment_settings rows
-//   PUT    /api/payments/config/routes/venue/:id/:ch     upsert one route
-//   DELETE /api/payments/config/routes/venue/:id/:ch
+//   GET    /api/payments/config/routes/location/:id         → location_payment_settings rows
+//   PUT    /api/payments/config/routes/location/:id/:ch     upsert one route
+//   DELETE /api/payments/config/routes/location/:id/:ch
 //   POST   /api/payments/config/routes/resolve           preview which credential a route resolves
 //
 // Note: there's no /routes/org endpoint — backend's location_payment_settings
 // is per-location by design; an "org default" is a frontend fiction we used to
 // expose and have intentionally dropped.
 import { http } from "./http";
+import { paymentConfigPaths } from "../../features/saas/paymentConfigPaths";
 
 const ORG_NAME = "Movira";
 
@@ -128,12 +129,12 @@ export const realApi = {
 
   async getVenueRoutes(locationId) {
     // Expected shape: { online_booking: { provider, mode, adapterKey, priority }, ... }
-    return (await http.get(`/payments/config/routes/venue/${locationId}`)).data || {};
+    return (await http.get(paymentConfigPaths.routeList(locationId))).data || {};
   },
 
   async upsertVenueRoute({ locationId, channel, provider, mode, adapterKey, priority = 100 }) {
     return (
-      await http.put(`/payments/config/routes/venue/${locationId}/${channel}`, {
+      await http.put(paymentConfigPaths.route(locationId, channel), {
         provider,
         mode,
         adapterKey,
@@ -143,7 +144,7 @@ export const realApi = {
   },
 
   async deleteVenueRoute({ locationId, channel }) {
-    return http.del(`/payments/config/routes/venue/${locationId}/${channel}`);
+    return http.del(paymentConfigPaths.route(locationId, channel));
   },
 
   async resolveRouteCredential({ provider, locationId, mode }) {
@@ -161,7 +162,7 @@ export const realApi = {
   // The card-machine hierarchy. Readers persist in payment_terminals with a
   // Terminal binding + default. Terminals (tills) are managed via /pos/devices.
   async getPosTree(locationId) {
-    const j = await http.get(`/payments/config/venues/${locationId}/pos-tree`);
+    const j = await http.get(paymentConfigPaths.posTree(locationId));
     return j.data || { provider: null, enrollment: null, routed: false, terminals: [] };
   },
 
@@ -170,7 +171,7 @@ export const realApi = {
   // is the typed TID.
   async addReader({ locationId, posDeviceId, label, makeDefault = true, deviceKind, registrationCode, providerTerminalId, registerId, registerAuthKey }) {
     const j = await http.post(
-      `/payments/config/venues/${locationId}/terminals/${posDeviceId}/readers`,
+      paymentConfigPaths.terminalReaders(locationId, posDeviceId),
       // deviceKind "simulator" → driven by the Terminal Simulator app (no real
       // creds needed). "real" → Nuvei sends registerId + registerAuthKey
       // (encrypted server-side); Stripe sends registrationCode. providerTerminalId = TID.

@@ -2,7 +2,7 @@
 // and VenueDetailPage's per-channel list.
 //
 // Backend mapping: this writes one row to location_payment_settings via
-// PUT /api/payments/config/routes/venue/:locationId/:channel with:
+// PUT /api/payments/config/routes/location/:locationId/:channel with:
 //   { provider, mode, adapterKey, priority }
 //
 // Adapter is derived from (channel × provider) via the compatibility map —

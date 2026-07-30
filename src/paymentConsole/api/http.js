@@ -1,28 +1,20 @@
-// Thin fetch wrapper. Reads the JWT from the same localStorage key AuthContext
-// writes, attaches it as a Bearer token, and unwraps/normalizes errors.
-// All paths are relative to /api (proxied to the backend by vite.config.js).
-const STORAGE_KEY = "movira.superadmin.auth";
-const ADMIN_STORAGE_KEY = "authState";
+import { resolveApiBaseUrl } from "../../api/resolveApiBaseUrl";
+import {
+  clearAuthSession,
+  readStoredToken,
+  redirectToLogin,
+  refreshAccessToken,
+} from "../../api/authSession";
 
-function getToken() {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) return JSON.parse(raw).token;
-    const adminRaw = localStorage.getItem(ADMIN_STORAGE_KEY);
-    return adminRaw ? JSON.parse(adminRaw).token : null;
-  } catch {
-    return null;
-  }
-}
-
-async function request(method, path, body) {
+async function request(method, path, body, { retried = false } = {}) {
   const headers = { "Content-Type": "application/json" };
-  const token = getToken();
+  const token = readStoredToken();
   if (token) headers.Authorization = `Bearer ${token}`;
 
-  const res = await fetch(`/api${path}`, {
+  const res = await fetch(`${resolveApiBaseUrl()}${path}`, {
     method,
     headers,
+    credentials: "include",
     body: body != null ? JSON.stringify(body) : undefined,
   });
 
@@ -34,10 +26,18 @@ async function request(method, path, body) {
     data = text;
   }
 
+  if (res.status === 401 && !retried && !path.startsWith("/auth/")) {
+    const refreshedToken = await refreshAccessToken();
+    if (refreshedToken) return request(method, path, body, { retried: true });
+    clearAuthSession();
+    redirectToLogin();
+  }
+
   if (!res.ok) {
     const message = (data && (data.message || data.error)) || `Request failed (${res.status})`;
     const err = new Error(message);
     err.status = res.status;
+    err.code = res.status === 403 ? "access_denied" : data?.code || data?.error;
     // Carry the structured error body so callers can attach field-level
     // messages inline (the gateway modals read err.detail.invalid to map a
     // backend 400 back to the offending input). Without this, all validation

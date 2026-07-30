@@ -3,15 +3,19 @@ import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { FiCreditCard, FiDollarSign, FiGrid, FiLayers, FiLogOut, FiMapPin, FiSettings } from "react-icons/fi";
 import { logout } from "../features/auth/authSlice";
+import { useLogoutMutation } from "../features/auth/authApi";
+import { canAccessPolicy } from "../auth/access";
 
 const navItems = [
-  { to: "/movira-control/parks", label: "Control", icon: FiGrid },
-  { to: "/movira-control/plans", label: "Plans", icon: FiLayers },
-  { to: "/payment-console/platform-billing", label: "SaaS Billing", icon: FiDollarSign },
-  { to: "/payment-console", label: "Payments", icon: FiCreditCard },
-  { to: "/payment-console/venues", label: "Venues", icon: FiMapPin },
-  { to: "/payment-console/payments", label: "Gateways", icon: FiSettings },
+  { to: "/movira-control/parks", label: "Control", icon: FiGrid, policy: "control" },
+  { to: "/movira-control/plans", label: "Plans", icon: FiLayers, policy: "plans" },
+  { to: "/payment-console/platform-billing", label: "SaaS Billing", icon: FiDollarSign, policy: "billing" },
+  { to: "/payment-console", label: "Payments", icon: FiCreditCard, policy: "payments" },
+  { to: "/payment-console/venues", label: "Venues", icon: FiMapPin, policy: "venues" },
+  { to: "/payment-console/payments", label: "Gateways", icon: FiSettings, policy: "gateways" },
 ];
+
+const MOVIRA360_MARK_SRC = "/branding/movira360-mark.png";
 
 function initialsFor(user) {
   const name = user?.name || user?.firstName || user?.email || "MC";
@@ -27,25 +31,37 @@ function initialsFor(user) {
 export default function ControlAdminLayout() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  const user = useSelector((state) => state.auth.user);
+  const auth = useSelector((state) => state.auth);
+  const user = auth.user;
+  const [endSession] = useLogoutMutation();
+  const visibleNavItems = navItems.filter((item) => canAccessPolicy(auth, item.policy));
 
-  function handleLogout() {
-    localStorage.removeItem("movira.superadmin.auth");
-    dispatch(logout());
-    navigate("/login", { replace: true });
+  async function handleLogout() {
+    try {
+      await endSession().unwrap();
+    } catch {
+      dispatch(logout());
+    } finally {
+      localStorage.removeItem("movira.superadmin.auth");
+      navigate("/login", { replace: true });
+    }
   }
 
   return (
     <div className="min-h-screen overflow-x-hidden bg-[var(--surface-app)] text-[var(--text-strong)]">
       <aside className="fixed inset-y-0 left-0 z-30 hidden w-[68px] flex-col bg-[var(--admin-rail-bg)] shadow-[var(--shadow-sidebar)] lg:flex">
-        <div className="flex h-14 items-center justify-center border-b border-white/10">
-          <div className="grid h-8 w-8 place-items-center rounded-lg bg-[var(--brand-primary)] text-xs font-black text-white shadow-[0_3px_0_var(--brand-primary-deep)]">
-            M
+        <div className="flex h-16 items-center justify-center border-b border-white/10">
+          <div className="grid h-11 w-11 place-items-center overflow-hidden rounded-xl border border-white/25 bg-white/95 p-1 shadow-[0_4px_0_rgba(0,0,0,0.22)]">
+            <img
+              src={MOVIRA360_MARK_SRC}
+              alt="Movira360"
+              className="h-full w-full object-contain"
+            />
           </div>
         </div>
 
         <nav className="flex-1 space-y-1 px-1.5 py-2">
-          {navItems.map(({ to, label, icon: Icon }) => (
+          {visibleNavItems.map(({ to, label, icon: Icon }) => (
             <NavLink
               key={to}
               to={to}
@@ -79,22 +95,19 @@ export default function ControlAdminLayout() {
       <div className="lg:pl-[68px]">
         <header className="sticky top-0 z-40 flex min-h-14 items-center justify-between gap-2 border-b border-[var(--stroke-soft)] bg-[var(--surface-header)]/95 px-2.5 py-1.5 backdrop-blur lg:px-4">
           <div className="flex min-w-0 items-center gap-2 lg:hidden">
-            <div className="grid h-8 w-8 place-items-center rounded-lg bg-[var(--brand-primary)] text-xs font-black text-white shadow-[0_3px_0_var(--brand-primary-deep)]">
-              M
+            <div className="grid h-9 w-9 place-items-center overflow-hidden rounded-lg border border-[var(--mc-border-strong)] bg-white/95 p-1 shadow-sm">
+              <img src={MOVIRA360_MARK_SRC} alt="Movira360" className="h-full w-full object-contain" />
             </div>
             <div className="min-w-0">
-              <p className="truncate text-base font-black">Movira Control</p>
+              <p className="truncate text-base font-black">Movira360 Control</p>
               <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-stone-500">
                 SaaS admin
               </p>
             </div>
           </div>
-          <div className="hidden items-center gap-3 lg:flex">
-            <div className="grid h-8 w-8 place-items-center rounded-lg bg-[var(--brand-primary)] text-xs font-black text-white shadow-[0_3px_0_var(--brand-primary-deep)]">
-              M
-            </div>
+          <div className="hidden min-w-0 items-center lg:flex">
             <div>
-              <p className="text-lg font-black tracking-tight">Movira Control</p>
+              <p className="text-lg font-black tracking-tight">Movira360 Control</p>
               <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--brand-primary-deep)]">
                 Parks, billing, onboarding, and payment routing.
               </p>
@@ -128,8 +141,11 @@ export default function ControlAdminLayout() {
       </div>
 
       <nav className="fixed inset-x-0 bottom-0 z-50 border-t border-white/10 bg-[var(--admin-rail-bg)] px-1.5 pb-[max(env(safe-area-inset-bottom),6px)] pt-1.5 shadow-[var(--shadow-header)] backdrop-blur lg:hidden">
-        <div className="grid grid-cols-6 gap-1">
-          {navItems.map(({ to, label, icon: Icon }) => (
+        <div
+          className="grid gap-1"
+          style={{ gridTemplateColumns: `repeat(${Math.max(visibleNavItems.length, 1)}, minmax(0, 1fr))` }}
+        >
+          {visibleNavItems.map(({ to, label, icon: Icon }) => (
             <NavLink
               key={to}
               to={to}

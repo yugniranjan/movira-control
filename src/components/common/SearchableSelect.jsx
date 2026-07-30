@@ -96,7 +96,7 @@ export default function SearchableSelect({
           <div
             ref={menuRef}
             style={menuStyle}
-            className="fixed z-[9999] overflow-hidden rounded-lg border border-[var(--stroke-soft)] bg-[var(--surface-panel-strong)] shadow-[var(--shadow-soft)]"
+            className="fixed z-[11000] overflow-hidden rounded-lg border border-[var(--stroke-soft)] bg-[var(--surface-panel-strong)] shadow-[var(--shadow-soft)]"
           >
             <div className="border-b border-[var(--stroke-soft)] bg-[var(--surface-muted)] p-1.5">
               <div className="relative">
