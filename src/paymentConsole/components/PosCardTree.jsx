@@ -3,8 +3,8 @@
 // A venue has many Terminals (tills / checkout stations); each Terminal has one
 // or more Readers (the physical card machine — a Stripe reader or a Nuvei TID),
 // one marked default for charges. Backed by:
-//   GET    /payments/config/locations/:id/pos-tree
-//   POST   /payments/config/locations/:id/terminals/:posDeviceId/readers
+//   GET    /payments/config/locations/:locationId/pos-tree
+//   POST   /payments/config/locations/:locationId/terminals/:posDeviceId/readers
 //   PATCH  /payments/config/readers/:terminalId   (rename / set default)
 //   DELETE /payments/config/readers/:terminalId
 //   POST   /pos/devices                           (create a Terminal/till)
@@ -22,8 +22,9 @@ import {
 } from "react-icons/fi";
 import { api } from "../api";
 import { Button, Input, Spinner, Badge } from "./ui";
+import { PanelShimmer } from "../../components/Shimmer";
 
-export default function PosCardTree({ venueId }) {
+export default function PosCardTree({ locationId }) {
   const [tree, setTree] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -33,14 +34,14 @@ export default function PosCardTree({ venueId }) {
     setLoading(true);
     setError("");
     try {
-      const data = await api.getPosTree(venueId);
+      const data = await api.getPosTree(locationId);
       setTree(data);
     } catch (err) {
       setError(err?.message || "Could not load terminals.");
     } finally {
       setLoading(false);
     }
-  }, [venueId]);
+  }, [locationId]);
 
   useEffect(() => {
     load();
@@ -86,7 +87,7 @@ export default function PosCardTree({ venueId }) {
             )}
           </div>
         </div>
-        <AddTerminal venueId={venueId} busy={busy} onDone={() => load()} setError={setError} />
+        <AddTerminal locationId={locationId} busy={busy} onDone={() => load()} setError={setError} />
       </div>
 
       {error && (
@@ -97,9 +98,7 @@ export default function PosCardTree({ venueId }) {
       )}
 
       {loading ? (
-        <div className="flex items-center justify-center py-8 text-[var(--text-muted)]">
-          <Spinner />
-        </div>
+        <PanelShimmer rows={3} className="mt-4" />
       ) : !tree?.routed ? (
         <div className="mt-4 text-sm text-amber-800 bg-amber-50 rounded-lg p-3 flex items-start gap-2">
           <FiAlertTriangle className="mt-0.5 shrink-0 text-amber-600" />
@@ -121,7 +120,7 @@ export default function PosCardTree({ venueId }) {
           {tree.terminals.map((t) => (
             <TerminalRow
               key={t.posDeviceId}
-              venueId={venueId}
+              locationId={locationId}
               terminal={t}
               enrollment={enrollment}
               busy={busy}
@@ -134,7 +133,7 @@ export default function PosCardTree({ venueId }) {
   );
 }
 
-function AddTerminal({ venueId, busy, onDone, setError }) {
+function AddTerminal({ locationId, busy, onDone, setError }) {
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
   const [saving, setSaving] = useState(false);
@@ -144,7 +143,7 @@ function AddTerminal({ venueId, busy, onDone, setError }) {
     setSaving(true);
     setError("");
     try {
-      await api.createTerminal({ locationId: venueId, name: name.trim() });
+      await api.createTerminal({ locationId: locationId, name: name.trim() });
       setName("");
       setOpen(false);
       onDone();
@@ -180,7 +179,7 @@ function AddTerminal({ venueId, busy, onDone, setError }) {
   );
 }
 
-function TerminalRow({ venueId, terminal, enrollment, busy, run }) {
+function TerminalRow({ locationId, terminal, enrollment, busy, run }) {
   const readers = terminal.readers || [];
   return (
     <div className="rounded-xl border border-[var(--stroke-soft)] p-3">
@@ -260,7 +259,7 @@ function TerminalRow({ venueId, terminal, enrollment, busy, run }) {
             </div>
           ))
         )}
-        <AddReader venueId={venueId} terminal={terminal} enrollment={enrollment} busy={busy} run={run} />
+        <AddReader locationId={locationId} terminal={terminal} enrollment={enrollment} busy={busy} run={run} />
       </div>
     </div>
   );
@@ -268,7 +267,7 @@ function TerminalRow({ venueId, terminal, enrollment, busy, run }) {
 
 const UUID_RE = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
 
-function AddReader({ venueId, terminal, enrollment, busy, run }) {
+function AddReader({ locationId, terminal, enrollment, busy, run }) {
   const [open, setOpen] = useState(false);
   const [deviceKind, setDeviceKind] = useState("simulator"); // simulator | real
   const [label, setLabel] = useState("");
@@ -293,7 +292,7 @@ function AddReader({ venueId, terminal, enrollment, busy, run }) {
   async function add() {
     await run(() =>
       api.addReader({
-        locationId: venueId,
+        locationId: locationId,
         posDeviceId: terminal.posDeviceId,
         label: label.trim() || undefined,
         makeDefault: (terminal.readers || []).length === 0, // first reader = default

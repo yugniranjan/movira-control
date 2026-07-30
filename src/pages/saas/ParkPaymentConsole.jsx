@@ -35,6 +35,7 @@ import {
 } from "../../features/saas/moviraControlApi";
 import ConfirmDialog from "../../components/common/ConfirmDialog";
 import SearchableSelect from "../../components/common/SearchableSelect";
+import { PanelShimmer, ShimmerBlock } from "../../components/Shimmer";
 
 const providers = [
   { key: "stripe", name: "Stripe", short: "S", color: "bg-indigo-50 text-indigo-700 border-indigo-200" },
@@ -600,7 +601,7 @@ function PosTree({ park, onConfigurePos }) {
         )}
       </div>
 
-      {isLoading ? <p className="mt-4 text-sm font-bold text-stone-500">Loading terminals...</p> : null}
+      {isLoading ? <PanelShimmer rows={2} className="mt-4" /> : null}
       {isError && routed ? <p className="mt-4 text-sm font-bold text-red-600">Terminals could not be loaded.</p> : null}
       {!isLoading && !routed ? (
         <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4">
@@ -708,7 +709,7 @@ function PosTree({ park, onConfigurePos }) {
 }
 
 export default function ParkPaymentConsole({ park }) {
-  const locationId = park.locationId || park.id;
+  const locationId = park.locationId;
   const scopedPark = { ...park, locationId };
   const [addGatewayOpen, setAddGatewayOpen] = useState(false);
   const [editingGateway, setEditingGateway] = useState(null);
@@ -801,7 +802,11 @@ export default function ParkPaymentConsole({ park }) {
             <p className="text-xs font-black uppercase text-stone-500">Step 1 · Gateway access</p>
             <h3 className="mt-1 text-lg font-black text-stone-950">Available credentials</h3>
           </div>
-          {credentialsLoading || schemasLoading ? <Badge>Loading</Badge> : <Badge tone={availableCredentials ? "green" : "stone"}>{availableCredentials} available</Badge>}
+          {credentialsLoading || schemasLoading ? (
+            <ShimmerBlock className="h-7 w-24 rounded-full" />
+          ) : (
+            <Badge tone={availableCredentials ? "green" : "stone"}>{availableCredentials} available</Badge>
+          )}
         </div>
         <div className="mt-4 grid gap-4 lg:grid-cols-2">
           <div className="min-w-0 rounded-xl border border-stone-200 p-3">
@@ -869,7 +874,7 @@ export default function ParkPaymentConsole({ park }) {
             <h3 className="mt-1 text-lg font-black text-stone-950">Where each payment channel sends money</h3>
             <p className="mt-1 text-sm font-semibold text-stone-500">Open a channel to choose its provider, mode, and adapter.</p>
           </div>
-          {routesLoading ? <Badge>Loading routes</Badge> : null}
+          {routesLoading ? <ShimmerBlock className="h-7 w-28 rounded-full" /> : null}
         </div>
         <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
           {channels.map((channel) => {

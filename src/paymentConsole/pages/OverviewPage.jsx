@@ -20,7 +20,8 @@ import {
 import { api } from "../api";
 import { CHANNELS, channelByKey } from "../constants/channels";
 import { providerByKey } from "../constants/providers";
-import { Badge, Card, PageShell, ProviderBadge, Spinner } from "../components/ui";
+import { Badge, Card, PageShell, ProviderBadge } from "../components/ui";
+import { PageShimmer } from "../../components/Shimmer";
 import {
   HEALTH_LABEL,
   HEALTH_TONE,
@@ -95,11 +96,7 @@ export default function OverviewPage() {
   }, [data]);
 
   if (!data) {
-    return (
-      <div className="flex items-center justify-center py-24 text-[var(--brand-primary)]">
-        <Spinner className="w-6 h-6" />
-      </div>
-    );
+    return <PageShimmer />;
   }
 
   const orgCredentialCount = data.credentials.filter((c) => c.locationId == null).length;
@@ -145,20 +142,20 @@ export default function OverviewPage() {
       )}
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <Stat icon={FiMapPin} label="Venues" value={data.venues.length} to="/payment-console/venues" />
+        <Stat icon={FiMapPin} label="Venues" value={data.venues.length} to="/movira-control/payments/venues" />
         <Stat
           icon={FiCreditCard}
           label="Connected gateways"
           value={data.credentials.length}
           hint={`${orgCredentialCount} org · ${venueCredentialCount} per-venue`}
-          to="/payment-console/payments"
+          to="/movira-control/payments/gateways"
         />
         <Stat
           icon={FiZap}
           label="Live channels routed"
           value={`${health.totalLiveRoutes} / ${totalPossibleLiveRoutes}`}
           hint={`${LIVE_CHANNELS.length} channel${LIVE_CHANNELS.length === 1 ? "" : "s"} × ${data.venues.length} venue${data.venues.length === 1 ? "" : "s"}`}
-          to="/payment-console/payments"
+          to="/movira-control/payments/gateways"
         />
         <Stat
           icon={FiAlertTriangle}
@@ -169,7 +166,7 @@ export default function OverviewPage() {
               ? "All saved routes resolve"
               : "Saved but won't dispatch at runtime"
           }
-          to="/payment-console/payments"
+          to="/movira-control/payments/gateways"
         />
       </div>
 
@@ -181,7 +178,7 @@ export default function OverviewPage() {
               <h2 className="font-display font-bold text-[var(--text-strong)]">Needs attention</h2>
               <p className="text-xs text-[var(--text-muted)]">Live channels with no route, or routes that won't resolve.</p>
             </div>
-            <Link to="/payment-console/payments" className="shrink-0 text-sm font-semibold text-[var(--brand-primary-deep)] hover:underline">
+            <Link to="/movira-control/payments/gateways" className="shrink-0 text-sm font-semibold text-[var(--brand-primary-deep)] hover:underline">
               Fix in routing →
             </Link>
           </div>
@@ -195,7 +192,7 @@ export default function OverviewPage() {
               {needsAttention.map((entry) => (
                 <li key={entry.venue.locationId}>
                   <Link
-                    to={`/payment-console/venues/${entry.venue.locationId}`}
+                    to={`/movira-control/payments/venues/${entry.venue.locationId}`}
                     className="flex items-center justify-between gap-3 rounded-lg border border-[var(--stroke-soft)] p-2.5 transition-colors hover:border-[var(--brand-primary)]"
                   >
                     <div className="flex items-center gap-2.5 min-w-0">
@@ -248,7 +245,7 @@ export default function OverviewPage() {
               {partial.map((entry) => (
                 <li key={entry.venue.locationId}>
                   <Link
-                    to={`/payment-console/venues/${entry.venue.locationId}`}
+                    to={`/movira-control/payments/venues/${entry.venue.locationId}`}
                     className="flex items-center justify-between gap-3 rounded-lg border border-[var(--stroke-soft)] p-2.5 transition-colors hover:border-[var(--brand-primary)]"
                   >
                     <div className="flex items-center gap-2.5 min-w-0">
@@ -281,7 +278,7 @@ export default function OverviewPage() {
       <Card className="p-3.5">
         <div className="mb-3 flex items-center justify-between gap-3">
           <h2 className="font-display font-bold text-[var(--text-strong)]">Channel coverage</h2>
-          <Link to="/payment-console/payments" className="text-sm font-semibold text-[var(--brand-primary-deep)] hover:underline">
+          <Link to="/movira-control/payments/gateways" className="text-sm font-semibold text-[var(--brand-primary-deep)] hover:underline">
             Manage
           </Link>
         </div>
@@ -347,7 +344,7 @@ export default function OverviewPage() {
           Want the whole venue × channel grid in one view?
         </div>
         <Link
-          to="/payment-console/payments"
+          to="/movira-control/payments/gateways"
           className="text-sm font-semibold text-[var(--brand-primary-deep)] hover:underline"
         >
           Open routing matrix →

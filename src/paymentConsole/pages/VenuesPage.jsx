@@ -10,7 +10,8 @@ import { Link } from "react-router-dom";
 import { FiAlertTriangle, FiChevronRight, FiMapPin, FiSearch } from "react-icons/fi";
 import { api } from "../api";
 import { providerByKey } from "../constants/providers";
-import { Badge, Card, Input, PageShell, ProviderBadge, Spinner } from "../components/ui";
+import { Badge, Card, Input, PageShell, ProviderBadge } from "../components/ui";
+import { PageShimmer } from "../../components/Shimmer";
 import {
   HEALTH_LABEL,
   HEALTH_TONE,
@@ -105,11 +106,7 @@ export default function VenuesPage() {
   }, [enriched, filter, query]);
 
   if (!venues) {
-    return (
-      <div className="flex items-center justify-center py-24 text-[var(--brand-primary)]">
-        <Spinner className="w-6 h-6" />
-      </div>
-    );
+    return <PageShimmer />;
   }
 
   return (
@@ -165,7 +162,7 @@ export default function VenuesPage() {
 
       <div className="grid sm:grid-cols-2 gap-4">
         {filtered.map(({ venue, health }) => (
-          <Link key={venue.locationId} to={`/payment-console/venues/${venue.locationId}`}>
+          <Link key={venue.locationId} to={`/movira-control/payments/venues/${venue.locationId}`}>
             <Card className="p-5 h-full hover:border-[var(--brand-primary)] transition-colors">
               <div className="flex items-start justify-between gap-3">
                 <div className="flex items-start gap-3 min-w-0">

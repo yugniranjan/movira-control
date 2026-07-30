@@ -35,8 +35,10 @@ const { readStoredToken, refreshAccessToken } = await import("./authSession.js")
 
 test("refresh is single-flight and persists the replacement token", async () => {
   let calls = 0;
-  globalThis.fetch = async () => {
+  let capturedRequest = null;
+  globalThis.fetch = async (url, options) => {
     calls += 1;
+    capturedRequest = { url, options };
     await Promise.resolve();
     return { ok: true, json: async () => ({ token: "new-token" }) };
   };
@@ -49,6 +51,11 @@ test("refresh is single-flight and persists the replacement token", async () => 
   assert.equal(first, "new-token");
   assert.equal(second, "new-token");
   assert.equal(calls, 1);
+  assert.equal(capturedRequest?.options?.credentials, "include");
+  assert.equal(
+    capturedRequest?.options?.headers?.Authorization,
+    "Bearer old-token"
+  );
   assert.equal(readStoredToken(), "new-token");
   assert.equal(events.at(-1)?.type, "movira:token-refreshed");
 });

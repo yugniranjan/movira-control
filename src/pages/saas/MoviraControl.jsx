@@ -7,8 +7,10 @@ import {
   FaBuilding,
   FaCheckCircle,
   FaCreditCard,
+  FaCopy,
   FaDownload,
   FaEdit,
+  FaEnvelope,
   FaFileInvoiceDollar,
   FaEye,
   FaLayerGroup,
@@ -27,6 +29,7 @@ import {
 } from "react-icons/fa";
 import PageLayout from "../../layouts/PageLayout";
 import Loader from "../../components/Loader";
+import { ShimmerBlock } from "../../components/Shimmer";
 import ErrorMessage from "../../components/ErrorMessage";
 import ConfirmDialog from "../../components/common/ConfirmDialog";
 import SearchableSelect from "../../components/common/SearchableSelect";
@@ -34,12 +37,13 @@ import {
   useApproveSaasParkGoLiveMutation,
   useCreateSaasParkMutation,
   useCreateSaasCustomerOwnerMutation,
+  useResendSaasOwnerAccessMutation,
   useCreateSaasInvoicePaymentLinkMutation,
   useCreateSaasPlanMutation,
   useDeleteSaasPlanMutation,
   useDeleteSaasParkMutation,
   useGetSaasParkAuditLogsQuery,
-  useGetSaasParkByIdQuery,
+  useGetSaasParkByLocationIdQuery,
   useGetSaasParkPaymentEventsQuery,
   useGetSaasParksQuery,
   useGetSaasModulesQuery,
@@ -70,6 +74,12 @@ import {
   normalizeModuleCatalog,
 } from "../../features/saas/moduleAccessModel";
 import ParkPaymentConsole from "./ParkPaymentConsole";
+
+const customerAppBaseUrl = String(
+  import.meta.env.VITE_CUSTOMER_APP_URL ||
+    import.meta.env.VITE_PUBLIC_APP_URL ||
+    window.location.origin
+).replace(/\/+$/, "");
 
 const modules = [
   { key: "bookings", label: "Bookings", monthly: 299, description: "Core reservations, calendars, and order records." },
@@ -571,12 +581,12 @@ function getNextStep(park) {
   return setupSteps.find((step) => !park?.onboarding?.[step.key]) || setupSteps[setupSteps.length - 1];
 }
 
-function stepHref(parkId, step) {
-  return `/movira-control/parks/${parkId}${step?.route ? `/${step.route}` : ""}`;
+function stepHref(locationId, step) {
+  return `/movira-control/parks/${locationId}${step?.route ? `/${step.route}` : ""}`;
 }
 
-function parkSectionHref(parkId, suffix = "") {
-  return `/movira-control/parks/${parkId}${suffix ? `/${suffix}` : ""}`;
+function parkSectionHref(locationId, suffix = "") {
+  return `/movira-control/parks/${locationId}${suffix ? `/${suffix}` : ""}`;
 }
 
 function isSetupStageComplete(park, stage) {
@@ -689,7 +699,7 @@ function ParkRecordsMenu({ park, section, isRecordView }) {
                   <Link
                     key={view.suffix}
                     role="menuitem"
-                    to={parkSectionHref(park.id, view.suffix)}
+                    to={parkSectionHref(park.locationId, view.suffix)}
                     onClick={(event) => {
                       if (locked) {
                         event.preventDefault();
@@ -769,7 +779,7 @@ function SetupNavigation({ park, section }) {
           return (
             <Link
               key={stage.suffix || "workspace"}
-              to={parkSectionHref(park.id, stage.suffix)}
+              to={parkSectionHref(park.locationId, stage.suffix)}
               onClick={(event) => {
                 if (available) return;
                 event.preventDefault();
@@ -818,7 +828,7 @@ function NextActionCard({ park }) {
       <p className="mt-1 text-sm font-semibold text-stone-600">
         {park.onboardingScore === 100 ? "Ready for live operations review." : "Complete this step to move the park closer to go-live."}
       </p>
-      <Link to={stepHref(park.id, nextStep)} className={buttonClass("primary", "mt-4")}>
+      <Link to={stepHref(park.locationId, nextStep)} className={buttonClass("primary", "mt-4")}>
         Continue <FaRocket />
       </Link>
     </div>
@@ -1496,7 +1506,7 @@ function Overview() {
           {parks.length ? (
             <div className="mt-5 grid gap-3 lg:grid-cols-3">
               {parks.map((park) => (
-              <Link key={park.id} to={`/movira-control/parks/${park.id}`} className="rounded-xl border border-stone-200 p-4 transition hover:border-orange-300 hover:bg-orange-50/30">
+              <Link key={park.locationId} to={`/movira-control/parks/${park.locationId}`} className="rounded-xl border border-stone-200 p-4 transition hover:border-orange-300 hover:bg-orange-50/30">
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <h3 className="font-black text-stone-950">{park.name}</h3>
@@ -1559,7 +1569,7 @@ export function ParksList() {
 
   const archiveConfirmed = async (park) => {
     try {
-      await archivePark(park.id).unwrap();
+      await archivePark(park.locationId).unwrap();
       toast.success("Park archived.");
       setStatusFilter("archived");
       setPage(1);
@@ -1591,7 +1601,7 @@ export function ParksList() {
   const permanentDeleteConfirmed = async (park) => {
     try {
       await permanentDeletePark({
-        id: park.id,
+        locationId: park.locationId,
         confirmation: "DELETE",
         confirmLocationName: park.name,
         previewAccepted: true,
@@ -1605,7 +1615,7 @@ export function ParksList() {
 
   const onRestore = async (park) => {
     try {
-      await updateLifecycle({ id: park.id, status: "setup" }).unwrap();
+      await updateLifecycle({ locationId: park.locationId, status: "setup" }).unwrap();
       toast.success("Park restored.");
       closeConfirmDialog();
     } catch (err) {
@@ -1616,7 +1626,7 @@ export function ParksList() {
   const pauseToggleConfirmed = async (park) => {
     const nextStatus = park.status === "paused" ? "setup" : "paused";
     try {
-      await updateLifecycle({ id: park.id, status: nextStatus }).unwrap();
+      await updateLifecycle({ locationId: park.locationId, status: nextStatus }).unwrap();
       toast.success(nextStatus === "paused" ? "Park paused." : "Park resumed.");
       closeConfirmDialog();
     } catch (err) {
@@ -1664,7 +1674,7 @@ export function ParksList() {
     });
 
     try {
-      const preview = await loadDeletePreview(park.id).unwrap();
+      const preview = await loadDeletePreview(park.locationId).unwrap();
       const plan = preview?.plan || {};
       const topTables = (plan.tables || []).slice(0, 6).map((item) => `${item.tableName}: ${item.count} rows`);
       if (preview?.blocked) {
@@ -1815,7 +1825,7 @@ export function ParksList() {
                   const displayStatus = isArchived ? "archived" : park.status;
 
                   return (
-                    <tr key={park.id} className={listingRowClass}>
+                    <tr key={park.locationId} className={listingRowClass}>
                       <td className="px-4 py-3">
                         <p className="font-black text-stone-950">{park.name}</p>
                         <p className="text-xs font-semibold text-stone-500">{park.location}</p>
@@ -1837,8 +1847,8 @@ export function ParksList() {
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex justify-end gap-1.5">
-                          <Link to={`/movira-control/parks/${park.id}`} className={iconButtonClass("secondary", "h-8 w-8 rounded-md text-base")} title="Open"><FaEye /></Link>
-                          <Link to={`/movira-control/parks/${park.id}/edit`} className={iconButtonClass("secondary", "h-8 w-8 rounded-md text-base")} title="Edit"><FaEdit /></Link>
+                          <Link to={`/movira-control/parks/${park.locationId}`} className={iconButtonClass("secondary", "h-8 w-8 rounded-md text-base")} title="Open"><FaEye /></Link>
+                          <Link to={`/movira-control/parks/${park.locationId}/edit`} className={iconButtonClass("secondary", "h-8 w-8 rounded-md text-base")} title="Edit"><FaEdit /></Link>
                           {isArchived ? (
                             <>
                               <button onClick={() => openRestoreDialog(park)} className={iconButtonClass("secondary", "h-8 w-8 rounded-md text-base")} title="Restore"><FaTrashRestore /></button>
@@ -1911,10 +1921,10 @@ export function ParksList() {
 }
 
 export function ParkForm() {
-  const { parkId } = useParams();
+  const { locationId } = useParams();
   const navigate = useNavigate();
-  const isEdit = Boolean(parkId);
-  const { data, isLoading } = useGetSaasParkByIdQuery(parkId, { skip: !isEdit });
+  const isEdit = Boolean(locationId);
+  const { data, isLoading } = useGetSaasParkByLocationIdQuery(locationId, { skip: !isEdit });
   const { data: listData = {} } = useGetSaasParksQuery({ limit: 1, status: "all", includeArchived: true });
   const [customerSearchInput, setCustomerSearchInput] = useState("");
   const [customerSearch, setCustomerSearch] = useState("");
@@ -1935,9 +1945,11 @@ export function ParkForm() {
   const [newCustomer, setNewCustomer] = useState(defaultCustomerOwner);
   const [createdCustomer, setCreatedCustomer] = useState(null);
   const [temporaryPassword, setTemporaryPassword] = useState("");
+  const [createdParkAccess, setCreatedParkAccess] = useState(null);
   const [ownerModalOpen, setOwnerModalOpen] = useState(false);
   const [createPark, createState] = useCreateSaasParkMutation();
   const [createCustomerOwner, createCustomerState] = useCreateSaasCustomerOwnerMutation();
+  const [resendOwnerAccess, resendOwnerAccessState] = useResendSaasOwnerAccessMutation();
   const [updatePark, updateState] = useUpdateSaasParkMutation();
   const customerUsers = useMemo(
     () =>
@@ -2035,11 +2047,10 @@ export function ParkForm() {
       const response = await createCustomerOwner({
         ...newCustomer,
         phone: normalizePhoneForCountry(newCustomer.phone, form.country),
-        locationId: isEdit ? parkId : undefined,
-        parkId: isEdit ? parkId : undefined,
+        locationId: isEdit ? locationId : undefined,
         parkName: form.name,
         organizationName: form.organizationName,
-        appBaseUrl: window.location.origin,
+        appBaseUrl: customerAppBaseUrl,
       }).unwrap();
       const user = response?.user || response?.data?.user;
       const password = response?.temporaryPassword || response?.data?.temporaryPassword || "";
@@ -2076,6 +2087,47 @@ export function ParkForm() {
     }
   };
 
+  const copyTemporaryPassword = async () => {
+    const password = createdParkAccess?.temporaryPassword || temporaryPassword;
+    if (!password) return;
+    try {
+      await navigator.clipboard.writeText(password);
+      toast.success("Temporary password copied.");
+    } catch {
+      toast.error("Could not copy the password. Select and copy it manually.");
+    }
+  };
+
+  const handleResendOwnerAccess = async () => {
+    if (!createdParkAccess?.locationId) return;
+    try {
+      const response = await resendOwnerAccess({
+        locationId: createdParkAccess.locationId,
+        appBaseUrl: customerAppBaseUrl,
+      }).unwrap();
+      const password = response?.temporaryPassword || "";
+      const welcomeEmail = response?.welcomeEmail || null;
+      setTemporaryPassword(password);
+      setCreatedParkAccess((current) => ({
+        ...current,
+        temporaryPassword: password,
+        welcomeEmail,
+        ownerEmail: response?.owner?.email || current.ownerEmail,
+      }));
+      if (welcomeEmail?.sent) {
+        toast.success("New temporary password generated and welcome email queued.");
+      } else {
+        toast.warning(
+          `New temporary password generated, but email was not sent${
+            welcomeEmail?.reason ? `: ${welcomeEmail.reason}` : "."
+          }`
+        );
+      }
+    } catch (err) {
+      toast.error(err?.data?.message || "Failed to regenerate and resend owner access.");
+    }
+  };
+
   const submit = async (event) => {
     event.preventDefault();
     const emailOwner = customerByEmail;
@@ -2101,16 +2153,18 @@ export function ParkForm() {
         phone: normalizePhoneForCountry(form.phone, form.country),
         requireCustomerAssignment: true,
         autoCreateCustomerOwner: !ownerUserId,
-        appBaseUrl: window.location.origin,
+        appBaseUrl: customerAppBaseUrl,
         temporaryPassword: !isEdit ? temporaryPassword : undefined,
       };
       delete payload.monthlyBaseFee;
       const response = isEdit
-        ? await updatePark({ id: parkId, ...payload }).unwrap()
+        ? await updatePark({ locationId, ...payload }).unwrap()
         : await createPark(payload).unwrap();
-      const id = response?.data?.id || response?.id || parkId;
+      const savedLocationId = response?.data?.locationId || response?.locationId || locationId;
       const welcomeEmail = response?.welcomeEmail || response?.data?.welcomeEmail || null;
       const customerOwner = response?.customerOwner || response?.data?.customerOwner || null;
+      const returnedPassword =
+        customerOwner?.temporaryPassword || temporaryPassword || "";
       if (!isEdit && welcomeEmail && !welcomeEmail.sent) {
         toast.warning(`Park created, but welcome email was not sent${welcomeEmail.reason ? `: ${welcomeEmail.reason}` : "."}`);
       } else if (!isEdit && customerOwner?.created) {
@@ -2118,7 +2172,19 @@ export function ParkForm() {
       } else {
         toast.success(isEdit ? "Park updated." : "Park created and welcome email queued.");
       }
-      navigate(`/movira-control/parks/${id}`);
+      if (!isEdit) {
+        setTemporaryPassword(returnedPassword);
+        setCreatedParkAccess({
+          locationId: savedLocationId,
+          parkName: response?.data?.name || form.name,
+          ownerEmail: customerOwner?.user?.email || form.ownerEmail,
+          temporaryPassword: returnedPassword,
+          welcomeEmail,
+        });
+        window.scrollTo({ top: 0, behavior: "smooth" });
+        return;
+      }
+      navigate(`/movira-control/parks/${savedLocationId}`);
     } catch (err) {
       toast.error(err?.data?.message || "Failed to save park.");
     }
@@ -2132,6 +2198,68 @@ export function ParkForm() {
       actions={<Link to="/movira-control/parks" className={buttonClass("secondary", "w-full sm:w-auto")}><FaArrowLeft /> Parks</Link>}
     >
       <form onSubmit={submit} className="grid max-w-7xl gap-4 xl:grid-cols-[minmax(0,1fr)_300px]">
+        {createdParkAccess ? (
+          <section className="xl:col-span-2 overflow-hidden rounded-xl border border-emerald-200 bg-white shadow-sm">
+            <div className="flex flex-col gap-4 bg-emerald-50/80 p-4 sm:flex-row sm:items-start sm:justify-between">
+              <div className="min-w-0">
+                <p className="text-xs font-black uppercase tracking-[0.18em] text-emerald-700">Park created</p>
+                <h2 className="mt-1 text-xl font-black text-stone-950">
+                  {createdParkAccess.parkName} owner access
+                </h2>
+                <p className="mt-1 break-words text-sm font-semibold text-stone-600">
+                  Welcome email:{" "}
+                  <span className={createdParkAccess.welcomeEmail?.sent ? "text-emerald-700" : "text-amber-700"}>
+                    {createdParkAccess.welcomeEmail?.sent
+                      ? `queued for ${createdParkAccess.ownerEmail}`
+                      : `not sent${createdParkAccess.welcomeEmail?.reason ? ` · ${createdParkAccess.welcomeEmail.reason}` : ""}`}
+                  </span>
+                </p>
+              </div>
+              <Link
+                to={`/movira-control/parks/${createdParkAccess.locationId}`}
+                className={buttonClass("secondary", "w-full sm:w-auto")}
+              >
+                Open park <FaArrowLeft className="rotate-180" />
+              </Link>
+            </div>
+            <div className="grid gap-4 border-t border-emerald-100 p-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
+              <div className="min-w-0">
+                <p className="text-xs font-black uppercase text-stone-500">Temporary password · shown only on this screen</p>
+                {createdParkAccess.temporaryPassword ? (
+                  <div className="mt-2 flex min-w-0 items-center gap-2">
+                    <code className="min-w-0 flex-1 overflow-x-auto rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm font-black text-amber-950">
+                      {createdParkAccess.temporaryPassword}
+                    </code>
+                    <button
+                      type="button"
+                      onClick={copyTemporaryPassword}
+                      className={buttonClass("secondary", "shrink-0")}
+                      aria-label="Copy temporary password"
+                    >
+                      <FaCopy /> Copy
+                    </button>
+                  </div>
+                ) : (
+                  <p className="mt-2 text-sm font-semibold text-stone-600">
+                    This park uses an existing owner account, so no password was generated. Reset it only if the owner cannot access the account.
+                  </p>
+                )}
+                <p className="mt-2 text-xs font-semibold text-stone-500">
+                  Resending generates a new password, invalidates the previous one, and requires the owner to change it after login.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={handleResendOwnerAccess}
+                disabled={resendOwnerAccessState.isLoading}
+                className={buttonClass("primary", "w-full lg:w-auto")}
+              >
+                <FaEnvelope />
+                {resendOwnerAccessState.isLoading ? "Generating & sending..." : "Generate new password & resend"}
+              </button>
+            </div>
+          </section>
+        ) : null}
         <div className="min-w-0 space-y-4">
           <section className="min-w-0 overflow-hidden rounded-xl border border-stone-200 bg-white shadow-sm">
             <div className="flex flex-wrap items-start justify-between gap-3 border-b border-stone-200 bg-gradient-to-r from-orange-50/80 to-white px-4 py-3">
@@ -2359,8 +2487,8 @@ export function ParkForm() {
             <div className="flex items-center gap-2"><FaCreditCard className="text-orange-600" /> Payment setup</div>
           </div>
           <div className="mt-6 space-y-2">
-            <button disabled={createState.isLoading || updateState.isLoading} className={buttonClass("primary", "w-full")}>
-              {isEdit ? "Update park" : "Create park"}
+            <button disabled={Boolean(createdParkAccess) || createState.isLoading || updateState.isLoading} className={buttonClass("primary", "w-full")}>
+              {isEdit ? "Update park" : createdParkAccess ? "Park created" : "Create park"}
             </button>
             <Link to="/movira-control/parks" className={buttonClass("secondary", "w-full")}>Cancel</Link>
           </div>
@@ -2450,9 +2578,9 @@ export function ParkForm() {
 }
 
 export function ParkDetail() {
-  const { parkId, section = "" } = useParams();
+  const { locationId, section = "" } = useParams();
   const navigate = useNavigate();
-  const { data, isLoading, isError, error } = useGetSaasParkByIdQuery(parkId);
+  const { data, isLoading, isError, error } = useGetSaasParkByLocationIdQuery(locationId);
   const park = data?.park;
   const auditLogs = data?.auditLogs || [];
   const invoices = data?.invoices || [];
@@ -2468,7 +2596,7 @@ export function ParkDetail() {
     if (!lock) return;
     toast.error(lock.message);
     const currentStage = getCurrentSetupStage(park);
-    navigate(parkSectionHref(park.id, currentStage.suffix), { replace: true });
+    navigate(parkSectionHref(park.locationId, currentStage.suffix), { replace: true });
   }, [navigate, park, section]);
 
   if (isLoading) return <Loader />;
@@ -2480,7 +2608,7 @@ export function ParkDetail() {
       actions={
         <div className="flex w-full flex-wrap gap-2 sm:w-auto">
           <Link to="/movira-control/parks" className={buttonClass("secondary", "flex-1 sm:flex-none")}><FaArrowLeft /> Parks</Link>
-          <Link to={`/movira-control/parks/${park.id}/edit`} className={buttonClass("primary", "flex-1 sm:flex-none")}><FaEdit /> Edit</Link>
+          <Link to={`/movira-control/parks/${park.locationId}/edit`} className={buttonClass("primary", "flex-1 sm:flex-none")}><FaEdit /> Edit</Link>
         </div>
       }
     >
@@ -2601,7 +2729,7 @@ function ModulesPanel({
   const persistModules = async (nextKeys, successMessage = "Modules updated.") => {
     const nextModules = expandModuleSelection(nextKeys, normalizedModules);
     try {
-      const result = await updateModules({ id: park.id, modules: nextModules }).unwrap();
+      const result = await updateModules({ locationId: park.locationId, modules: nextModules }).unwrap();
       const activationInvoice =
         result?.data?.activationInvoice || result?.activationInvoice || null;
       if (activationInvoice?.status === "open") {
@@ -2881,7 +3009,7 @@ function BillingPanel({ park, plans = [], moduleCatalog = modules, planUsage = n
   const submit = async (event) => {
     event.preventDefault();
     try {
-      await updateBilling({ id: park.id, ...form }).unwrap();
+      await updateBilling({ locationId: park.locationId, ...form }).unwrap();
       toast.success("Billing updated.");
     } catch (err) {
       toast.error(err?.data?.message || "Failed to update billing.");
@@ -3240,7 +3368,7 @@ function InvoiceHistoryTable({ park, invoices }) {
 
   const handleRefreshLifecycle = async () => {
     try {
-      const result = await refreshLifecycle({ id: park.id }).unwrap();
+      const result = await refreshLifecycle({ locationId: park.locationId }).unwrap();
       const updated = Number(result?.updated || 0);
       const generated = Number(result?.generated || 0);
       const remindersSent = Number(result?.remindersSent || 0);
@@ -3264,7 +3392,7 @@ function InvoiceHistoryTable({ park, invoices }) {
     const remaining = Math.max(0, Number(invoice.totalAmount || 0) - Number(invoice.paidAmount || 0));
     try {
       await recordPayment({
-        id: park.id,
+        locationId: park.locationId,
         invoiceId: invoice.invoiceId,
         amount: remaining || invoice.totalAmount,
         paymentMethod: park.paymentMethod || "manual_invoice",
@@ -3278,7 +3406,7 @@ function InvoiceHistoryTable({ park, invoices }) {
   const handleCreatePaymentLink = async (invoice) => {
     try {
       const result = await createPaymentLink({
-        id: park.id,
+        locationId: park.locationId,
         invoiceId: invoice.invoiceId,
         appBaseUrl: window.location.origin,
       }).unwrap();
@@ -3301,7 +3429,7 @@ function InvoiceHistoryTable({ park, invoices }) {
   };
   const handleOpenInvoiceDocument = async (invoice) => {
     try {
-      const html = await getInvoiceDocument({ id: park.id, invoiceId: invoice.invoiceId }).unwrap();
+      const html = await getInvoiceDocument({ locationId: park.locationId, invoiceId: invoice.invoiceId }).unwrap();
       setInvoicePreview({ html, invoice });
     } catch (err) {
       toast.error(err?.data?.message || "Failed to open invoice document.");
@@ -3382,7 +3510,7 @@ function InvoiceHistoryTable({ park, invoices }) {
     }
     try {
       await voidInvoice({
-        id: park.id,
+        locationId: park.locationId,
         invoiceId: voidConfirm.invoice.invoiceId,
         reason: `Voided from Movira Control by operator.`,
       }).unwrap();
@@ -3405,7 +3533,7 @@ function InvoiceHistoryTable({ park, invoices }) {
     }
     try {
       await refundInvoice({
-        id: park.id,
+        locationId: park.locationId,
         invoiceId: refundConfirm.invoice.invoiceId,
         amount,
         reason: refundConfirm.reason || `Refund for ${refundConfirm.invoice.invoiceNumber}`,
@@ -3631,7 +3759,7 @@ function PaymentsPanel({ park }) {
   const [updatePayments, { isLoading: isSavingPayments }] = useUpdateSaasParkPaymentsMutation();
   useEffect(() => {
     setForm({ customerPaymentStatus: park.customerPaymentStatus || "not_configured" });
-  }, [park.id, park.customerPaymentStatus]);
+  }, [park.locationId, park.customerPaymentStatus]);
 
   const platformMethodLabel = optionLabel(platformBillingMethodOptions, park.paymentMethod);
   const platformStatusLabel = optionLabel(platformBillingStatusOptions, park.paymentStatus);
@@ -3641,7 +3769,7 @@ function PaymentsPanel({ park }) {
   const submit = async (event) => {
     event.preventDefault();
     try {
-      await updatePayments({ id: park.id, ...form }).unwrap();
+      await updatePayments({ locationId: park.locationId, ...form }).unwrap();
       toast.success("Guest payment setting updated.");
     } catch (err) {
       toast.error(err?.data?.message || "Failed to update payments.");
@@ -3703,8 +3831,8 @@ function PaymentHistoryPanel({ park, paymentEvents }) {
   const [status, setStatus] = useState("all");
   const [eventType, setEventType] = useState("all");
   const { data = {}, isFetching } = useGetSaasParkPaymentEventsQuery(
-    { id: park.id, page, limit: 25, search, status, eventType },
-    { skip: !park?.id }
+    { locationId: park.locationId, page, limit: 25, search, status, eventType },
+    { skip: !park?.locationId }
   );
   const events = data.events || paymentEvents || [];
   const pagination = data.pagination || { totalRecords: events.length, totalPages: 1, currentPage: 1 };
@@ -3753,7 +3881,7 @@ function PaymentHistoryPanel({ park, paymentEvents }) {
         )}
         meta={(
           <>
-            {isFetching ? <Pill className="border-[var(--stroke-soft)] bg-[var(--surface-muted)] text-[var(--text-muted)]">Loading</Pill> : null}
+            {isFetching ? <ShimmerBlock className="h-7 w-20 rounded-full" /> : null}
             <CompactListingMetric label="Events" value={pagination.totalRecords || events.length} />
           </>
         )}
@@ -3798,7 +3926,7 @@ function OnboardingPanel({ park }) {
   const toggle = async (key) => {
     if (!manualOnboardingKeys.has(key)) return;
     try {
-      await updateOnboarding({ id: park.id, onboarding: { [key]: !park.onboarding?.[key] } }).unwrap();
+      await updateOnboarding({ locationId: park.locationId, onboarding: { [key]: !park.onboarding?.[key] } }).unwrap();
       toast.success("Checklist updated.");
     } catch (err) {
       toast.error(err?.data?.message || "Failed to update checklist.");
@@ -3807,7 +3935,7 @@ function OnboardingPanel({ park }) {
   const approve = async (event) => {
     if (event?.type && event.type !== "confirm") return;
     try {
-      await goLive({ id: park.id }).unwrap();
+      await goLive({ locationId: park.locationId }).unwrap();
       toast.success("Go-live checked.");
       setGoLiveConfirm(false);
     } catch (err) {
@@ -3909,8 +4037,8 @@ function AuditPanel({ park, initialLogs = [] }) {
   const [search, setSearch] = useState("");
   const [action, setAction] = useState("all");
   const { data = {}, isFetching } = useGetSaasParkAuditLogsQuery(
-    { id: park.id, page, limit: 25, search, action },
-    { skip: !park?.id }
+    { locationId: park.locationId, page, limit: 25, search, action },
+    { skip: !park?.locationId }
   );
   const logs = useMemo(() => data.logs || initialLogs || [], [data.logs, initialLogs]);
   const pagination = data.pagination || { totalRecords: logs.length, totalPages: 1, currentPage: 1 };

@@ -11,9 +11,9 @@ export const moviraControlApi = baseApi.injectEndpoints({
       providesTags: ["SaasControl"],
       transformResponse: (response) => response?.data || response || {},
     }),
-    getSaasParkById: builder.query({
-      query: (id) => `/saas/parks/${id}`,
-      providesTags: (result, error, id) => [{ type: "SaasControl", id }],
+    getSaasParkByLocationId: builder.query({
+      query: (locationId) => `/saas/parks/${locationId}`,
+      providesTags: (result, error, locationId) => [{ type: "SaasControl", id: locationId }],
       transformResponse: (response) => response?.data || response,
     }),
     getSaasPlans: builder.query({
@@ -68,19 +68,19 @@ export const moviraControlApi = baseApi.injectEndpoints({
       transformResponse: (response) => response?.data || response,
     }),
     getSaasParkAuditLogs: builder.query({
-      query: ({ id, page = 1, limit = 25, search = "", action = "all", from = "", to = "" } = {}) => ({
-        url: `/saas/parks/${id}/audit`,
+      query: ({ locationId, page = 1, limit = 25, search = "", action = "all", from = "", to = "" } = {}) => ({
+        url: `/saas/parks/${locationId}/audit`,
         params: { page, limit, search, action, from, to },
       }),
-      providesTags: (result, error, { id } = {}) => [{ type: "SaasControl", id: `audit-${id}` }],
+      providesTags: (result, error, { locationId } = {}) => [{ type: "SaasControl", id: `audit-${locationId}` }],
       transformResponse: (response) => response?.data || response || {},
     }),
     getSaasParkPaymentEvents: builder.query({
-      query: ({ id, page = 1, limit = 25, search = "", status = "all", eventType = "all", from = "", to = "" } = {}) => ({
-        url: `/saas/parks/${id}/payment-events`,
+      query: ({ locationId, page = 1, limit = 25, search = "", status = "all", eventType = "all", from = "", to = "" } = {}) => ({
+        url: `/saas/parks/${locationId}/payment-events`,
         params: { page, limit, search, status, eventType, from, to },
       }),
-      providesTags: (result, error, { id } = {}) => [{ type: "SaasControl", id: `payment-events-${id}` }],
+      providesTags: (result, error, { locationId } = {}) => [{ type: "SaasControl", id: `payment-events-${locationId}` }],
       transformResponse: (response) => response?.data || response || {},
     }),
     createSaasPark: builder.mutation({
@@ -100,41 +100,55 @@ export const moviraControlApi = baseApi.injectEndpoints({
       invalidatesTags: ["Users"],
       transformResponse: (response) => response?.data || response,
     }),
+    resendSaasOwnerAccess: builder.mutation({
+      query: ({ locationId, ...body }) => ({
+        url: `/saas/parks/${locationId}/owner-access/resend`,
+        method: "POST",
+        body,
+      }),
+      invalidatesTags: (result, error, { locationId }) => [
+        "Users",
+        "SaasControl",
+        { type: "SaasControl", id: locationId },
+        { type: "SaasControl", id: `audit-${locationId}` },
+      ],
+      transformResponse: (response) => response?.data || response,
+    }),
     updateSaasPark: builder.mutation({
-      query: ({ id, ...body }) => ({
-        url: `/saas/parks/${id}`,
+      query: ({ locationId, ...body }) => ({
+        url: `/saas/parks/${locationId}`,
         method: "PATCH",
         body,
       }),
-      invalidatesTags: (result, error, { id }) => ["SaasControl", "Parks", { type: "SaasControl", id }, { type: "SaasControl", id: `audit-${id}` }],
+      invalidatesTags: (result, error, { locationId }) => ["SaasControl", "Parks", { type: "SaasControl", id: locationId }, { type: "SaasControl", id: `audit-${locationId}` }],
     }),
     updateSaasParkModules: builder.mutation({
-      query: ({ id, modules }) => ({
-        url: `/saas/parks/${id}/modules`,
+      query: ({ locationId, modules }) => ({
+        url: `/saas/parks/${locationId}/modules`,
         method: "PATCH",
         body: { modules },
       }),
-      invalidatesTags: (result, error, { id }) => ["SaasControl", { type: "SaasControl", id }, { type: "SaasControl", id: `audit-${id}` }],
+      invalidatesTags: (result, error, { locationId }) => ["SaasControl", { type: "SaasControl", id: locationId }, { type: "SaasControl", id: `audit-${locationId}` }],
     }),
     updateSaasParkTicketControls: builder.mutation({
-      query: ({ id, ticketControls }) => ({
-        url: `/saas/parks/${id}/ticket-controls`,
+      query: ({ locationId, ticketControls }) => ({
+        url: `/saas/parks/${locationId}/ticket-controls`,
         method: "PATCH",
         body: { ticketControls },
       }),
-      invalidatesTags: (result, error, { id }) => ["SaasControl", { type: "SaasControl", id }, { type: "SaasControl", id: `audit-${id}` }],
+      invalidatesTags: (result, error, { locationId }) => ["SaasControl", { type: "SaasControl", id: locationId }, { type: "SaasControl", id: `audit-${locationId}` }],
     }),
     updateSaasParkPayments: builder.mutation({
-      query: ({ id, ...body }) => ({
-        url: `/saas/parks/${id}/payments`,
+      query: ({ locationId, ...body }) => ({
+        url: `/saas/parks/${locationId}/payments`,
         method: "PATCH",
         body,
       }),
-      invalidatesTags: (result, error, { id }) => [
+      invalidatesTags: (result, error, { locationId }) => [
         "SaasControl",
-        { type: "SaasControl", id },
-        { type: "SaasControl", id: `audit-${id}` },
-        { type: "SaasControl", id: `payment-events-${id}` },
+        { type: "SaasControl", id: locationId },
+        { type: "SaasControl", id: `audit-${locationId}` },
+        { type: "SaasControl", id: `payment-events-${locationId}` },
       ],
     }),
     getPaymentProviderSchemas: builder.query({
@@ -275,139 +289,139 @@ export const moviraControlApi = baseApi.injectEndpoints({
       invalidatesTags: (result, error, { locationId }) => (locationId ? [{ type: "Payment", id: `pos-${locationId}` }] : ["Payment"]),
     }),
     updateSaasParkBilling: builder.mutation({
-      query: ({ id, ...body }) => ({
-        url: `/saas/parks/${id}/billing`,
+      query: ({ locationId, ...body }) => ({
+        url: `/saas/parks/${locationId}/billing`,
         method: "PATCH",
         body,
       }),
-      invalidatesTags: (result, error, { id }) => ["SaasControl", { type: "SaasControl", id }, { type: "SaasControl", id: `audit-${id}` }],
+      invalidatesTags: (result, error, { locationId }) => ["SaasControl", { type: "SaasControl", id: locationId }, { type: "SaasControl", id: `audit-${locationId}` }],
     }),
     recordSaasInvoicePayment: builder.mutation({
-      query: ({ id, invoiceId, ...body }) => ({
-        url: `/saas/parks/${id}/invoices/${invoiceId}/payments`,
+      query: ({ locationId, invoiceId, ...body }) => ({
+        url: `/saas/parks/${locationId}/invoices/${invoiceId}/payments`,
         method: "POST",
         body,
       }),
-      invalidatesTags: (result, error, { id }) => [
+      invalidatesTags: (result, error, { locationId }) => [
         "SaasControl",
-        { type: "SaasControl", id },
-        { type: "SaasControl", id: `audit-${id}` },
-        { type: "SaasControl", id: `payment-events-${id}` },
+        { type: "SaasControl", id: locationId },
+        { type: "SaasControl", id: `audit-${locationId}` },
+        { type: "SaasControl", id: `payment-events-${locationId}` },
       ],
       transformResponse: (response) => response?.data || response,
     }),
     createSaasInvoicePaymentLink: builder.mutation({
-      query: ({ id, invoiceId, ...body }) => ({
-        url: `/saas/parks/${id}/invoices/${invoiceId}/payment-link`,
+      query: ({ locationId, invoiceId, ...body }) => ({
+        url: `/saas/parks/${locationId}/invoices/${invoiceId}/payment-link`,
         method: "POST",
         body,
       }),
-      invalidatesTags: (result, error, { id }) => [
+      invalidatesTags: (result, error, { locationId }) => [
         "SaasControl",
-        { type: "SaasControl", id },
-        { type: "SaasControl", id: `audit-${id}` },
-        { type: "SaasControl", id: `payment-events-${id}` },
+        { type: "SaasControl", id: locationId },
+        { type: "SaasControl", id: `audit-${locationId}` },
+        { type: "SaasControl", id: `payment-events-${locationId}` },
       ],
       transformResponse: (response) => response?.data || response,
     }),
     refreshSaasInvoiceLifecycle: builder.mutation({
-      query: ({ id, asOf } = {}) => ({
-        url: `/saas/parks/${id}/invoices/lifecycle/refresh`,
+      query: ({ locationId, asOf } = {}) => ({
+        url: `/saas/parks/${locationId}/invoices/lifecycle/refresh`,
         method: "POST",
         body: asOf ? { asOf } : {},
       }),
-      invalidatesTags: (result, error, { id }) => [
+      invalidatesTags: (result, error, { locationId }) => [
         "SaasControl",
-        { type: "SaasControl", id },
-        { type: "SaasControl", id: `audit-${id}` },
-        { type: "SaasControl", id: `payment-events-${id}` },
+        { type: "SaasControl", id: locationId },
+        { type: "SaasControl", id: `audit-${locationId}` },
+        { type: "SaasControl", id: `payment-events-${locationId}` },
       ],
       transformResponse: (response) => response?.data || response,
     }),
     voidSaasInvoice: builder.mutation({
-      query: ({ id, invoiceId, reason }) => ({
-        url: `/saas/parks/${id}/invoices/${invoiceId}/void`,
+      query: ({ locationId, invoiceId, reason }) => ({
+        url: `/saas/parks/${locationId}/invoices/${invoiceId}/void`,
         method: "POST",
         body: { reason },
       }),
-      invalidatesTags: (result, error, { id }) => [
+      invalidatesTags: (result, error, { locationId }) => [
         "SaasControl",
-        { type: "SaasControl", id },
-        { type: "SaasControl", id: `audit-${id}` },
-        { type: "SaasControl", id: `payment-events-${id}` },
+        { type: "SaasControl", id: locationId },
+        { type: "SaasControl", id: `audit-${locationId}` },
+        { type: "SaasControl", id: `payment-events-${locationId}` },
       ],
       transformResponse: (response) => response?.data || response,
     }),
     refundSaasInvoicePayment: builder.mutation({
-      query: ({ id, invoiceId, amount, reason, idempotencyKey }) => ({
-        url: `/saas/parks/${id}/invoices/${invoiceId}/refunds`,
+      query: ({ locationId, invoiceId, amount, reason, idempotencyKey }) => ({
+        url: `/saas/parks/${locationId}/invoices/${invoiceId}/refunds`,
         method: "POST",
         body: { amount, reason, idempotencyKey },
       }),
-      invalidatesTags: (result, error, { id }) => [
+      invalidatesTags: (result, error, { locationId }) => [
         "SaasControl",
-        { type: "SaasControl", id },
-        { type: "SaasControl", id: `audit-${id}` },
-        { type: "SaasControl", id: `payment-events-${id}` },
+        { type: "SaasControl", id: locationId },
+        { type: "SaasControl", id: `audit-${locationId}` },
+        { type: "SaasControl", id: `payment-events-${locationId}` },
       ],
       transformResponse: (response) => response?.data || response,
     }),
     getSaasInvoiceDocument: builder.query({
-      query: ({ id, invoiceId }) => ({
-        url: `/saas/parks/${id}/invoices/${invoiceId}/document`,
+      query: ({ locationId, invoiceId }) => ({
+        url: `/saas/parks/${locationId}/invoices/${invoiceId}/document`,
         responseHandler: (response) => response.text(),
       }),
     }),
     updateSaasParkOnboarding: builder.mutation({
-      query: ({ id, onboarding, ticketControls }) => ({
-        url: `/saas/parks/${id}/onboarding`,
+      query: ({ locationId, onboarding, ticketControls }) => ({
+        url: `/saas/parks/${locationId}/onboarding`,
         method: "PATCH",
         body: { onboarding, ticketControls },
       }),
-      invalidatesTags: (result, error, { id }) => ["SaasControl", { type: "SaasControl", id }, { type: "SaasControl", id: `audit-${id}` }],
+      invalidatesTags: (result, error, { locationId }) => ["SaasControl", { type: "SaasControl", id: locationId }, { type: "SaasControl", id: `audit-${locationId}` }],
     }),
     deleteSaasPark: builder.mutation({
-      query: (id) => ({
-        url: `/saas/parks/${id}`,
+      query: (locationId) => ({
+        url: `/saas/parks/${locationId}`,
         method: "DELETE",
       }),
       invalidatesTags: ["SaasControl", "Parks"],
     }),
     getSaasParkPermanentDeletePreview: builder.query({
-      query: (id) => `/saas/parks/${id}/permanent-preview`,
+      query: (locationId) => `/saas/parks/${locationId}/permanent-preview`,
       transformResponse: (response) => response?.data || response,
     }),
     permanentDeleteSaasPark: builder.mutation({
-      query: ({ id, ...body }) => ({
-        url: `/saas/parks/${id}/permanent`,
+      query: ({ locationId, ...body }) => ({
+        url: `/saas/parks/${locationId}/permanent`,
         method: "DELETE",
         body,
       }),
       invalidatesTags: ["SaasControl", "Parks"],
     }),
     updateSaasParkLifecycle: builder.mutation({
-      query: ({ id, ...body }) => ({
-        url: `/saas/parks/${id}/lifecycle`,
+      query: ({ locationId, ...body }) => ({
+        url: `/saas/parks/${locationId}/lifecycle`,
         method: "PATCH",
         body,
       }),
-      invalidatesTags: (result, error, { id }) => ["SaasControl", "Parks", { type: "SaasControl", id }, { type: "SaasControl", id: `audit-${id}` }],
+      invalidatesTags: (result, error, { locationId }) => ["SaasControl", "Parks", { type: "SaasControl", id: locationId }, { type: "SaasControl", id: `audit-${locationId}` }],
       transformResponse: (response) => response?.data || response,
     }),
     approveSaasParkGoLive: builder.mutation({
-      query: ({ id, approvedBy }) => ({
-        url: `/saas/parks/${id}/go-live`,
+      query: ({ locationId, approvedBy }) => ({
+        url: `/saas/parks/${locationId}/go-live`,
         method: "POST",
         body: { approvedBy },
       }),
-      invalidatesTags: (result, error, { id }) => ["SaasControl", { type: "SaasControl", id }, { type: "SaasControl", id: `audit-${id}` }],
+      invalidatesTags: (result, error, { locationId }) => ["SaasControl", { type: "SaasControl", id: locationId }, { type: "SaasControl", id: `audit-${locationId}` }],
     }),
   }),
 });
 
 export const {
   useGetSaasParksQuery,
-  useGetSaasParkByIdQuery,
+  useGetSaasParkByLocationIdQuery,
   useGetSaasPlansQuery,
   useCreateSaasPlanMutation,
   useUpdateSaasPlanMutation,
@@ -418,6 +432,7 @@ export const {
   useGetSaasParkPaymentEventsQuery,
   useCreateSaasParkMutation,
   useCreateSaasCustomerOwnerMutation,
+  useResendSaasOwnerAccessMutation,
   useUpdateSaasParkMutation,
   useUpdateSaasParkModulesMutation,
   useUpdateSaasParkTicketControlsMutation,

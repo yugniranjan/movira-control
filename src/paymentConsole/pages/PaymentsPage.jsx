@@ -21,7 +21,8 @@ import {
 import { api } from "../api";
 import { providerByKey } from "../constants/providers";
 import { setCompatibilityMatrix } from "../constants/compatibility";
-import { Card, Button, Badge, Spinner, ProviderBadge, EmptyState, PageShell } from "../components/ui";
+import { Card, Button, Badge, ProviderBadge, EmptyState, PageShell } from "../components/ui";
+import { PageShimmer } from "../../components/Shimmer";
 import RoutingMatrix from "../components/RoutingMatrix";
 import AddGatewayModal from "../components/AddGatewayModal";
 import EditGatewayModal from "../components/EditGatewayModal";
@@ -254,11 +255,7 @@ export default function PaymentsPage() {
   }
 
   if (!credentials) {
-    return (
-      <div className="flex items-center justify-center py-24 text-[var(--brand-primary)]">
-        <Spinner className="w-6 h-6" />
-      </div>
-    );
+    return <PageShimmer />;
   }
 
   return (
@@ -283,7 +280,7 @@ export default function PaymentsPage() {
               <div className="text-xs text-amber-800 mt-0.5 break-words">{loadError}</div>
               <div className="text-xs text-amber-800 mt-1">
                 Showing whatever did load. Likely cause: backend missing
-                <code className="font-mono mx-1">/api/payments/config/*</code>
+                <code className="font-mono mx-1">/api/control/payments/config/*</code>
                 routes, or auth.
               </div>
             </div>

@@ -18,7 +18,8 @@ import {
   FiCornerDownRight,
 } from "react-icons/fi";
 import { api } from "../api";
-import { Card, Badge, Spinner, Button, ProviderBadge, PageShell } from "../components/ui";
+import { Card, Badge, Button, ProviderBadge, PageShell } from "../components/ui";
+import { PageShimmer } from "../../components/Shimmer";
 import { providerByKey } from "../constants/providers";
 import { setCompatibilityMatrix } from "../constants/compatibility";
 import { CHANNELS, AVAILABILITY_TONE, isChannelEditable } from "../constants/channels";
@@ -168,8 +169,8 @@ function RouteListItem({ channel, route, venue, credentials, onEdit }) {
 }
 
 export default function VenueDetailPage() {
-  const { id } = useParams();
-  const venueId = Number(id);
+  const { locationId: locationIdParam } = useParams();
+  const locationId = Number(locationIdParam);
   const [venue, setVenue] = useState(null);
   const [credentials, setCredentials] = useState([]);
   const [schemas, setSchemas] = useState(null);
@@ -185,10 +186,10 @@ export default function VenueDetailPage() {
     let cancelled = false;
     (async () => {
       const results = await Promise.allSettled([
-        api.getVenue(id),
+        api.getVenue(locationId),
         api.getCredentials(),
         api.getProviderSchemas(),
-        api.getVenueRoutes(id),
+        api.getVenueRoutes(locationId),
         api.getCompatibility(),
       ]);
       if (cancelled) return;
@@ -211,11 +212,11 @@ export default function VenueDetailPage() {
     return () => {
       cancelled = true;
     };
-  }, [id, reloadKey]);
+  }, [locationId, reloadKey]);
 
   const venueGateways = useMemo(
-    () => credentials.filter((c) => Number(c.locationId) === venueId),
-    [credentials, venueId]
+    () => credentials.filter((c) => Number(c.locationId) === locationId),
+    [credentials, locationId]
   );
   const inheritedGateways = useMemo(
     () => credentials.filter((c) => c.locationId == null),
@@ -266,11 +267,11 @@ export default function VenueDetailPage() {
   }
 
   async function handleUpsertRoute(input) {
-    const route = await api.upsertVenueRoute({ locationId: venueId, ...input });
+    const route = await api.upsertVenueRoute({ locationId, ...input });
     setRoutes((prev) => ({ ...prev, [input.channel]: route }));
   }
   async function handleClearRoute(channel) {
-    await api.deleteVenueRoute({ locationId: venueId, channel });
+    await api.deleteVenueRoute({ locationId, channel });
     setRoutes((prev) => {
       const next = { ...prev };
       delete next[channel];
@@ -283,7 +284,7 @@ export default function VenueDetailPage() {
       return (
         <div className="max-w-xl mx-auto py-12 space-y-4">
           <Link
-            to="/payment-console/venues"
+            to="/movira-control/payments/venues"
             className="inline-flex items-center gap-1.5 text-sm font-semibold text-[var(--text-base)] hover:text-[var(--text-strong)]"
           >
             <FiArrowLeft /> All venues
@@ -303,11 +304,7 @@ export default function VenueDetailPage() {
         </div>
       );
     }
-    return (
-      <div className="flex items-center justify-center py-24 text-[var(--brand-primary)]">
-        <Spinner className="w-6 h-6" />
-      </div>
-    );
+    return <PageShimmer />;
   }
 
   return (
@@ -316,7 +313,7 @@ export default function VenueDetailPage() {
       description={`${venue.city} · ${venue.country}`}
       actions={
         <Link
-          to="/payment-console/venues"
+          to="/movira-control/payments/venues"
           className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-stone-300 bg-white px-4 py-2 text-sm font-black text-stone-800 shadow-sm hover:border-orange-300 hover:bg-orange-50"
         >
           <FiArrowLeft /> All venues
@@ -425,7 +422,7 @@ export default function VenueDetailPage() {
               </span>
               <span className="text-xs text-[var(--text-muted)]">· {inheritedGateways.length} available</span>
               <Link
-                to="/payment-console/payments"
+                to="/movira-control/payments/gateways"
                 className="ml-auto text-xs font-semibold text-[var(--brand-primary-deep)] hover:underline"
               >
                 Manage on Payments page →
@@ -497,14 +494,14 @@ export default function VenueDetailPage() {
       </Card>
 
       {/* ── Card terminals — provider-aware (Stripe readers vs Nuvei TID) ── */}
-      <PosCardTree venueId={venueId} />
+      <PosCardTree locationId={locationId} />
 
       <AddGatewayModal
         open={adding}
         onClose={() => setAdding(false)}
         schemas={schemas}
         venues={[venue]}
-        defaultLocationId={venueId}
+        defaultLocationId={locationId}
         onCreated={(created) => setCredentials((list) => [...list, created])}
       />
 
@@ -524,7 +521,7 @@ export default function VenueDetailPage() {
         <RouteEditPopover
           open
           channel={routeEditing}
-          locationId={venueId}
+          locationId={locationId}
           currentRoute={routes[routeEditing] || null}
           credentials={credentials}
           venueLabel={venue.name}

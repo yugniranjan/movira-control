@@ -57,6 +57,11 @@ function ParkDetailRoute() {
   return isValidParkSection(section) ? <ParkDetailPage /> : <NotFound />;
 }
 
+function LegacyPaymentVenueRedirect() {
+  const { locationId } = useParams();
+  return <Navigate to={`/movira-control/payments/venues/${locationId}`} replace />;
+}
+
 export default function AppRoutes() {
   return (
     <Router>
@@ -70,15 +75,21 @@ export default function AppRoutes() {
             <Route path="/movira-control/plans" element={<PolicyRoute policy="plans"><PlansPage /></PolicyRoute>} />
             <Route path="/movira-control/parks" element={<PolicyRoute policy="control"><ParksPage /></PolicyRoute>} />
             <Route path="/movira-control/parks/new" element={<PolicyRoute policy="control"><ParkFormPage /></PolicyRoute>} />
-            <Route path="/movira-control/parks/:parkId/edit" element={<PolicyRoute policy="control"><ParkFormPage /></PolicyRoute>} />
-            <Route path="/movira-control/parks/:parkId" element={<PolicyRoute policy="control"><ParkDetailRoute /></PolicyRoute>} />
-            <Route path="/movira-control/parks/:parkId/:section" element={<PolicyRoute policy="control"><ParkDetailRoute /></PolicyRoute>} />
+            <Route path="/movira-control/parks/:locationId/edit" element={<PolicyRoute policy="control"><ParkFormPage /></PolicyRoute>} />
+            <Route path="/movira-control/parks/:locationId" element={<PolicyRoute policy="control"><ParkDetailRoute /></PolicyRoute>} />
+            <Route path="/movira-control/parks/:locationId/:section" element={<PolicyRoute policy="control"><ParkDetailRoute /></PolicyRoute>} />
 
-            <Route path="/payment-console" element={<PolicyRoute policy="payments"><PaymentOverviewPage /></PolicyRoute>} />
-            <Route path="/payment-console/platform-billing" element={<PolicyRoute policy="billing"><PaymentPlatformBillingPage /></PolicyRoute>} />
-            <Route path="/payment-console/venues" element={<PolicyRoute policy="venues"><PaymentVenuesPage /></PolicyRoute>} />
-            <Route path="/payment-console/venues/:id" element={<PolicyRoute policy="venues"><PaymentVenueDetailPage /></PolicyRoute>} />
-            <Route path="/payment-console/payments" element={<PolicyRoute policy="gateways"><PaymentPaymentsPage /></PolicyRoute>} />
+            <Route path="/movira-control/payments" element={<PolicyRoute policy="payments"><PaymentOverviewPage /></PolicyRoute>} />
+            <Route path="/movira-control/billing" element={<PolicyRoute policy="billing"><PaymentPlatformBillingPage /></PolicyRoute>} />
+            <Route path="/movira-control/payments/venues" element={<PolicyRoute policy="venues"><PaymentVenuesPage /></PolicyRoute>} />
+            <Route path="/movira-control/payments/venues/:locationId" element={<PolicyRoute policy="venues"><PaymentVenueDetailPage /></PolicyRoute>} />
+            <Route path="/movira-control/payments/gateways" element={<PolicyRoute policy="gateways"><PaymentPaymentsPage /></PolicyRoute>} />
+
+            <Route path="/payment-console" element={<Navigate to="/movira-control/payments" replace />} />
+            <Route path="/payment-console/platform-billing" element={<Navigate to="/movira-control/billing" replace />} />
+            <Route path="/payment-console/venues" element={<Navigate to="/movira-control/payments/venues" replace />} />
+            <Route path="/payment-console/venues/:locationId" element={<LegacyPaymentVenueRedirect />} />
+            <Route path="/payment-console/payments" element={<Navigate to="/movira-control/payments/gateways" replace />} />
           </Route>
 
           <Route path="*" element={<NotFound />} />

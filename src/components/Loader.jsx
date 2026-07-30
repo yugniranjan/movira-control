@@ -1,12 +1,3 @@
-import React from "react";
-import { FaSpinner } from "react-icons/fa";
-
-const Loader = () => {
-  return (
-    <div className="flex justify-center items-center h-dvh bg-[#f1f3f9]">
-      <FaSpinner className="animate-spin text-blue-500 text-4xl" />
-    </div>
-  );
-};
-
-export default Loader;
+// Backwards-compatible entry point for route and page loading states.
+// Keeping this alias lets every existing <Loader /> use the shared shimmer.
+export { PageShimmer as default } from "./Shimmer";

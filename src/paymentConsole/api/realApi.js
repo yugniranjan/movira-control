@@ -1,19 +1,7 @@
 // Real backend API for the aeroSportsAdmin server. Implements the exact same
 // interface the pages consume from the mock layer, so swapping is transparent.
 //
-// Backend contracts (all responses are `{ success, data }` unless noted):
-//   POST   /api/auth/login                               → { token, user, locations }
-//   GET    /api/locations/all                            → { data: [Location] }
-//   GET    /api/payments/config/providers/schemas
-//   GET    /api/payments/config/credentials              (returns locationId per row)
-//   POST   /api/payments/config/credentials              (accepts locationId)
-//   PATCH  /api/payments/config/credentials/:id
-//   DELETE /api/payments/config/credentials/:id
-//   POST   /api/payments/config/test-connection
-//   GET    /api/payments/config/routes/location/:id         → location_payment_settings rows
-//   PUT    /api/payments/config/routes/location/:id/:ch     upsert one route
-//   DELETE /api/payments/config/routes/location/:id/:ch
-//   POST   /api/payments/config/routes/resolve           preview which credential a route resolves
+// Backend contracts are relative to the /api/control application namespace.
 //
 // Note: there's no /routes/org endpoint — backend's location_payment_settings
 // is per-location by design; an "org default" is a frontend fiction we used to
@@ -85,6 +73,14 @@ export const realApi = {
     return (await http.get("/payments/config/credentials")).data;
   },
 
+  async getPlatformBillingCredentials() {
+    return (await http.get("/billing/credentials")).data;
+  },
+
+  async getPlatformBillingProviderSchemas() {
+    return (await http.get("/billing/providers/schemas")).data;
+  },
+
   async getPlatformBillingGateway({ channel = "payment_link", currency = "" } = {}) {
     const qs = new URLSearchParams();
     if (channel) qs.set("channel", channel);
@@ -103,6 +99,10 @@ export const realApi = {
     return (await http.post("/payments/config/credentials", payload)).data;
   },
 
+  async createPlatformBillingCredential(payload) {
+    return (await http.post("/billing/credentials", { ...payload, locationId: null })).data;
+  },
+
   async updateCredential(credentialId, payload) {
     // Scope (locationId) is not patchable — it's part of the row's identity.
     return (await http.patch(`/payments/config/credentials/${credentialId}`, payload)).data;
@@ -114,6 +114,10 @@ export const realApi = {
 
   async testConnection(payload) {
     return (await http.post("/payments/config/test-connection", payload)).data;
+  },
+
+  async testPlatformBillingConnection(payload) {
+    return (await http.post("/billing/test-connection", payload)).data;
   },
 
   async getCredentialAuditLog(credentialId, { limit = 100 } = {}) {

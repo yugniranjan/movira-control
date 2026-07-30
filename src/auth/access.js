@@ -32,8 +32,8 @@ export function firstAccessiblePath(auth) {
   const candidates = [
     ["control", "/movira-control/parks"],
     ["plans", "/movira-control/plans"],
-    ["billing", "/payment-console/platform-billing"],
-    ["payments", "/payment-console"],
+    ["billing", "/movira-control/billing"],
+    ["payments", "/movira-control/payments"],
   ];
   return candidates.find(([policy]) => canAccessPolicy(auth, policy))?.[1] || null;
 }

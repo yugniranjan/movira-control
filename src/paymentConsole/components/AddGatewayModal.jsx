@@ -34,6 +34,8 @@ export default function AddGatewayModal({
   forceScope = null,
   title = null,
   subtitle = null,
+  createCredential = api.createCredential,
+  testConnection = api.testConnection,
 }) {
   const [provider, setProvider] = useState(null);
   const [label, setLabel] = useState("");
@@ -129,7 +131,7 @@ export default function AddGatewayModal({
     setTesting(true);
     setTest(null);
     try {
-      const res = await api.testConnection({ provider, values });
+      const res = await testConnection({ provider, values });
       setTest(res);
     } finally {
       setTesting(false);
@@ -149,7 +151,7 @@ export default function AddGatewayModal({
     setFieldErrors({});
     setSaving(true);
     try {
-      const created = await api.createCredential({
+      const created = await createCredential({
         provider,
         label,
         mode,

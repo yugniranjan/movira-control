@@ -1,4 +1,4 @@
-const DEFAULT_API_BASE_URL = "/api";
+const DEFAULT_API_BASE_URL = "/api/control";
 const KNOWN_FRONTEND_PORTS = new Set(["4172", "5172", "5173", "5174"]);
 const KNOWN_BACKEND_PORTS = new Set(["5171"]);
 
@@ -38,7 +38,7 @@ export function resolveApiBaseUrl() {
   if (isSameHost && isKnownFrontendPort && !isKnownBackendPort) {
     const parsedProxyTarget = tryParseUrl(proxyTarget);
     if (parsedProxyTarget && parsedProxyTarget.hostname === window.location.hostname) {
-      return `${parsedProxyTarget.origin}/api`;
+      return `${parsedProxyTarget.origin}${DEFAULT_API_BASE_URL}`;
     }
 
     return DEFAULT_API_BASE_URL;

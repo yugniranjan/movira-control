@@ -45,10 +45,16 @@ export async function refreshAccessToken() {
 
   refreshPromise = (async () => {
     try {
+      const currentToken = readStoredToken();
+      if (!currentToken) return null;
+
       const response = await fetch(`${resolveApiBaseUrl()}/auth/refresh`, {
         method: "POST",
         credentials: "include",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${currentToken}`,
+        },
       });
       if (!response.ok) return null;
       const data = await response.json();

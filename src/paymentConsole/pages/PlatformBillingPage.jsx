@@ -4,6 +4,7 @@ import { api } from "../api";
 import { providerByKey } from "../constants/providers";
 import { Badge, Button, Card, EmptyState, PageShell, ProviderBadge, Select, Spinner } from "../components/ui";
 import AddGatewayModal from "../components/AddGatewayModal";
+import { PageShimmer } from "../../components/Shimmer";
 
 const SAAS_BILLING_PROVIDERS = new Set(["stripe", "razorpay"]);
 const CURRENCY_OPTIONS = [
@@ -184,9 +185,9 @@ export default function PlatformBillingPage() {
     let cancelled = false;
     (async () => {
       const [credsRes, gatewayRes, schemasRes] = await Promise.allSettled([
-        api.getCredentials(),
+        api.getPlatformBillingCredentials(),
         api.getPlatformBillingGateway(),
-        api.getProviderSchemas(),
+        api.getPlatformBillingProviderSchemas(),
       ]);
       if (cancelled) return;
       setCredentials(credsRes.status === "fulfilled" ? credsRes.value : []);
@@ -220,11 +221,7 @@ export default function PlatformBillingPage() {
   }
 
   if (!credentials) {
-    return (
-      <div className="flex items-center justify-center py-24 text-[var(--brand-primary)]">
-        <Spinner className="h-6 w-6" />
-      </div>
-    );
+    return <PageShimmer />;
   }
 
   return (
@@ -277,6 +274,8 @@ export default function PlatformBillingPage() {
         forceScope="org"
         title="Add Movira collection credential"
         subtitle="These credentials belong to Movira and are used only to collect SaaS invoices from customers."
+        createCredential={api.createPlatformBillingCredential}
+        testConnection={api.testPlatformBillingConnection}
         onCreated={(created) => {
           setCredentials((list) => [created, ...(list || [])]);
           setAdding(false);

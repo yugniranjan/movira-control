@@ -9,10 +9,10 @@ import { canAccessPolicy } from "../auth/access";
 const navItems = [
   { to: "/movira-control/parks", label: "Control", icon: FiGrid, policy: "control" },
   { to: "/movira-control/plans", label: "Plans", icon: FiLayers, policy: "plans" },
-  { to: "/payment-console/platform-billing", label: "SaaS Billing", icon: FiDollarSign, policy: "billing" },
-  { to: "/payment-console", label: "Payments", icon: FiCreditCard, policy: "payments" },
-  { to: "/payment-console/venues", label: "Venues", icon: FiMapPin, policy: "venues" },
-  { to: "/payment-console/payments", label: "Gateways", icon: FiSettings, policy: "gateways" },
+  { to: "/movira-control/billing", label: "SaaS Billing", icon: FiDollarSign, policy: "billing" },
+  { to: "/movira-control/payments", label: "Payments", icon: FiCreditCard, policy: "payments" },
+  { to: "/movira-control/payments/venues", label: "Venues", icon: FiMapPin, policy: "venues" },
+  { to: "/movira-control/payments/gateways", label: "Gateways", icon: FiSettings, policy: "gateways" },
 ];
 
 const MOVIRA360_MARK_SRC = "/branding/movira360-mark.png";
@@ -65,7 +65,7 @@ export default function ControlAdminLayout() {
             <NavLink
               key={to}
               to={to}
-              end={to === "/payment-console"}
+              end={to === "/movira-control/payments"}
               className={({ isActive }) =>
                 `mx-auto flex h-[50px] w-[56px] flex-col items-center justify-center gap-0.5 rounded-lg text-center text-[9px] font-black leading-tight transition ${
                   isActive
@@ -149,7 +149,7 @@ export default function ControlAdminLayout() {
             <NavLink
               key={to}
               to={to}
-              end={to === "/payment-console"}
+              end={to === "/movira-control/payments"}
               className={({ isActive }) =>
                 `flex min-w-0 flex-col items-center justify-center gap-0.5 rounded-lg px-1 py-1.5 text-center text-[9px] font-black leading-tight transition ${
                   isActive

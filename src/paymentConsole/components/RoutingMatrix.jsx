@@ -170,7 +170,7 @@ export default function RoutingMatrix({
               })}
               <td className="border-b border-[var(--stroke-soft)] align-middle pr-1">
                 <Link
-                  to={`/payment-console/venues/${v.locationId}`}
+                  to={`/movira-control/payments/venues/${v.locationId}`}
                   className="inline-flex items-center gap-0.5 text-xs font-semibold text-[var(--brand-primary-deep)] hover:underline whitespace-nowrap"
                 >
                   Detail <FiChevronRight size={12} />

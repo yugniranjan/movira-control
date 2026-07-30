@@ -1,15 +1,9 @@
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 import { logout, tokenRefreshed } from "../features/auth/authSlice";
-import Cookies from "js-cookie";
 import { resolveApiBaseUrl } from "./resolveApiBaseUrl";
 import { refreshAccessToken } from "./authSession";
 
 const API_BASE_URL = resolveApiBaseUrl();
-
-function appendQueryParam(url, key, value) {
-  const separator = url.includes("?") ? "&" : "?";
-  return `${url}${separator}${key}=${encodeURIComponent(value)}`;
-}
 
 const rawBaseQuery = fetchBaseQuery({
   baseUrl: API_BASE_URL,
@@ -56,18 +50,12 @@ function normalizeApiErrorPayload(data, fallbackStatus) {
 }
 
 export const customBaseQuery = async (args, api, extraOptions) => {
-  const locationId = Cookies.get("locationId");
   const tokenAtRequestStart = api.getState()?.auth?.token || null;
 
   // normalize request
   let request = typeof args === "string" ? { url: args } : { ...args };
   let { url, body, ...rest } = request;
   const requestUrl = String(url || "");
-
-  // Always send the active location as a normal query parameter.
-  if (locationId) {
-    url = appendQueryParam(url, "locationId", locationId);
-  }
 
   let result;
 
