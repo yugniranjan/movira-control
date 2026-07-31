@@ -347,6 +347,13 @@ const setupSteps = [
   { key: "goLiveApproval", label: "Go live", route: "onboarding" },
 ];
 
+const demoSetupSteps = [
+  { key: "parkWorkspace", label: "Workspace", route: "" },
+  { key: "ownerAccess", label: "Owner", route: "edit" },
+  { key: "moduleAccess", label: "Modules", route: "modules" },
+  { key: "sandboxPayments", label: "Sandbox payments", route: "payments" },
+];
+
 const manualOnboardingKeys = new Set(["catalogReady", "bookingPortal", "staffHandoff"]);
 
 const setupStages = [
@@ -379,6 +386,27 @@ const setupStages = [
     label: "Launch",
     description: "Operations and go-live",
     keys: ["catalogReady", "bookingPortal", "staffHandoff", "goLiveApproval"],
+  },
+];
+
+const demoSetupStages = [
+  {
+    suffix: "",
+    label: "Workspace",
+    description: "Park and owner",
+    keys: ["parkWorkspace", "ownerAccess"],
+  },
+  {
+    suffix: "modules",
+    label: "Modules",
+    description: "Test access",
+    keys: ["moduleAccess"],
+  },
+  {
+    suffix: "payments",
+    label: "Sandbox",
+    description: "Test payments",
+    keys: ["sandboxPayments"],
   },
 ];
 
@@ -585,8 +613,38 @@ function ProgressBar({ value }) {
   );
 }
 
+function isDemoPark(park) {
+  return park?.deploymentMode === "demo" || park?.status === "demo";
+}
+
+function isSetupKeyComplete(park, key) {
+  if (key === "sandboxPayments") {
+    return park?.customerPaymentStatus === "sandbox";
+  }
+  return Boolean(park?.onboarding?.[key]);
+}
+
+function setupStepsForPark(park) {
+  return isDemoPark(park) ? demoSetupSteps : setupSteps;
+}
+
+function setupStagesForPark(park) {
+  return isDemoPark(park) ? demoSetupStages : setupStages;
+}
+
+function setupProgressForPark(park) {
+  const steps = setupStepsForPark(park);
+  const completed = steps.filter((step) => isSetupKeyComplete(park, step.key)).length;
+  return {
+    completed,
+    total: steps.length,
+    score: steps.length ? Math.round((completed / steps.length) * 100) : 0,
+  };
+}
+
 function getNextStep(park) {
-  return setupSteps.find((step) => !park?.onboarding?.[step.key]) || setupSteps[setupSteps.length - 1];
+  const steps = setupStepsForPark(park);
+  return steps.find((step) => !isSetupKeyComplete(park, step.key)) || steps[steps.length - 1];
 }
 
 function stepHref(locationId, step) {
@@ -598,30 +656,38 @@ function parkSectionHref(locationId, suffix = "") {
 }
 
 function isSetupStageComplete(park, stage) {
-  return stage.keys.every((key) => Boolean(park?.onboarding?.[key]));
+  return stage.keys.every((key) => isSetupKeyComplete(park, key));
 }
 
-function isSetupStageAvailable(park, stageIndex) {
-  return setupStages.slice(0, stageIndex).every((stage) => isSetupStageComplete(park, stage));
+function isSetupStageAvailable(park, stageIndex, stages = setupStagesForPark(park)) {
+  return stages.slice(0, stageIndex).every((stage) => isSetupStageComplete(park, stage));
 }
 
 function getCurrentSetupStage(park) {
-  return setupStages.find((stage) => !isSetupStageComplete(park, stage)) || setupStages[setupStages.length - 1];
+  const stages = setupStagesForPark(park);
+  return stages.find((stage) => !isSetupStageComplete(park, stage)) || stages[stages.length - 1];
 }
 
 function getParkSectionLock(park, suffix = "") {
   const recordView = parkRecordViews.find((item) => item.suffix === suffix);
-  if (recordView?.requiredStep && !park?.onboarding?.[recordView.requiredStep]) {
+  const recordRequirementComplete =
+    isDemoPark(park) && suffix === "payment-history"
+      ? isSetupKeyComplete(park, "sandboxPayments")
+      : recordView?.requiredStep
+        ? isSetupKeyComplete(park, recordView.requiredStep)
+        : true;
+  if (recordView?.requiredStep && !recordRequirementComplete) {
     return {
       message: `Complete ${recordView.requiredLabel} before opening ${recordView.label}.`,
     };
   }
 
-  const stageIndex = setupStages.findIndex((stage) => stage.suffix === suffix);
-  if (stageIndex < 0 || isSetupStageAvailable(park, stageIndex)) return null;
-  const prerequisite = setupStages[stageIndex - 1];
+  const stages = setupStagesForPark(park);
+  const stageIndex = stages.findIndex((stage) => stage.suffix === suffix);
+  if (stageIndex < 0 || isSetupStageAvailable(park, stageIndex, stages)) return null;
+  const prerequisite = stages[stageIndex - 1];
   return {
-    message: `Complete ${prerequisite.label} before opening ${setupStages[stageIndex].label}.`,
+    message: `Complete ${prerequisite.label} before opening ${stages[stageIndex].label}.`,
   };
 }
 
@@ -701,7 +767,9 @@ function ParkRecordsMenu({ park, section, isRecordView }) {
               style={{ left: position.left, top: position.top }}
               className="fixed z-[1000] w-56 rounded-xl border border-[var(--stroke-soft)] bg-[var(--surface-panel-strong)] p-1.5 shadow-[0_18px_45px_rgba(15,23,42,0.2)]"
             >
-              {parkRecordViews.map((view) => {
+              {parkRecordViews
+                .filter((view) => !(isDemoPark(park) && view.suffix === "billing-history"))
+                .map((view) => {
                 const locked = getParkSectionLock(park, view.suffix);
                 return (
                   <Link
@@ -738,8 +806,12 @@ function ParkRecordsMenu({ park, section, isRecordView }) {
 }
 
 function SetupNavigation({ park, section }) {
-  const score = Number(park.onboardingScore || 0);
-  const completedSteps = setupSteps.filter((step) => Boolean(park.onboarding?.[step.key])).length;
+  const stages = setupStagesForPark(park);
+  const progress = setupProgressForPark(park);
+  const score = progress.score;
+  const completedSteps = progress.completed;
+  const totalSteps = progress.total;
+  const demo = isDemoPark(park);
   const isRecordView = parkRecordViews.some((item) => item.suffix === section);
 
   return (
@@ -751,19 +823,19 @@ function SetupNavigation({ park, section }) {
           </div>
           <div className="min-w-0">
             <p className="text-[10px] font-black uppercase tracking-[0.14em] text-[var(--text-muted)]">
-              Launch readiness
+              {demo ? "Testing readiness" : "Launch readiness"}
             </p>
             <div className="mt-1 flex min-w-0 items-baseline gap-2">
               <p className="shrink-0 text-xl font-black leading-none text-[var(--text-strong)]">{score}%</p>
-              <span className="truncate text-xs font-bold text-[var(--text-muted)]">{completedSteps}/{setupSteps.length} checks</span>
+              <span className="truncate text-xs font-bold text-[var(--text-muted)]">{completedSteps}/{totalSteps} checks</span>
             </div>
           </div>
         </div>
 
         <div className="min-w-0">
           <div className="mb-1.5 flex items-center justify-between gap-3 text-[11px] font-bold text-[var(--text-muted)]">
-            <span>{score === 100 ? "Setup complete" : "Complete each stage to unlock the next"}</span>
-            <span>{score === 100 ? "Ready for launch" : "In progress"}</span>
+            <span>{score === 100 ? (demo ? "Demo setup complete" : "Setup complete") : "Complete each stage to unlock the next"}</span>
+            <span>{score === 100 ? (demo ? "Sandbox ready" : "Ready for launch") : "In progress"}</span>
           </div>
           <div className="h-2 overflow-hidden rounded-full bg-[var(--surface-muted)]">
             <div
@@ -779,10 +851,10 @@ function SetupNavigation({ park, section }) {
         </div>
       </div>
 
-      <div className="mt-2 grid gap-1.5 border-t border-[var(--stroke-soft)] pt-2 sm:grid-cols-5">
-        {setupStages.map((stage, index) => {
+      <div className={`mt-2 grid gap-1.5 border-t border-[var(--stroke-soft)] pt-2 ${demo ? "sm:grid-cols-3" : "sm:grid-cols-5"}`}>
+        {stages.map((stage, index) => {
           const done = isSetupStageComplete(park, stage);
-          const available = isSetupStageAvailable(park, index);
+          const available = isSetupStageAvailable(park, index, stages);
           const active = !isRecordView && section === stage.suffix;
           return (
             <Link
@@ -791,9 +863,9 @@ function SetupNavigation({ park, section }) {
               onClick={(event) => {
                 if (available) return;
                 event.preventDefault();
-                toast.error(`Complete ${setupStages[index - 1].label} before opening ${stage.label}.`);
+                toast.error(`Complete ${stages[index - 1].label} before opening ${stage.label}.`);
               }}
-              title={available ? stage.label : `Complete ${setupStages[index - 1]?.label || "the previous stage"} first`}
+              title={available ? stage.label : `Complete ${stages[index - 1]?.label || "the previous stage"} first`}
               className={`flex min-h-10 min-w-0 items-center gap-2 rounded-lg border px-2.5 py-1.5 transition ${
                 active
                   ? "border-[var(--brand-primary-border)] bg-[var(--brand-primary-soft)] text-[var(--brand-primary)] shadow-sm"
@@ -829,15 +901,29 @@ function SetupNavigation({ park, section }) {
 
 function NextActionCard({ park }) {
   const nextStep = getNextStep(park);
+  const demo = isDemoPark(park);
+  const progress = setupProgressForPark(park);
+  const complete = progress.score === 100;
   return (
     <div className="rounded-xl border border-orange-200 bg-orange-50 p-4">
       <p className="text-xs font-black uppercase text-orange-700">Next action</p>
-      <h3 className="mt-1 text-lg font-black text-stone-950">{nextStep.label}</h3>
+      <h3 className="mt-1 text-lg font-black text-stone-950">
+        {demo && complete ? "Demo testing ready" : nextStep.label}
+      </h3>
       <p className="mt-1 text-sm font-semibold text-stone-600">
-        {park.onboardingScore === 100 ? "Ready for live operations review." : "Complete this step to move the park closer to go-live."}
+        {demo
+          ? complete
+            ? "Sandbox access is active. Convert the park when real billing and live operations are required."
+            : "Complete this step to finish the sandbox testing setup."
+          : progress.score === 100
+            ? "Ready for live operations review."
+            : "Complete this step to move the park closer to go-live."}
       </p>
-      <Link to={stepHref(park.locationId, nextStep)} className={buttonClass("primary", "mt-4")}>
-        Continue <FaRocket />
+      <Link
+        to={demo && complete ? `/movira-control/parks/${park.locationId}/edit` : stepHref(park.locationId, nextStep)}
+        className={buttonClass("primary", "mt-4")}
+      >
+        {demo && complete ? "Convert to production" : "Continue"} <FaRocket />
       </Link>
     </div>
   );
@@ -1528,8 +1614,8 @@ function Overview() {
                   <span>{money(park.billing?.monthlyTotal, park.currency)}/mo</span>
                 </div>
                 <div className="mt-3">
-                  <ProgressBar value={park.onboardingScore || 0} />
-                  <p className="mt-1 text-xs font-bold text-stone-500">{park.onboardingScore || 0}% ready</p>
+                  <ProgressBar value={setupProgressForPark(park).score} />
+                  <p className="mt-1 text-xs font-bold text-stone-500">{setupProgressForPark(park).score}% ready</p>
                 </div>
               </Link>
               ))}
@@ -1812,8 +1898,8 @@ export function ParksList() {
                       <td className="px-4 py-3 font-bold text-stone-700">{money(park.monthlyBaseFee, park.currency)}/mo</td>
                       <td className="px-4 py-3 font-black text-stone-950">{money(park.billing?.monthlyTotal, park.currency)}/mo</td>
                       <td className="px-4 py-3">
-                        <div className="w-28"><ProgressBar value={park.onboardingScore || 0} /></div>
-                        <p className="mt-1 text-xs font-bold text-stone-500">{park.onboardingScore || 0}%</p>
+                        <div className="w-28"><ProgressBar value={setupProgressForPark(park).score} /></div>
+                        <p className="mt-1 text-xs font-bold text-stone-500">{setupProgressForPark(park).score}%</p>
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex justify-end gap-1.5">
@@ -2665,7 +2751,15 @@ export function ParkDetail() {
             <p className="text-xs font-black uppercase tracking-[0.18em] text-violet-700">Demo mode</p>
             <p className="mt-1 text-sm font-bold">Owner access is enabled for testing. Only sandbox payments are allowed.</p>
           </div>
-          <Pill className="shrink-0 border-violet-300 bg-white text-violet-700">Expires {dateOnly(park.demoExpiresAt)}</Pill>
+          <div className="flex flex-wrap items-center gap-2">
+            <Pill className="shrink-0 border-violet-300 bg-white text-violet-700">Expires {dateOnly(park.demoExpiresAt)}</Pill>
+            <Link
+              to={`/movira-control/parks/${park.locationId}/edit`}
+              className={buttonClass("secondary", "min-h-9 border-violet-300 bg-white px-3 py-1.5 text-xs text-violet-800")}
+            >
+              <FaRocket /> Convert to production
+            </Link>
+          </div>
         </div>
       ) : null}
       <SetupNavigation park={park} section={section} />
@@ -2695,7 +2789,12 @@ function OverviewPanel({ park }) {
           <StatCard icon={FaMapMarkerAlt} label="Status" value={park.status} detail={park.phase} />
           <StatCard icon={FaCreditCard} label="Billing" value={`${money(park.billing?.monthlyTotal, park.currency)}/mo`} detail="base fee + modules" />
           <StatCard icon={FaLayerGroup} label="Modules" value={park.modules?.length || 0} detail="enabled modules" />
-          <StatCard icon={FaCheckCircle} label="Onboarding" value={`${park.onboardingScore || 0}%`} detail="launch readiness" />
+          <StatCard
+            icon={FaCheckCircle}
+            label={isDemoPark(park) ? "Testing" : "Onboarding"}
+            value={`${setupProgressForPark(park).score}%`}
+            detail={isDemoPark(park) ? "sandbox readiness" : "launch readiness"}
+          />
         </div>
         <section className="rounded-xl border border-stone-200 bg-white p-5 shadow-sm">
           <div className="flex flex-wrap items-center justify-between gap-3">
@@ -3834,24 +3933,36 @@ function PaymentsPanel({ park }) {
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-stone-200 pb-3">
           <div className="min-w-0">
             <p className="text-xs font-black uppercase text-orange-700">Payment control</p>
-            <h2 className="mt-1 break-words text-lg font-black text-stone-950">Park payment status</h2>
-            <p className="mt-1 text-sm font-semibold text-stone-500">Platform billing collects from the park. Guest payments control checkout, POS, refunds, and memberships.</p>
+            <h2 className="mt-1 break-words text-lg font-black text-stone-950">
+              {isDemo ? "Sandbox payment testing" : "Park payment status"}
+            </h2>
+            <p className="mt-1 text-sm font-semibold text-stone-500">
+              {isDemo
+                ? "Test checkout, POS, refunds, and memberships without collecting real money."
+                : "Platform billing collects from the park. Guest payments control checkout, POS, refunds, and memberships."}
+            </p>
           </div>
-          <Pill className={platformStatusClass}>{platformStatusLabel}</Pill>
+          <Pill className={isDemo ? "border-violet-200 bg-violet-50 text-violet-700" : platformStatusClass}>
+            {isDemo ? "Sandbox only" : platformStatusLabel}
+          </Pill>
         </div>
-        <div className="mt-4 grid min-w-0 gap-3 lg:grid-cols-[0.85fr_0.85fr_1.3fr]">
-          <div className="rounded-lg border border-stone-200 bg-stone-50 p-3">
-            <p className="text-xs font-black uppercase text-stone-500">Platform billing method</p>
-            <p className="mt-1 text-base font-black capitalize text-stone-950">{platformMethodLabel}</p>
-            <p className="mt-1 text-xs font-semibold text-stone-500">Auto selected from gateway and invoice setup.</p>
-          </div>
-          <div className="rounded-lg border border-stone-200 bg-stone-50 p-3">
-            <p className="text-xs font-black uppercase text-stone-500">Platform billing status</p>
-            <div className="mt-1">
-              <Pill className={platformStatusClass}>{platformStatusLabel}</Pill>
-            </div>
-            <p className="mt-2 text-xs font-semibold text-stone-500">Auto updated from invoice and collection lifecycle.</p>
-          </div>
+        <div className={`mt-4 grid min-w-0 gap-3 ${isDemo ? "grid-cols-1" : "lg:grid-cols-[0.85fr_0.85fr_1.3fr]"}`}>
+          {!isDemo ? (
+            <>
+              <div className="rounded-lg border border-stone-200 bg-stone-50 p-3">
+                <p className="text-xs font-black uppercase text-stone-500">Platform billing method</p>
+                <p className="mt-1 text-base font-black capitalize text-stone-950">{platformMethodLabel}</p>
+                <p className="mt-1 text-xs font-semibold text-stone-500">Auto selected from gateway and invoice setup.</p>
+              </div>
+              <div className="rounded-lg border border-stone-200 bg-stone-50 p-3">
+                <p className="text-xs font-black uppercase text-stone-500">Platform billing status</p>
+                <div className="mt-1">
+                  <Pill className={platformStatusClass}>{platformStatusLabel}</Pill>
+                </div>
+                <p className="mt-2 text-xs font-semibold text-stone-500">Auto updated from invoice and collection lifecycle.</p>
+              </div>
+            </>
+          ) : null}
           <div className="rounded-lg border border-orange-100 bg-orange-50/40 p-3">
             <span className="text-xs font-black uppercase text-stone-500">Guest payments</span>
             <div className="mt-1 flex flex-col gap-2 sm:flex-row sm:items-start">
@@ -4007,20 +4118,64 @@ function OnboardingPanel({ park }) {
       );
     }
   };
-  return (
-    <div className="rounded-xl border border-stone-200 bg-white p-5 shadow-sm">
-      {isDemo ? (
-        <div className="mb-4 flex flex-col gap-3 rounded-xl border border-violet-200 bg-violet-50 p-4 sm:flex-row sm:items-center sm:justify-between">
+  if (isDemo) {
+    const progress = setupProgressForPark(park);
+    return (
+      <div className="rounded-xl border border-violet-200 bg-white p-5 shadow-sm">
+        <div className="flex flex-col gap-4 border-b border-violet-100 pb-5 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <p className="text-xs font-black uppercase tracking-[0.16em] text-violet-700">Separate production approval</p>
-            <p className="mt-1 font-black text-violet-950">This demo cannot be approved directly for go-live.</p>
-            <p className="mt-1 text-sm font-semibold text-violet-800">Convert it to production onboarding from Edit park, then complete billing, live gateway, readiness, and go-live checks.</p>
+            <p className="text-xs font-black uppercase tracking-[0.16em] text-violet-700">Demo testing</p>
+            <h2 className="mt-1 text-xl font-black text-stone-950">
+              {progress.score === 100 ? "Sandbox workspace is ready" : "Complete the sandbox setup"}
+            </h2>
+            <p className="mt-1 text-sm font-semibold text-stone-600">
+              Demo access does not require SaaS billing or production go-live approval. Real charges remain blocked.
+            </p>
           </div>
-          <Link to={`/movira-control/parks/${park.locationId}/edit`} className={buttonClass("secondary", "shrink-0 border-violet-300 text-violet-800")}>
-            <FaEdit /> Convert from edit
+          <div className="w-full max-w-xs">
+            <ProgressBar value={progress.score} />
+            <p className="mt-1 text-right text-xs font-black text-violet-700">
+              {progress.completed}/{progress.total} testing checks complete
+            </p>
+          </div>
+        </div>
+        <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          {demoSetupSteps.map((step) => {
+            const done = isSetupKeyComplete(park, step.key);
+            return (
+              <div
+                key={step.key}
+                className={`flex items-center justify-between rounded-xl border p-4 ${
+                  done ? "border-emerald-200 bg-emerald-50" : "border-amber-200 bg-amber-50"
+                }`}
+              >
+                <span className="font-black text-stone-950">{step.label}</span>
+                <Pill className={done ? "border-emerald-200 bg-white text-emerald-700" : "border-amber-200 bg-white text-amber-700"}>
+                  {done ? "Ready" : "Pending"}
+                </Pill>
+              </div>
+            );
+          })}
+        </div>
+        <div className="mt-5 flex flex-col gap-3 rounded-xl border border-violet-200 bg-violet-50 p-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="font-black text-violet-950">Need real customer operations?</p>
+            <p className="mt-1 text-sm font-semibold text-violet-800">
+              Convert to production onboarding, then configure billing, live payments, and request go-live approval.
+            </p>
+          </div>
+          <Link
+            to={`/movira-control/parks/${park.locationId}/edit`}
+            className={buttonClass("primary", "shrink-0")}
+          >
+            <FaRocket /> Convert to production
           </Link>
         </div>
-      ) : null}
+      </div>
+    );
+  }
+  return (
+    <div className="rounded-xl border border-stone-200 bg-white p-5 shadow-sm">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-stone-200 pb-4">
         <div>
           <p className="text-xs font-black uppercase text-orange-700">Launch checklist</p>
