@@ -1,6 +1,9 @@
 import { baseApi } from "../../api/baseApi";
 import { paymentConfigPaths } from "./paymentConfigPaths";
 
+const locationHeaders = (locationId) =>
+  Number(locationId) > 0 ? { "X-Location-Id": String(locationId) } : {};
+
 export const moviraControlApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
     getSaasParks: builder.query({
@@ -152,17 +155,26 @@ export const moviraControlApi = baseApi.injectEndpoints({
       ],
     }),
     getPaymentProviderSchemas: builder.query({
-      query: () => "/payments/config/providers/schemas",
+      query: (locationId) => ({
+        url: "/payments/config/providers/schemas",
+        headers: locationHeaders(locationId),
+      }),
       providesTags: ["Payment"],
       transformResponse: (response) => response?.data || response || {},
     }),
     getPaymentCompatibility: builder.query({
-      query: () => "/payments/config/compatibility",
+      query: (locationId) => ({
+        url: "/payments/config/compatibility",
+        headers: locationHeaders(locationId),
+      }),
       providesTags: ["Payment"],
       transformResponse: (response) => response?.data || response || {},
     }),
     getPaymentCredentials: builder.query({
-      query: () => "/payments/config/credentials",
+      query: (locationId) => ({
+        url: "/payments/config/credentials",
+        headers: locationHeaders(locationId),
+      }),
       providesTags: ["Payment"],
       transformResponse: (response) => response?.data || response || [],
     }),
@@ -188,23 +200,26 @@ export const moviraControlApi = baseApi.injectEndpoints({
         url: "/payments/config/credentials",
         method: "POST",
         body,
+        headers: locationHeaders(body.locationId),
       }),
       invalidatesTags: ["Payment"],
       transformResponse: (response) => response?.data || response,
     }),
     updatePaymentCredential: builder.mutation({
-      query: ({ credentialId, ...body }) => ({
+      query: ({ credentialId, locationId, ...body }) => ({
         url: `/payments/config/credentials/${credentialId}`,
         method: "PATCH",
         body,
+        headers: locationHeaders(locationId),
       }),
       invalidatesTags: ["Payment"],
       transformResponse: (response) => response?.data || response,
     }),
     deletePaymentCredential: builder.mutation({
-      query: (credentialId) => ({
+      query: ({ credentialId, locationId }) => ({
         url: `/payments/config/credentials/${credentialId}`,
         method: "DELETE",
+        headers: locationHeaders(locationId),
       }),
       invalidatesTags: ["Payment"],
     }),
@@ -213,6 +228,7 @@ export const moviraControlApi = baseApi.injectEndpoints({
         url: "/payments/config/test-connection",
         method: "POST",
         body,
+        headers: locationHeaders(body.locationId),
       }),
     }),
     getVenuePaymentRoutes: builder.query({
@@ -251,10 +267,11 @@ export const moviraControlApi = baseApi.injectEndpoints({
       transformResponse: (response) => response?.data || response,
     }),
     regenerateVenueTerminalPairing: builder.mutation({
-      query: (posDeviceId) => ({
+      query: ({ posDeviceId, locationId }) => ({
         url: `/pos/devices/${posDeviceId}/regenerate-pairing-code`,
         method: "POST",
         body: {},
+        headers: locationHeaders(locationId),
       }),
       invalidatesTags: ["Payment"],
       transformResponse: (response) => response?.data || response,
@@ -270,21 +287,23 @@ export const moviraControlApi = baseApi.injectEndpoints({
     }),
     updateVenueReader: builder.mutation({
       query: (args) => {
-        const { terminalId, ...body } = args;
+        const { terminalId, locationId, ...body } = args;
         delete body.locationId;
         return {
           url: `/payments/config/readers/${terminalId}`,
           method: "PATCH",
           body,
+          headers: locationHeaders(locationId),
         };
       },
       invalidatesTags: (result, error, { locationId }) => (locationId ? [{ type: "Payment", id: `pos-${locationId}` }] : ["Payment"]),
       transformResponse: (response) => response?.data || response,
     }),
     deleteVenueReader: builder.mutation({
-      query: ({ terminalId }) => ({
+      query: ({ terminalId, locationId }) => ({
         url: `/payments/config/readers/${terminalId}`,
         method: "DELETE",
+        headers: locationHeaders(locationId),
       }),
       invalidatesTags: (result, error, { locationId }) => (locationId ? [{ type: "Payment", id: `pos-${locationId}` }] : ["Payment"]),
     }),

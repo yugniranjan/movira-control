@@ -219,7 +219,7 @@ function AddGatewayModal({ park, schemas, onClose }) {
   async function runTest() {
     if (!validate()) return;
     try {
-      const result = await testCredential({ provider, mode, values }).unwrap();
+      const result = await testCredential({ provider, mode, values, locationId: park.locationId }).unwrap();
       setTestResult(result?.data || result);
     } catch (err) {
       toast.error(err?.data?.message || "Connection test failed.");
@@ -467,7 +467,7 @@ function EditGatewayModal({ credential, onClose }) {
 
   async function save() {
     try {
-      await updateCredential({ credentialId: credential.credentialId, ...form }).unwrap();
+      await updateCredential({ credentialId: credential.credentialId, locationId: credential.locationId, ...form }).unwrap();
       toast.success("Gateway updated.");
       onClose();
     } catch (err) {
@@ -632,7 +632,10 @@ function PosTree({ park, onConfigurePos }) {
                 <button
                   type="button"
                   onClick={async () => {
-                    await regeneratePairing(terminal.posDeviceId).unwrap();
+                    await regeneratePairing({
+                      posDeviceId: terminal.posDeviceId,
+                      locationId: park.locationId,
+                    }).unwrap();
                     toast.success("Pairing code regenerated.");
                   }}
                   className="inline-flex min-h-9 items-center gap-2 rounded-lg border border-stone-200 bg-white px-3 py-1.5 text-xs font-black text-stone-700"
@@ -715,9 +718,9 @@ export default function ParkPaymentConsole({ park }) {
   const [editingGateway, setEditingGateway] = useState(null);
   const [routeEditing, setRouteEditing] = useState(null);
   const [deleteGatewayTarget, setDeleteGatewayTarget] = useState(null);
-  const { data: schemas = {}, isLoading: schemasLoading } = useGetPaymentProviderSchemasQuery();
-  const { data: compatibilityData = {} } = useGetPaymentCompatibilityQuery();
-  const { data: credentials = [], isLoading: credentialsLoading } = useGetPaymentCredentialsQuery();
+  const { data: schemas = {}, isLoading: schemasLoading } = useGetPaymentProviderSchemasQuery(locationId);
+  const { data: compatibilityData = {} } = useGetPaymentCompatibilityQuery(locationId);
+  const { data: credentials = [], isLoading: credentialsLoading } = useGetPaymentCredentialsQuery(locationId);
   const { data: routes = {}, isLoading: routesLoading } = useGetVenuePaymentRoutesQuery(locationId);
   const [deleteCredential] = useDeletePaymentCredentialMutation();
   const compatibility = Object.keys(compatibilityData || {}).length ? compatibilityData : fallbackCompatibility;
@@ -739,7 +742,7 @@ export default function ParkPaymentConsole({ park }) {
 
   async function removeCredential(credential) {
     try {
-      await deleteCredential(credential.credentialId).unwrap();
+      await deleteCredential({ credentialId: credential.credentialId, locationId }).unwrap();
       toast.success("Gateway deleted.");
       setDeleteGatewayTarget(null);
     } catch (err) {
