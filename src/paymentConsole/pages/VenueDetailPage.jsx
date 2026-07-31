@@ -94,8 +94,8 @@ function VenueGatewayRow({ credential, onEdit, isRouted, onAddRoute }) {
   );
 }
 
-function RouteListItem({ channel, route, venue, credentials, onEdit }) {
-  const editable = isChannelEditable(channel.key);
+function RouteListItem({ channel, route, venue, credentials, onEdit, moduleEnabled = true }) {
+  const editable = moduleEnabled && isChannelEditable(channel.key);
   const cred = route
     ? resolveCredentialFor({
         provider: route.provider,
@@ -119,6 +119,7 @@ function RouteListItem({ channel, route, venue, credentials, onEdit }) {
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 flex-wrap">
             <span className="font-semibold text-[var(--text-strong)]">{channel.label}</span>
+            {!moduleEnabled && <Badge tone="neutral"><FiLock size={10} /> POS module required</Badge>}
             {channel.availability !== "live" && (
               <Badge tone={AVAILABILITY_TONE[channel.availability]}>
                 {channel.phaseNote || channel.availability}
@@ -148,7 +149,11 @@ function RouteListItem({ channel, route, venue, credentials, onEdit }) {
             )
           ) : (
             <div className="text-xs text-[var(--text-muted)] mt-0.5">
-              {editable ? "Not configured" : channel.phaseNote || "Not yet available"}
+              {moduleEnabled
+                ? editable
+                  ? "Not configured"
+                  : channel.phaseNote || "Not yet available"
+                : "Enable POS for this park in Movira Control before configuring card-present payments."}
             </div>
           )}
         </div>
@@ -187,10 +192,10 @@ export default function VenueDetailPage() {
     (async () => {
       const results = await Promise.allSettled([
         api.getVenue(locationId),
-        api.getCredentials(),
-        api.getProviderSchemas(),
+        api.getCredentials(locationId),
+        api.getProviderSchemas(locationId),
         api.getVenueRoutes(locationId),
-        api.getCompatibility(),
+        api.getCompatibility(locationId),
       ]);
       if (cancelled) return;
       const [venueRes, credsRes, schRes, routesRes, compatRes] = results;
@@ -255,6 +260,10 @@ export default function VenueDetailPage() {
     }
     return set;
   }, [inheritedGateways, routedProviderModes]);
+  const hasPosModule = useMemo(
+    () => (venue?.modules || []).some((moduleKey) => String(moduleKey).toLowerCase() === "pos"),
+    [venue]
+  );
 
   // Scroll the "Channel routing" card into view. Bound to the "Add route"
   // button on stranded credentials so the user is one click from where they
@@ -474,8 +483,10 @@ export default function VenueDetailPage() {
         <div className="flex items-start gap-2 text-sm text-[var(--text-base)] bg-[var(--surface-muted)] rounded-xl p-3 mb-4">
           <FiInfo className="mt-0.5 shrink-0 text-[var(--brand-primary-deep)]" />
           <span>
-            POS / card terminal now routes through Stripe Terminal — register a reader in the Terminals
-            section below, then route the POS channel here. Recurring memberships route through Stripe or Nuvei online.
+            {hasPosModule
+              ? "For card-present payments, route the POS channel first and then register terminals and readers below."
+              : "Online booking channels can be configured now. POS routing stays locked until the POS module is assigned to this park."}{" "}
+            Recurring memberships route through Stripe or Nuvei online.
           </span>
         </div>
 
@@ -487,6 +498,7 @@ export default function VenueDetailPage() {
               route={routes[c.key]}
               venue={venue}
               credentials={credentials}
+              moduleEnabled={c.key !== "pos" || hasPosModule}
               onEdit={() => setRouteEditing(c.key)}
             />
           ))}
@@ -494,7 +506,29 @@ export default function VenueDetailPage() {
       </Card>
 
       {/* ── Card terminals — provider-aware (Stripe readers vs Nuvei TID) ── */}
-      <PosCardTree locationId={locationId} />
+      {hasPosModule ? (
+        <PosCardTree locationId={locationId} />
+      ) : (
+        <Card className="p-4">
+          <div className="flex items-start gap-3">
+            <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[var(--surface-muted)] text-[var(--text-muted)]">
+              <FiLock />
+            </span>
+            <div className="min-w-0 flex-1">
+              <h2 className="font-display font-bold text-[var(--text-strong)]">Card terminals</h2>
+              <p className="mt-0.5 text-sm text-[var(--text-base)]">
+                Card terminals are not part of this park's current module access. Enable POS first; terminal and reader setup will then unlock here.
+              </p>
+            </div>
+            <Link
+              to={`/movira-control/parks/${locationId}/modules`}
+              className="shrink-0 text-xs font-semibold text-[var(--brand-primary-deep)] hover:underline"
+            >
+              Manage modules →
+            </Link>
+          </div>
+        </Card>
+      )}
 
       <AddGatewayModal
         open={adding}

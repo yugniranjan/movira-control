@@ -28,13 +28,15 @@ function mapUser(payload) {
 // Location row (parks) → venue card shape. The Location model has no status
 // column, so default to "active".
 function mapVenue(v) {
+  const modules = Array.isArray(v.saasControl?.modules) ? v.saasControl.modules : [];
   return {
     locationId: v.locationId,
     name: v.legalBusinessName,
     city: v.townOrCity || v.stateOrProvince || "",
     country: v.country || "",
     currency: v.currency || "",
-    status: v.status || "active",
+    status: v.saasControl?.status || v.status || "active",
+    modules,
   };
 }
 
@@ -59,18 +61,18 @@ export const realApi = {
     return venue;
   },
 
-  async getProviderSchemas() {
-    return (await http.get("/payments/config/providers/schemas")).data;
+  async getProviderSchemas(locationId) {
+    return (await http.get("/payments/config/providers/schemas", { locationId })).data;
   },
 
   // Provider × channel routing compatibility, derived on the backend from the
   // registered adapters' capabilities (the single source of truth).
-  async getCompatibility() {
-    return (await http.get("/payments/config/compatibility")).data;
+  async getCompatibility(locationId) {
+    return (await http.get("/payments/config/compatibility", { locationId })).data;
   },
 
-  async getCredentials() {
-    return (await http.get("/payments/config/credentials")).data;
+  async getCredentials(locationId) {
+    return (await http.get("/payments/config/credentials", { locationId })).data;
   },
 
   async getPlatformBillingCredentials() {
