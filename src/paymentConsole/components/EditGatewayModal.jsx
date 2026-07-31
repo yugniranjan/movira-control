@@ -16,6 +16,7 @@ import { Modal, Button, Field, Input, Select, Spinner, ProviderBadge, Badge } fr
 import { api } from "../api";
 import { validateAll } from "./gatewayValidation";
 import TestConnectionResult from "./TestConnectionResult";
+import { parkPaymentMode, parkPaymentModeLabel } from "../../features/saas/parkPaymentMode";
 
 const ACTION_TONE = {
   created: "indigo",
@@ -81,19 +82,24 @@ export default function EditGatewayModal({ open, onClose, credential, schema, on
   const [fieldErrors, setFieldErrors] = useState({});
   const [test, setTest] = useState(null);
   const [testing, setTesting] = useState(false);
+  const scopedVenue = credential?.locationId != null
+    ? venues.find((v) => Number(v.locationId) === Number(credential.locationId))
+    : null;
+  const enforcedMode = scopedVenue ? parkPaymentMode(scopedVenue) : null;
+  const effectiveMode = enforcedMode || mode;
 
   // Re-run field validation on every keystroke while in rotate mode.
   const liveValidation = useMemo(() => {
     if (!rotating || !schema) return { ok: true, fieldErrors: {} };
-    return validateAll(schema, values, { mode });
-  }, [rotating, schema, values, mode]);
+    return validateAll(schema, values, { mode: effectiveMode });
+  }, [rotating, schema, values, effectiveMode]);
 
   // Re-seed form whenever a different credential is opened.
   useEffect(() => {
     if (!credential) return;
     setLabel(credential.label || "");
     // Backend canonicalizes legacy "test" → "sandbox"; surface as "sandbox" here too.
-    setMode(credential.mode === "test" ? "sandbox" : credential.mode || "sandbox");
+    setMode(enforcedMode || (credential.mode === "test" ? "sandbox" : credential.mode || "sandbox"));
     setStatus(credential.status || "active");
     setRotating(false);
     setConfirmDelete(false);
@@ -113,7 +119,7 @@ export default function EditGatewayModal({ open, onClose, credential, schema, on
       }
     }
     setValues(seed);
-  }, [credential, schema]);
+  }, [credential, schema, enforcedMode]);
 
   // Lazy-load audit log the first time the section is expanded. Reloads
   // if a save/rotate just happened (auditRows reset to null in onUpdated
@@ -151,10 +157,6 @@ export default function EditGatewayModal({ open, onClose, credential, schema, on
 
   if (!credential) return null;
   const provider = providerByKey[credential.provider];
-  const scopedVenue =
-    credential.locationId != null
-      ? venues.find((v) => Number(v.locationId) === Number(credential.locationId))
-      : null;
   const isOrgWide = credential.locationId == null;
 
   function setField(key, val) {
@@ -166,7 +168,7 @@ export default function EditGatewayModal({ open, onClose, credential, schema, on
     // Re-validate the new values when rotating; label/mode/status changes
     // don't need field-level checks.
     if (rotating && schema) {
-      const check = validateAll(schema, values, { mode });
+      const check = validateAll(schema, values, { mode: effectiveMode });
       if (!check.ok) {
         setFieldErrors(check.fieldErrors);
         setError("Please correct the highlighted fields.");
@@ -176,7 +178,7 @@ export default function EditGatewayModal({ open, onClose, credential, schema, on
     }
     setSaving(true);
     try {
-      const payload = { label, mode, status };
+      const payload = { label, mode: effectiveMode, status };
       if (rotating) payload.values = values;
       const updated = await api.updateCredential(credential.credentialId, payload);
       onUpdated(updated);
@@ -203,7 +205,12 @@ export default function EditGatewayModal({ open, onClose, credential, schema, on
     setTesting(true);
     setTest(null);
     try {
-      const res = await api.testConnection({ provider: credential.provider, values });
+      const res = await api.testConnection({
+        provider: credential.provider,
+        mode: effectiveMode,
+        values,
+        locationId: credential.locationId,
+      });
       setTest(res);
     } catch (err) {
       setTest({ ok: false, message: err?.message || "Test failed." });
@@ -281,10 +288,16 @@ export default function EditGatewayModal({ open, onClose, credential, schema, on
             label="Mode"
             hint="Sandbox uses the provider's test environment; Live moves real money."
           >
-            <Select value={mode} onChange={(e) => setMode(e.target.value)}>
-              <option value="sandbox">Sandbox</option>
-              <option value="live">Live</option>
-            </Select>
+            {enforcedMode ? (
+              <div className="input-nexus flex min-h-10 items-center px-3 py-2 text-sm font-black">
+                {parkPaymentModeLabel(scopedVenue)} only
+              </div>
+            ) : (
+              <Select value={mode} onChange={(e) => setMode(e.target.value)}>
+                <option value="sandbox">Sandbox</option>
+                <option value="live">Live</option>
+              </Select>
+            )}
           </Field>
         </div>
 

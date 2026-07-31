@@ -36,6 +36,7 @@ function mapVenue(v) {
     country: v.country || "",
     currency: v.currency || "",
     status: v.saasControl?.status || v.status || "active",
+    deploymentMode: v.saasControl?.deploymentMode || "production",
     modules,
   };
 }

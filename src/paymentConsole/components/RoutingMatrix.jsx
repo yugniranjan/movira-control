@@ -23,6 +23,7 @@ import { CHANNELS, AVAILABILITY_TONE, isChannelEditable } from "../constants/cha
 import { providerByKey } from "../constants/providers";
 import { Badge, ProviderBadge } from "./ui";
 import RouteEditPopover from "./RouteEditPopover";
+import { parkPaymentMode } from "../../features/saas/parkPaymentMode";
 import { resolveCredentialFor } from "../lib/paymentHealth";
 
 function RouteCell({ venue, channel, route, credentials, onClick }) {
@@ -46,12 +47,15 @@ function RouteCell({ venue, channel, route, credentials, onClick }) {
     );
   }
 
-  const cred = resolveCredentialFor({
-    provider: route.provider,
-    locationId: venue.locationId,
-    mode: route.mode,
-    credentials,
-  });
+  const expectedMode = parkPaymentMode(venue);
+  const cred = route.mode === expectedMode
+    ? resolveCredentialFor({
+        provider: route.provider,
+        locationId: venue.locationId,
+        mode: route.mode,
+        credentials,
+      })
+    : null;
   const providerMeta = providerByKey[route.provider];
 
   return (
@@ -83,7 +87,7 @@ function RouteCell({ venue, channel, route, credentials, onClick }) {
                 {providerMeta?.name || route.provider}
               </div>
               <div className="text-[10px] text-amber-700 flex items-center gap-1">
-                <FiAlertTriangle size={10} /> no credential
+                <FiAlertTriangle size={10} /> {route.mode !== expectedMode ? `requires ${expectedMode}` : "no credential"}
               </div>
             </>
           )}
@@ -187,8 +191,9 @@ export default function RoutingMatrix({
           channel={editing.channel.key}
           locationId={editing.venue.locationId}
           currentRoute={venueRoutes[editing.venue.locationId]?.[editing.channel.key] || null}
-          credentials={credentials}
+          credentials={credentials.filter((credential) => credential.mode === parkPaymentMode(editing.venue))}
           venueLabel={venueLabel(editing.venue)}
+          enforcedMode={parkPaymentMode(editing.venue)}
           onSave={async (input) => {
             await onUpsertRoute({
               locationId: editing.venue.locationId,

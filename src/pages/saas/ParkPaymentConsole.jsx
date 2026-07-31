@@ -36,6 +36,7 @@ import {
 import ConfirmDialog from "../../components/common/ConfirmDialog";
 import SearchableSelect from "../../components/common/SearchableSelect";
 import { PanelShimmer, ShimmerBlock } from "../../components/Shimmer";
+import { parkPaymentMode, parkPaymentModeLabel } from "../../features/saas/parkPaymentMode";
 
 const providers = [
   { key: "stripe", name: "Stripe", short: "S", color: "bg-indigo-50 text-indigo-700 border-indigo-200" },
@@ -189,7 +190,7 @@ function Modal({ title, subtitle, children, onClose }) {
 
 function AddGatewayModal({ park, schemas, onClose }) {
   const [provider, setProvider] = useState("stripe");
-  const [mode, setMode] = useState("sandbox");
+  const mode = parkPaymentMode(park);
   const [label, setLabel] = useState("");
   const [values, setValues] = useState({});
   const [fieldErrors, setFieldErrors] = useState({});
@@ -274,16 +275,9 @@ function AddGatewayModal({ park, schemas, onClose }) {
             <Input value={label} onChange={(event) => setLabel(event.target.value)} placeholder={`${providerMap[provider]?.name || provider} - ${park.name}`} />
           </Field>
           <Field label="Mode">
-            <Select
-              value={mode}
-              onChange={(event) => {
-                setMode(event.target.value);
-                setTestResult(null);
-              }}
-            >
-              <option value="sandbox">Sandbox</option>
-              <option value="live">Live</option>
-            </Select>
+            <div className="input-nexus flex min-h-11 items-center px-3 py-2.5 text-sm font-black">
+              {parkPaymentModeLabel(park)} only
+            </div>
           </Field>
         </div>
 
@@ -350,7 +344,7 @@ function RouteModal({ park, channel, currentRoute, credentials, compatibility, o
   const available = compatibility[channel.key] || {};
   const providerKeys = Object.keys(available);
   const [provider, setProvider] = useState(currentRoute?.provider || providerKeys[0] || "");
-  const [mode, setMode] = useState(currentRoute?.mode || "sandbox");
+  const mode = parkPaymentMode(park);
   const [clearConfirmOpen, setClearConfirmOpen] = useState(false);
   const selectedAdapter = available[provider];
   const resolved = resolveCredential({ provider, mode, locationId: park.locationId, credentials });
@@ -409,10 +403,9 @@ function RouteModal({ park, channel, currentRoute, credentials, compatibility, o
         </div>
 
         <Field label="Mode">
-          <Select value={mode} onChange={(event) => setMode(event.target.value)}>
-            <option value="sandbox">Sandbox</option>
-            <option value="live">Live</option>
-          </Select>
+          <div className="input-nexus flex min-h-11 items-center px-3 py-2.5 text-sm font-black">
+            {parkPaymentModeLabel(park)} only
+          </div>
         </Field>
 
         <div className={`rounded-xl border p-4 ${resolved ? "border-emerald-200 bg-emerald-50" : "border-amber-200 bg-amber-50"}`}>
@@ -745,19 +738,20 @@ export default function ParkPaymentConsole({ park }) {
   const { data: routes = {}, isLoading: routesLoading } = useGetVenuePaymentRoutesQuery(locationId);
   const [deleteCredential] = useDeletePaymentCredentialMutation();
   const compatibility = Object.keys(compatibilityData || {}).length ? compatibilityData : fallbackCompatibility;
+  const requiredMode = parkPaymentMode(scopedPark);
 
   const parkCredentials = useMemo(
-    () => credentials.filter((credential) => Number(credential.locationId) === Number(locationId)),
-    [credentials, locationId]
+    () => credentials.filter((credential) => Number(credential.locationId) === Number(locationId) && credential.mode === requiredMode),
+    [credentials, locationId, requiredMode]
   );
   const inheritedCredentials = useMemo(
-    () => credentials.filter((credential) => credential.locationId == null),
-    [credentials]
+    () => credentials.filter((credential) => credential.locationId == null && credential.mode === requiredMode),
+    [credentials, requiredMode]
   );
   const configuredChannels = channels.filter((channel) => routes[channel.key]).length;
   const unresolvedChannels = channels.filter((channel) => {
     const route = routes[channel.key];
-    return route && !resolveCredential({ provider: route.provider, mode: route.mode, locationId, credentials });
+    return route && (route.mode !== requiredMode || !resolveCredential({ provider: route.provider, mode: route.mode, locationId, credentials }));
   });
   const availableCredentials = parkCredentials.length + inheritedCredentials.length;
 
@@ -780,6 +774,9 @@ export default function ParkPaymentConsole({ park }) {
             <h3 className="mt-1 text-lg font-black text-stone-950">Payment setup progress</h3>
             <p className="mt-1 text-sm font-semibold text-stone-500">
               Configure gateway access, route each payment channel, then attach POS terminals for {park.name}.
+            </p>
+            <p className="mt-2 text-xs font-black uppercase tracking-wide text-orange-700">
+              {parkPaymentModeLabel(scopedPark)} payment configuration only
             </p>
           </div>
           <button type="button" onClick={() => setAddGatewayOpen(true)} className="btn-nexus inline-flex min-h-10 items-center gap-2 rounded-lg px-4 py-2 text-sm font-black">
@@ -903,7 +900,9 @@ export default function ParkPaymentConsole({ park }) {
         <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
           {channels.map((channel) => {
             const route = routes[channel.key];
-            const resolved = route ? resolveCredential({ provider: route.provider, mode: route.mode, locationId, credentials }) : null;
+            const resolved = route?.mode === requiredMode
+              ? resolveCredential({ provider: route.provider, mode: route.mode, locationId, credentials })
+              : null;
             return (
               <button key={channel.key} type="button" onClick={() => setRouteEditing(channel)} className="group rounded-xl border border-stone-200 p-3 text-left transition hover:-translate-y-0.5 hover:border-orange-200 hover:bg-orange-50/40 hover:shadow-sm">
                 <div className="flex items-start gap-3">

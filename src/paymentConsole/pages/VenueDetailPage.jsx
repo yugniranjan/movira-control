@@ -28,6 +28,7 @@ import EditGatewayModal from "../components/EditGatewayModal";
 import RouteEditPopover from "../components/RouteEditPopover";
 import PosCardTree from "../components/PosCardTree";
 import { resolveCredentialFor, venueHealth } from "../lib/paymentHealth";
+import { parkPaymentMode, parkPaymentModeLabel } from "../../features/saas/parkPaymentMode";
 
 const STATUS_TONE = { active: "green", onboarding: "amber", paused: "neutral" };
 
@@ -219,13 +220,18 @@ export default function VenueDetailPage() {
     };
   }, [locationId, reloadKey]);
 
+  const requiredMode = parkPaymentMode(venue || {});
+  const modeCredentials = useMemo(
+    () => credentials.filter((credential) => credential.mode === requiredMode),
+    [credentials, requiredMode]
+  );
   const venueGateways = useMemo(
-    () => credentials.filter((c) => Number(c.locationId) === locationId),
-    [credentials, locationId]
+    () => modeCredentials.filter((c) => Number(c.locationId) === locationId),
+    [modeCredentials, locationId]
   );
   const inheritedGateways = useMemo(
-    () => credentials.filter((c) => c.locationId == null),
-    [credentials]
+    () => modeCredentials.filter((c) => c.locationId == null),
+    [modeCredentials]
   );
 
   // Health summary scoped to this venue. We use this only for stranded
@@ -234,8 +240,8 @@ export default function VenueDetailPage() {
   // its own state).
   const health = useMemo(() => {
     if (!venue) return null;
-    return venueHealth({ venue, routes, credentials });
-  }, [venue, routes, credentials]);
+    return venueHealth({ venue, routes, credentials: modeCredentials });
+  }, [venue, routes, modeCredentials]);
 
   // Build a Set("provider:mode") of every (provider, mode) currently used by
   // at least one route on this venue. The Gateway rows use this to decide
@@ -356,6 +362,7 @@ export default function VenueDetailPage() {
             </p>
             <div className="flex items-center gap-2 mt-2">
               <Badge tone={STATUS_TONE[venue.status] || "neutral"}>{venue.status}</Badge>
+              <Badge tone={requiredMode === "live" ? "green" : "amber"}>{parkPaymentModeLabel(venue)} only</Badge>
               <Badge tone="neutral">{venue.currency}</Badge>
             </div>
           </div>
@@ -497,7 +504,7 @@ export default function VenueDetailPage() {
               channel={c}
               route={routes[c.key]}
               venue={venue}
-              credentials={credentials}
+              credentials={modeCredentials}
               moduleEnabled={c.key !== "pos" || hasPosModule}
               onEdit={() => setRouteEditing(c.key)}
             />
@@ -557,8 +564,9 @@ export default function VenueDetailPage() {
           channel={routeEditing}
           locationId={locationId}
           currentRoute={routes[routeEditing] || null}
-          credentials={credentials}
+          credentials={modeCredentials}
           venueLabel={venue.name}
+          enforcedMode={requiredMode}
           onSave={(input) =>
             handleUpsertRoute({
               channel: routeEditing,

@@ -5,6 +5,7 @@ import { Modal, Button, Field, Input, Select, Spinner, ProviderBadge } from "./u
 import { api } from "../api";
 import TestConnectionResult from "./TestConnectionResult";
 import { validateAll } from "./gatewayValidation";
+import { parkPaymentMode, parkPaymentModeLabel } from "../../features/saas/parkPaymentMode";
 
 function initialValues(schema) {
   const v = {};
@@ -54,6 +55,9 @@ export default function AddGatewayModal({
 
   const schema = provider ? schemas?.[provider] : null;
   const scopeLocked = defaultLocationId != null || forceScope === "org";
+  const selectedVenue = venues.find((v) => Number(v.locationId) === Number(locationId));
+  const venueMode = scope === "venue" && selectedVenue ? parkPaymentMode(selectedVenue) : null;
+  const effectiveMode = venueMode || mode;
   const providerOptions = useMemo(
     () =>
       allowedProviderKeys?.length
@@ -81,8 +85,8 @@ export default function AddGatewayModal({
   // or mode change so format errors clear as the user types.
   const liveValidation = useMemo(() => {
     if (!schema) return { ok: false, fieldErrors: {} };
-    return validateAll(schema, values, { mode });
-  }, [schema, values, mode]);
+    return validateAll(schema, values, { mode: effectiveMode });
+  }, [schema, values, effectiveMode]);
 
   const requiredFilled = useMemo(() => {
     if (!schema) return false;
@@ -131,8 +135,16 @@ export default function AddGatewayModal({
     setTesting(true);
     setTest(null);
     try {
-      const res = await testConnection({ provider, values });
+      const res = await testConnection({
+        provider,
+        mode: effectiveMode,
+        values,
+        locationId: scope === "venue" ? locationId : null,
+      });
       setTest(res);
+    } catch (err) {
+      setError(err?.message || "Connection test failed.");
+      setTest({ ok: false, message: err?.message || "Connection test failed." });
     } finally {
       setTesting(false);
     }
@@ -142,7 +154,7 @@ export default function AddGatewayModal({
     setError("");
     // Final client-side check — surface any errors inline before round-tripping
     // to the backend. Same regex/pattern the backend validates against.
-    const check = validateAll(schema, values, { mode });
+    const check = validateAll(schema, values, { mode: effectiveMode });
     if (!check.ok) {
       setFieldErrors(check.fieldErrors);
       setError("Please correct the highlighted fields.");
@@ -154,7 +166,7 @@ export default function AddGatewayModal({
       const created = await createCredential({
         provider,
         label,
-        mode,
+        mode: effectiveMode,
         values,
         locationId: scope === "venue" ? locationId : null,
       });
@@ -177,8 +189,6 @@ export default function AddGatewayModal({
       setSaving(false);
     }
   }
-
-  const selectedVenue = venues.find((v) => Number(v.locationId) === Number(locationId));
 
   return (
     <Modal
@@ -233,10 +243,16 @@ export default function AddGatewayModal({
               <Input value={label} onChange={(e) => setLabel(e.target.value)} placeholder="e.g. North America" />
             </Field>
             <Field label="Mode" hint="Sandbox uses the provider's test environment; Live moves real money.">
-              <Select value={mode} onChange={(e) => setMode(e.target.value)}>
-                <option value="sandbox">Sandbox</option>
-                <option value="live">Live</option>
-              </Select>
+              {venueMode ? (
+                <div className="input-nexus flex min-h-10 items-center px-3 py-2 text-sm font-black">
+                  {parkPaymentModeLabel(selectedVenue)} only
+                </div>
+              ) : (
+                <Select value={mode} onChange={(e) => setMode(e.target.value)}>
+                  <option value="sandbox">Sandbox</option>
+                  <option value="live">Live</option>
+                </Select>
+              )}
             </Field>
           </div>
 

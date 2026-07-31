@@ -30,6 +30,7 @@ export default function RouteEditPopover({
   currentRoute, // { provider, mode, adapterKey, priority } | null
   credentials, // full credential list (for resolved-credential preview)
   venueLabel,
+  enforcedMode = null,
   onSave, // ({ provider, mode, adapterKey }) => Promise<void>
   onClear, // () => Promise<void>
 }) {
@@ -37,7 +38,7 @@ export default function RouteEditPopover({
   const allowedProviders = providersForChannel(channel);
 
   const [provider, setProvider] = useState(currentRoute?.provider || "");
-  const [mode, setMode] = useState(currentRoute?.mode || "live");
+  const [mode, setMode] = useState(enforcedMode || currentRoute?.mode || "live");
   const [saving, setSaving] = useState(false);
   const [clearing, setClearing] = useState(false);
   const [error, setError] = useState("");
@@ -46,9 +47,9 @@ export default function RouteEditPopover({
   useEffect(() => {
     if (!open) return;
     setProvider(currentRoute?.provider || "");
-    setMode(currentRoute?.mode || "live");
+    setMode(enforcedMode || currentRoute?.mode || "live");
     setError("");
-  }, [open, currentRoute]);
+  }, [open, currentRoute, enforcedMode]);
 
   const adapterEntry = useMemo(
     () => (provider ? adapterFor(channel, provider) : null),
@@ -183,7 +184,7 @@ export default function RouteEditPopover({
           <div>
             <div className="text-xs font-semibold text-[var(--text-strong)] mb-1.5">Mode</div>
             <div className="inline-flex p-1 rounded-lg bg-[var(--surface-muted)]">
-              {MODES.map((m) => (
+              {MODES.filter((item) => !enforcedMode || item.value === enforcedMode).map((m) => (
                 <button
                   key={m.value}
                   type="button"
@@ -199,7 +200,9 @@ export default function RouteEditPopover({
               ))}
             </div>
             <div className="text-[10px] text-[var(--text-muted)] mt-1">
-              Backend resolves credential by (provider, location, mode), so this picks which key answers.
+              {enforcedMode
+                ? `This park is ${enforcedMode}-only; the opposite payment mode is blocked.`
+                : "Backend resolves credential by (provider, location, mode), so this picks which key answers."}
             </div>
           </div>
 
