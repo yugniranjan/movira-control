@@ -271,25 +271,21 @@ const UUID_RE = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0
 
 function AddReader({ locationId, terminal, enrollment, busy, run }) {
   const [open, setOpen] = useState(false);
-  const [deviceKind, setDeviceKind] = useState("simulator"); // simulator | real
   const [label, setLabel] = useState("");
   const [tid, setTid] = useState("");
   const [registerId, setRegisterId] = useState("");
   const [authKey, setAuthKey] = useState("");
   const [code, setCode] = useState("");
   const isNuvei = enrollment === "tid-per-till";
-  const isSim = deviceKind === "simulator";
 
-  // A real Nuvei reader needs TID + Register ID + a UUID Register Auth Key.
-  // A simulator reader needs none of those (auto-filled; the Terminal Simulator
-  // app stands in). A real Stripe reader needs its pairing code; a simulator
-  // Stripe reader uses Stripe's own simulated reader (no input).
+  // Nuvei's provider sandbox simulator is enrolled exactly like hardware: it
+  // needs the Nuvei-issued TID, Register ID and Register Auth Key. The removed
+  // AeroSports emulator must not be offered as a credential-free shortcut.
   const authKeyValid = !authKey.trim() || UUID_RE.test(authKey.trim());
   const canSave = useMemo(() => {
-    if (isSim) return true;
     if (isNuvei) return tid.trim() && registerId.trim() && authKey.trim() && authKeyValid;
-    return code.trim(); // real Stripe reader
-  }, [isSim, isNuvei, tid, registerId, authKey, authKeyValid, code]);
+    return code.trim();
+  }, [isNuvei, tid, registerId, authKey, authKeyValid, code]);
 
   async function add() {
     await run(() =>
@@ -298,11 +294,11 @@ function AddReader({ locationId, terminal, enrollment, busy, run }) {
         posDeviceId: terminal.posDeviceId,
         label: label.trim() || undefined,
         makeDefault: (terminal.readers || []).length === 0, // first reader = default
-        deviceKind, // "simulator" | "real"
+        deviceKind: "real",
         providerTerminalId: isNuvei && tid.trim() ? tid.trim() : undefined,
         registerId: isNuvei && registerId.trim() ? registerId.trim() : undefined,
-        registerAuthKey: isNuvei && !isSim ? authKey.trim() : undefined,
-        registrationCode: !isNuvei && !isSim && code.trim() ? code.trim() : undefined,
+        registerAuthKey: isNuvei ? authKey.trim() : undefined,
+        registrationCode: !isNuvei && code.trim() ? code.trim() : undefined,
       })
     );
     setLabel("");
@@ -310,7 +306,6 @@ function AddReader({ locationId, terminal, enrollment, busy, run }) {
     setRegisterId("");
     setAuthKey("");
     setCode("");
-    setDeviceKind("simulator");
     setOpen(false);
   }
 
@@ -328,42 +323,17 @@ function AddReader({ locationId, terminal, enrollment, busy, run }) {
   }
   return (
     <div className="mt-2 rounded-lg bg-[var(--surface-muted)]/60 p-2.5 space-y-2">
-      {/* Device type — mirrors a real terminal: a physical/cloud device, or a simulator. */}
       <div>
-        <div className="text-[11px] font-semibold text-[var(--text-strong)] mb-1">Device type</div>
-        <div className="inline-flex p-0.5 rounded-lg bg-[var(--surface-muted)]">
-          {[
-            { v: "simulator", label: "Simulator" },
-            { v: "real", label: "Real device" },
-          ].map((o) => (
-            <button
-              key={o.v}
-              type="button"
-              onClick={() => setDeviceKind(o.v)}
-              className={`px-3 py-1 text-xs font-semibold rounded-md transition-colors ${
-                deviceKind === o.v
-                  ? "bg-[var(--surface-panel)] text-[var(--text-strong)] shadow-sm"
-                  : "text-[var(--text-base)] hover:text-[var(--text-strong)]"
-              }`}
-            >
-              {o.label}
-            </button>
-          ))}
-        </div>
         <div className="text-[11px] text-[var(--text-muted)] mt-1">
-          {isSim
-            ? isNuvei
-              ? "Driven by the Terminal Simulator app (no hardware). Charges route through our sim cloud; the device shows the Nuvei profile."
-              : "Uses Stripe's own simulated reader — real Stripe test charges, no hardware."
-            : isNuvei
-            ? "A physical Nuvei pin-pad: enter its TID, Register ID and Register Auth Key."
-            : "A physical Stripe reader: enter its pairing/registration code."}
+          {isNuvei
+            ? "Enter Nuvei-issued TID, Register ID and Register Auth Key. The same fields are required for Nuvei's sandbox terminal simulator."
+            : "Enter the Stripe reader's pairing/registration code."}
         </div>
       </div>
 
       <Input value={label} onChange={(e) => setLabel(e.target.value)} placeholder="Reader label (optional)" />
 
-      {isNuvei && !isSim && (
+      {isNuvei && (
         <>
           <Input
             value={tid}
@@ -386,20 +356,13 @@ function AddReader({ locationId, terminal, enrollment, busy, run }) {
           </div>
           {!authKeyValid && (
             <div className="text-[11px] text-[var(--err)]">
-              Register Auth Key must be a UUID (e.g. c6103e9e-38e7-4f17-831b-077c7c75ce28).
+              Register Auth Key must be the UUID supplied by Nuvei.
             </div>
           )}
         </>
       )}
 
-      {isNuvei && isSim && (
-        <>
-          <Input value={tid} onChange={(e) => setTid(e.target.value)} placeholder="Terminal ID (optional — auto-filled)" />
-          <Input value={registerId} onChange={(e) => setRegisterId(e.target.value)} placeholder="Register ID (optional — auto-filled)" />
-        </>
-      )}
-
-      {!isNuvei && !isSim && (
+      {!isNuvei && (
         <Input
           value={code}
           onChange={(e) => setCode(e.target.value)}

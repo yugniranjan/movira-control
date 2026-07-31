@@ -544,7 +544,10 @@ function PosTree({ park, onConfigurePos }) {
         posDeviceId: terminal.posDeviceId,
         label: draft.label || undefined,
         makeDefault: (terminal.readers || []).length === 0,
-        deviceKind: draft.deviceKind || "simulator",
+        // The backend no longer supports an AeroSports-created emulator.
+        // Nuvei's sandbox simulator is still a provider-issued terminal and
+        // therefore uses the same TID/Register credentials as real hardware.
+        deviceKind: "real",
         providerTerminalId: draft.providerTerminalId || undefined,
         registerId: draft.registerId || undefined,
         registerAuthKey: draft.registerAuthKey || undefined,
@@ -573,6 +576,7 @@ function PosTree({ park, onConfigurePos }) {
 
   const terminals = tree.terminals || [];
   const routed = Boolean(tree.routed);
+  const isNuveiTerminal = tree.enrollment === "tid-per-till";
 
   return (
     <>
@@ -674,17 +678,34 @@ function PosTree({ park, onConfigurePos }) {
               </div>
 
               {routed ? (
-                <div className="mt-3 grid gap-2 rounded-lg border border-stone-200 bg-stone-50 p-3 md:grid-cols-5">
-                  <Select value={draft.deviceKind || "simulator"} onChange={(event) => setReaderDraft((current) => ({ ...current, [terminal.posDeviceId]: { ...draft, deviceKind: event.target.value } }))}>
-                    <option value="simulator">Simulator</option>
-                    <option value="real">Real device</option>
-                  </Select>
+                <div className="mt-3 rounded-lg border border-stone-200 bg-stone-50 p-3">
+                  <p className="mb-2 text-xs font-bold text-stone-600">
+                    {isNuveiTerminal
+                      ? "Attach a Nuvei-issued physical terminal or sandbox simulator. Both require the TID, Register ID, and Register Auth Key supplied by Nuvei."
+                      : "Attach a Stripe reader using its provider-issued pairing or registration code."}
+                  </p>
+                  <div className={`grid gap-2 ${isNuveiTerminal ? "md:grid-cols-5" : "md:grid-cols-3"}`}>
                   <Input value={draft.label || ""} onChange={(event) => setReaderDraft((current) => ({ ...current, [terminal.posDeviceId]: { ...draft, label: event.target.value } }))} placeholder="Reader label" />
-                  <Input value={draft.providerTerminalId || ""} onChange={(event) => setReaderDraft((current) => ({ ...current, [terminal.posDeviceId]: { ...draft, providerTerminalId: event.target.value } }))} placeholder="TID / reader id" />
-                  <Input value={draft.registrationCode || ""} onChange={(event) => setReaderDraft((current) => ({ ...current, [terminal.posDeviceId]: { ...draft, registrationCode: event.target.value } }))} placeholder="Stripe code" />
-                  <button type="button" onClick={() => createReader(terminal)} className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm font-black text-stone-700">
+                  {isNuveiTerminal ? (
+                    <>
+                      <Input value={draft.providerTerminalId || ""} onChange={(event) => setReaderDraft((current) => ({ ...current, [terminal.posDeviceId]: { ...draft, providerTerminalId: event.target.value } }))} placeholder="Terminal ID (TID)" />
+                      <Input value={draft.registerId || ""} onChange={(event) => setReaderDraft((current) => ({ ...current, [terminal.posDeviceId]: { ...draft, registerId: event.target.value } }))} placeholder="Register ID" />
+                      <Input type="password" value={draft.registerAuthKey || ""} onChange={(event) => setReaderDraft((current) => ({ ...current, [terminal.posDeviceId]: { ...draft, registerAuthKey: event.target.value } }))} placeholder="Register Auth Key" autoComplete="new-password" />
+                    </>
+                  ) : (
+                    <Input value={draft.registrationCode || ""} onChange={(event) => setReaderDraft((current) => ({ ...current, [terminal.posDeviceId]: { ...draft, registrationCode: event.target.value } }))} placeholder="Pairing / registration code" />
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => createReader(terminal)}
+                    disabled={isNuveiTerminal
+                      ? !draft.providerTerminalId?.trim() || !draft.registerId?.trim() || !draft.registerAuthKey?.trim()
+                      : !draft.registrationCode?.trim()}
+                    className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm font-black text-stone-700 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
                     <FaPlus /> Reader
                   </button>
+                  </div>
                 </div>
               ) : null}
             </div>
