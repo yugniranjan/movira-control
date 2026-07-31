@@ -206,7 +206,7 @@ function TerminalRow({ locationId, terminal, enrollment, busy, run }) {
           size="sm"
           title="Regenerate pairing code"
           disabled={busy}
-          onClick={() => run(() => api.regenerateTerminalPairing(terminal.posDeviceId))}
+          onClick={() => run(() => api.regenerateTerminalPairing(terminal.posDeviceId, locationId))}
         >
           <FiRefreshCw />
         </Button>
@@ -239,7 +239,7 @@ function TerminalRow({ locationId, terminal, enrollment, busy, run }) {
                     size="sm"
                     title="Make default"
                     disabled={busy}
-                    onClick={() => run(() => api.updateReader(r.terminalId, { makeDefault: true }))}
+                    onClick={() => run(() => api.updateReader(r.terminalId, { locationId, makeDefault: true }))}
                   >
                     <FiStar />
                   </Button>
@@ -251,7 +251,7 @@ function TerminalRow({ locationId, terminal, enrollment, busy, run }) {
                   disabled={busy}
                   onClick={() => {
                     if (window.confirm(`Remove reader "${r.displayName}"?`)) {
-                      run(() => api.removeReaderRow(r.terminalId));
+                      run(() => api.removeReaderRow(r.terminalId, locationId));
                     }
                   }}
                 >

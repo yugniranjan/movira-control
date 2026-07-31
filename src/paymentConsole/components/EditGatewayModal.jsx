@@ -87,6 +87,7 @@ export default function EditGatewayModal({ open, onClose, credential, schema, on
     : null;
   const enforcedMode = scopedVenue ? parkPaymentMode(scopedVenue) : null;
   const effectiveMode = enforcedMode || mode;
+  const requestLocationId = credential?.locationId || null;
 
   // Re-run field validation on every keystroke while in rotate mode.
   const liveValidation = useMemo(() => {
@@ -131,7 +132,9 @@ export default function EditGatewayModal({ open, onClose, credential, schema, on
     setAuditError("");
     (async () => {
       try {
-        const rows = await api.getCredentialAuditLog(credential.credentialId);
+        const rows = await api.getCredentialAuditLog(credential.credentialId, {
+          locationId: requestLocationId,
+        });
         if (cancelled) return;
         setAuditRows(rows || []);
       } catch (err) {
@@ -145,7 +148,7 @@ export default function EditGatewayModal({ open, onClose, credential, schema, on
     return () => {
       cancelled = true;
     };
-  }, [auditExpanded, auditRows, credential]);
+  }, [auditExpanded, auditRows, credential, requestLocationId]);
 
   // When rotating, the new values must pass the SAME validation the backend
   // applies — required fields present + valid format. OPTIONAL fields (e.g.
@@ -180,7 +183,7 @@ export default function EditGatewayModal({ open, onClose, credential, schema, on
     try {
       const payload = { label, mode: effectiveMode, status };
       if (rotating) payload.values = values;
-      const updated = await api.updateCredential(credential.credentialId, payload);
+      const updated = await api.updateCredential(credential.credentialId, payload, requestLocationId);
       onUpdated(updated);
       onClose();
     } catch (err) {
@@ -205,12 +208,15 @@ export default function EditGatewayModal({ open, onClose, credential, schema, on
     setTesting(true);
     setTest(null);
     try {
-      const res = await api.testConnection({
-        provider: credential.provider,
-        mode: effectiveMode,
-        values,
-        locationId: credential.locationId,
-      });
+      const res = await api.testConnection(
+        {
+          provider: credential.provider,
+          mode: effectiveMode,
+          values,
+          locationId: credential.locationId,
+        },
+        requestLocationId
+      );
       setTest(res);
     } catch (err) {
       setTest({ ok: false, message: err?.message || "Test failed." });
@@ -223,7 +229,7 @@ export default function EditGatewayModal({ open, onClose, credential, schema, on
     setDeleting(true);
     setError("");
     try {
-      await api.deleteCredential(credential.credentialId);
+      await api.deleteCredential(credential.credentialId, requestLocationId);
       onDeleted(credential.credentialId);
       onClose();
     } catch (err) {

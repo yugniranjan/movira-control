@@ -1,10 +1,10 @@
-import { resolveApiBaseUrl } from "../../api/resolveApiBaseUrl";
+import { resolveApiBaseUrl } from "../../api/resolveApiBaseUrl.js";
 import {
   clearAuthSession,
   readStoredToken,
   redirectToLogin,
   refreshAccessToken,
-} from "../../api/authSession";
+} from "../../api/authSession.js";
 
 async function request(method, path, body, { retried = false, locationId = null } = {}) {
   const headers = { "Content-Type": "application/json" };

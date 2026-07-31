@@ -135,12 +135,16 @@ export default function AddGatewayModal({
     setTesting(true);
     setTest(null);
     try {
-      const res = await testConnection({
-        provider,
-        mode: effectiveMode,
-        values,
-        locationId: scope === "venue" ? locationId : null,
-      });
+      const scopedLocationId = scope === "venue" ? locationId : null;
+      const res = await testConnection(
+        {
+          provider,
+          mode: effectiveMode,
+          values,
+          locationId: scopedLocationId,
+        },
+        scopedLocationId
+      );
       setTest(res);
     } catch (err) {
       setError(err?.message || "Connection test failed.");
@@ -163,13 +167,17 @@ export default function AddGatewayModal({
     setFieldErrors({});
     setSaving(true);
     try {
-      const created = await createCredential({
-        provider,
-        label,
-        mode: effectiveMode,
-        values,
-        locationId: scope === "venue" ? locationId : null,
-      });
+      const scopedLocationId = scope === "venue" ? locationId : null;
+      const created = await createCredential(
+        {
+          provider,
+          label,
+          mode: effectiveMode,
+          values,
+          locationId: scopedLocationId,
+        },
+        scopedLocationId
+      );
       onCreated(created);
       close();
     } catch (err) {

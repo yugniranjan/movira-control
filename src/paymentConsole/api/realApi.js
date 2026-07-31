@@ -6,8 +6,8 @@
 // Note: there's no /routes/org endpoint — backend's location_payment_settings
 // is per-location by design; an "org default" is a frontend fiction we used to
 // expose and have intentionally dropped.
-import { http } from "./http";
-import { paymentConfigPaths } from "../../features/saas/paymentConfigPaths";
+import { http } from "./http.js";
+import { paymentConfigPaths } from "../../features/saas/paymentConfigPaths.js";
 
 const ORG_NAME = "Movira";
 
@@ -96,38 +96,39 @@ export const realApi = {
     return (await http.put("/saas/platform-billing-gateway", payload)).data;
   },
 
-  async createCredential(payload) {
+  async createCredential(payload, contextLocationId = payload?.locationId) {
     // payload: { provider, label, mode, values, locationId? }
     // locationId === null → org-wide; numeric → per-venue.
-    return (await http.post("/payments/config/credentials", payload)).data;
+    return (await http.post("/payments/config/credentials", payload, { locationId: contextLocationId })).data;
   },
 
   async createPlatformBillingCredential(payload) {
     return (await http.post("/billing/credentials", { ...payload, locationId: null })).data;
   },
 
-  async updateCredential(credentialId, payload) {
+  async updateCredential(credentialId, payload, locationId = null) {
     // Scope (locationId) is not patchable — it's part of the row's identity.
-    return (await http.patch(`/payments/config/credentials/${credentialId}`, payload)).data;
+    return (await http.patch(`/payments/config/credentials/${credentialId}`, payload, { locationId })).data;
   },
 
-  async deleteCredential(credentialId) {
-    return http.del(`/payments/config/credentials/${credentialId}`);
+  async deleteCredential(credentialId, locationId = null) {
+    return http.del(`/payments/config/credentials/${credentialId}`, { locationId });
   },
 
-  async testConnection(payload) {
-    return (await http.post("/payments/config/test-connection", payload)).data;
+  async testConnection(payload, contextLocationId = payload?.locationId) {
+    return (await http.post("/payments/config/test-connection", payload, { locationId: contextLocationId })).data;
   },
 
   async testPlatformBillingConnection(payload) {
     return (await http.post("/billing/test-connection", payload)).data;
   },
 
-  async getCredentialAuditLog(credentialId, { limit = 100 } = {}) {
+  async getCredentialAuditLog(credentialId, { limit = 100, locationId = null } = {}) {
     // Super-admin only on the backend — the controller will 403 for
     // venue-managers. The UI passes the 403 message through.
     const j = await http.get(
-      `/payments/config/credentials/${credentialId}/audit-log?limit=${limit}`
+      `/payments/config/credentials/${credentialId}/audit-log?limit=${limit}`,
+      { locationId }
     );
     return j.data || [];
   },
@@ -187,12 +188,18 @@ export const realApi = {
     return j.data;
   },
 
-  async updateReader(terminalId, { displayName, makeDefault, providerTerminalId, registerId, registerAuthKey } = {}) {
-    return (await http.patch(`/payments/config/readers/${terminalId}`, { displayName, makeDefault, providerTerminalId, registerId, registerAuthKey })).data;
+  async updateReader(terminalId, { locationId, displayName, makeDefault, providerTerminalId, registerId, registerAuthKey } = {}) {
+    return (
+      await http.patch(
+        `/payments/config/readers/${terminalId}`,
+        { displayName, makeDefault, providerTerminalId, registerId, registerAuthKey },
+        { locationId }
+      )
+    ).data;
   },
 
-  async removeReaderRow(terminalId) {
-    return http.del(`/payments/config/readers/${terminalId}`);
+  async removeReaderRow(terminalId, locationId) {
+    return http.del(`/payments/config/readers/${terminalId}`, { locationId });
   },
 
   // ── Terminals (tills) — PosDevice CRUD via the POS controller ──
@@ -201,7 +208,7 @@ export const realApi = {
     return j.data || j;
   },
 
-  async regenerateTerminalPairing(posDeviceId) {
-    return (await http.post(`/pos/devices/${posDeviceId}/regenerate-pairing-code`, {})).data;
+  async regenerateTerminalPairing(posDeviceId, locationId) {
+    return (await http.post(`/pos/devices/${posDeviceId}/regenerate-pairing-code`, {}, { locationId })).data;
   },
 };
