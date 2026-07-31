@@ -122,6 +122,8 @@ const defaultForm = {
   streetName: "",
   postalCode: "",
   displayAddress: "",
+  deploymentMode: "production",
+  demoExpiresAt: "",
   monthlyBaseFee: 0,
 };
 
@@ -420,6 +422,13 @@ function dateInputValue(value) {
   return new Date(date.getTime() - offsetMs).toISOString().slice(0, 10);
 }
 
+function defaultDemoExpiryValue() {
+  const expiry = new Date();
+  expiry.setDate(expiry.getDate() + 30);
+  const offsetMs = expiry.getTimezoneOffset() * 60 * 1000;
+  return new Date(expiry.getTime() - offsetMs).toISOString().slice(0, 10);
+}
+
 function dateOnly(value) {
   if (!value) return "-";
   const date = new Date(value);
@@ -436,6 +445,7 @@ function dateTime(value) {
 
 function statusClass(status) {
   if (status === "live") return "bg-emerald-50 text-emerald-700 border-emerald-200";
+  if (status === "demo") return "bg-violet-50 text-violet-700 border-violet-200";
   if (status === "paused") return "bg-blue-50 text-blue-700 border-blue-200";
   if (status === "archived") return "bg-stone-100 text-stone-600 border-stone-200";
   if (status === "needs_checks") return "bg-amber-50 text-amber-700 border-amber-200";
@@ -1484,9 +1494,10 @@ function Overview() {
       }
     >
       <div className="space-y-5">
-        <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
           <StatCard icon={FaMapMarkerAlt} label="Total parks" value={summary.total || 0} detail={`${summary.setup || 0} in setup`} />
           <StatCard icon={FaRocket} label="Live parks" value={summary.live || 0} detail="approved for operations" />
+          <StatCard icon={FaEye} label="Demo parks" value={summary.demo || 0} detail="sandbox testing access" />
           <StatCard icon={FaCreditCard} label="Monthly SaaS" value={money(summary.monthlyRevenue || 0)} detail="base fee + modules" />
           <StatCard icon={FaLayerGroup} label="Modules" value={modules.length} detail="controlled per park" />
         </section>
@@ -1711,9 +1722,10 @@ export function ParksList() {
       }
     >
       <div className="space-y-3">
-        <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+        <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
           <StatCard compact icon={FaMapMarkerAlt} label="Total parks" value={summary.total || pagination.totalRecords || 0} detail={`${summary.setup || 0} in setup`} />
           <StatCard compact icon={FaRocket} label="Live parks" value={summary.live || 0} detail="approved for operations" />
+          <StatCard compact icon={FaEye} label="Demo parks" value={summary.demo || 0} detail="sandbox testing access" />
           <StatCard compact icon={FaCreditCard} label="Monthly SaaS" value={money(summary.monthlyRevenue || 0)} detail="base fee + modules" />
           <StatCard compact icon={FaBuilding} label="Organizations" value={summary.organizations || 0} detail="own one or more parks" />
         </section>
@@ -1956,6 +1968,8 @@ export function ParkForm() {
         streetName: park.streetName || "",
         postalCode: park.postalCode || "",
         displayAddress: park.displayAddress || "",
+        deploymentMode: park.deploymentMode || (park.status === "demo" ? "demo" : "production"),
+        demoExpiresAt: dateInputValue(park.demoExpiresAt),
         monthlyBaseFee: park.monthlyBaseFee || 0,
       });
       setCreatedParkAccess({
@@ -1966,9 +1980,16 @@ export function ParkForm() {
         welcomeEmail: null,
       });
     }
-  }, [data, isEdit]);
+  }, [data, isEdit, locationId]);
 
   const update = (key, value) => setForm((current) => ({ ...current, [key]: value }));
+  const updateDeploymentMode = (value) => {
+    setForm((current) => ({
+      ...current,
+      deploymentMode: value,
+      demoExpiresAt: value === "demo" ? current.demoExpiresAt || defaultDemoExpiryValue() : "",
+    }));
+  };
   const updateNewCustomer = (key, value) => setNewCustomer((current) => ({ ...current, [key]: value }));
   const applyCustomerUser = (user, fallback = {}) => {
     if (!user) return;
@@ -2220,6 +2241,72 @@ export function ParkForm() {
         ) : null}
         <div className="min-w-0 space-y-4">
           <section className="min-w-0 overflow-hidden rounded-xl border border-stone-200 bg-white shadow-sm">
+            <div className="border-b border-stone-200 bg-gradient-to-r from-violet-50/80 to-white px-4 py-3">
+              <p className="text-xs font-black uppercase tracking-[0.18em] text-violet-700">Workspace purpose</p>
+              <h2 className="mt-1 text-lg font-black text-stone-950">Choose demo or production onboarding</h2>
+              <p className="mt-1 text-sm font-semibold text-stone-600">This choice controls access, payments, expiry, and the go-live path.</p>
+            </div>
+            <div className="grid gap-3 p-4 md:grid-cols-2">
+              {[
+                {
+                  value: "demo",
+                  title: "Demo / testing",
+                  description: "Owner can log in and test assigned modules. Sandbox payments only; real charges are blocked.",
+                },
+                {
+                  value: "production",
+                  title: "Production onboarding",
+                  description: "Billing, live payment credentials, readiness checks, and separate go-live approval are required.",
+                },
+              ].map((option) => {
+                const selected = form.deploymentMode === option.value;
+                const disabled = isEdit && data?.park?.status === "live" && option.value === "demo";
+                return (
+                  <button
+                    key={option.value}
+                    type="button"
+                    disabled={disabled}
+                    onClick={() => updateDeploymentMode(option.value)}
+                    className={`rounded-xl border-2 p-4 text-left transition ${
+                      selected
+                        ? option.value === "demo"
+                          ? "border-violet-400 bg-violet-50 ring-4 ring-violet-100"
+                          : "border-orange-400 bg-orange-50 ring-4 ring-orange-100"
+                        : "border-stone-200 bg-white hover:border-stone-300"
+                    } ${disabled ? "cursor-not-allowed opacity-45" : ""}`}
+                  >
+                    <span className="flex items-center justify-between gap-3">
+                      <span className="font-black text-stone-950">{option.title}</span>
+                      <span className={`h-4 w-4 rounded-full border-4 ${selected ? "border-violet-600 bg-white" : "border-stone-300 bg-white"}`} />
+                    </span>
+                    <span className="mt-2 block text-sm font-semibold leading-5 text-stone-600">{option.description}</span>
+                    {disabled ? <span className="mt-2 block text-xs font-black text-red-700">A live park cannot be moved back to demo.</span> : null}
+                  </button>
+                );
+              })}
+              {form.deploymentMode === "demo" ? (
+                <label className="block rounded-xl border border-violet-200 bg-violet-50/60 p-4 md:col-span-2">
+                  <span className="text-xs font-black uppercase text-violet-700">Demo access expires *</span>
+                  <input
+                    type="date"
+                    min={todayDateInputValue()}
+                    value={form.demoExpiresAt}
+                    onChange={(event) => update("demoExpiresAt", event.target.value)}
+                    required
+                    className="input-nexus mt-2 w-full max-w-sm px-3 py-2.5 text-sm"
+                  />
+                  <span className="mt-2 block text-xs font-semibold text-stone-600">Expiry is configurable. After this date, owner and staff access is blocked until extended or converted to production onboarding.</span>
+                </label>
+              ) : null}
+              {isEdit && data?.park?.deploymentMode === "demo" && form.deploymentMode === "production" ? (
+                <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm font-bold text-amber-900 md:col-span-2">
+                  Saving will end demo mode and move this park to production onboarding. Live access still requires billing, live gateway setup, readiness checks, and explicit go-live approval.
+                </div>
+              ) : null}
+            </div>
+          </section>
+
+          <section className="min-w-0 overflow-hidden rounded-xl border border-stone-200 bg-white shadow-sm">
             <div className="flex flex-wrap items-start justify-between gap-3 border-b border-stone-200 bg-gradient-to-r from-orange-50/80 to-white px-4 py-3">
               <div className="min-w-0">
                 <p className="text-xs font-black uppercase tracking-[0.18em] text-orange-700">Park profile</p>
@@ -2438,6 +2525,9 @@ export function ParkForm() {
         <aside className="h-fit min-w-0 rounded-xl border border-stone-200 bg-white p-4 shadow-sm xl:sticky xl:top-4">
           <p className="text-xs font-black uppercase text-stone-500">Setup starts here</p>
           <h3 className="mt-1 text-xl font-black text-stone-950">{isEdit ? "Save profile changes" : "Create workspace"}</h3>
+          <div className={`mt-3 rounded-lg border px-3 py-2 text-sm font-black ${form.deploymentMode === "demo" ? "border-violet-200 bg-violet-50 text-violet-800" : "border-orange-200 bg-orange-50 text-orange-800"}`}>
+            {form.deploymentMode === "demo" ? `Demo mode · expires ${dateOnly(form.demoExpiresAt)}` : "Production onboarding"}
+          </div>
           <div className="mt-4 space-y-3 text-sm font-bold text-stone-600">
             <div className="flex items-center gap-2"><FaCheckCircle className="text-emerald-600" /> Park workspace</div>
             <div className="flex items-center gap-2"><FaLayerGroup className="text-orange-600" /> Module access</div>
@@ -2570,6 +2660,15 @@ export function ParkDetail() {
         </div>
       }
     >
+      {park.deploymentMode === "demo" || park.status === "demo" ? (
+        <div className="flex flex-col gap-3 rounded-xl border border-violet-200 bg-violet-50 px-4 py-3 text-violet-950 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-xs font-black uppercase tracking-[0.18em] text-violet-700">Demo mode</p>
+            <p className="mt-1 text-sm font-bold">Owner access is enabled for testing. Only sandbox payments are allowed.</p>
+          </div>
+          <Pill className="shrink-0 border-violet-300 bg-white text-violet-700">Expires {dateOnly(park.demoExpiresAt)}</Pill>
+        </div>
+      ) : null}
       <SetupNavigation park={park} section={section} />
       {section === "modules" ? (
         <ModulesPanel
@@ -3711,6 +3810,7 @@ function InvoiceHistoryTable({ park, invoices }) {
 }
 
 function PaymentsPanel({ park }) {
+  const isDemo = park.deploymentMode === "demo" || park.status === "demo";
   const [form, setForm] = useState({
     customerPaymentStatus: park.customerPaymentStatus || "not_configured",
   });
@@ -3765,7 +3865,7 @@ function PaymentsPanel({ park }) {
                 onChange={(value) => setForm({ ...form, customerPaymentStatus: value })}
                 className="min-w-0 flex-1"
                 buttonClassName="min-h-10 py-2"
-                options={guestPaymentStatusOptions}
+                options={isDemo ? guestPaymentStatusOptions.filter((option) => option.value !== "live") : guestPaymentStatusOptions}
               />
               <button
                 disabled={!guestPaymentDirty || isSavingPayments}
@@ -3775,6 +3875,11 @@ function PaymentsPanel({ park }) {
               </button>
             </div>
             <span className="mt-2 block text-xs font-semibold text-stone-500">Controls checkout/POS acceptance for this park.</span>
+            {isDemo ? (
+              <span className="mt-2 block rounded-md border border-violet-200 bg-violet-50 px-2.5 py-2 text-xs font-black text-violet-800">
+                Demo guard active: real/live gateway routes and charges are blocked.
+              </span>
+            ) : null}
           </div>
         </div>
       </form>
@@ -3877,6 +3982,7 @@ function PaymentHistoryPanel({ park, paymentEvents }) {
 }
 
 function OnboardingPanel({ park }) {
+  const isDemo = park.deploymentMode === "demo" || park.status === "demo";
   const [updateOnboarding] = useUpdateSaasParkOnboardingMutation();
   const [goLive, goLiveState] = useApproveSaasParkGoLiveMutation();
   const [goLiveConfirm, setGoLiveConfirm] = useState(false);
@@ -3908,6 +4014,18 @@ function OnboardingPanel({ park }) {
   };
   return (
     <div className="rounded-xl border border-stone-200 bg-white p-5 shadow-sm">
+      {isDemo ? (
+        <div className="mb-4 flex flex-col gap-3 rounded-xl border border-violet-200 bg-violet-50 p-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-xs font-black uppercase tracking-[0.16em] text-violet-700">Separate production approval</p>
+            <p className="mt-1 font-black text-violet-950">This demo cannot be approved directly for go-live.</p>
+            <p className="mt-1 text-sm font-semibold text-violet-800">Convert it to production onboarding from Edit park, then complete billing, live gateway, readiness, and go-live checks.</p>
+          </div>
+          <Link to={`/movira-control/parks/${park.locationId}/edit`} className={buttonClass("secondary", "shrink-0 border-violet-300 text-violet-800")}>
+            <FaEdit /> Convert from edit
+          </Link>
+        </div>
+      ) : null}
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-stone-200 pb-4">
         <div>
           <p className="text-xs font-black uppercase text-orange-700">Launch checklist</p>
@@ -3961,12 +4079,14 @@ function OnboardingPanel({ park }) {
         <div>
           <p className="font-black text-stone-950">Go-live gate</p>
           <p className="text-sm font-semibold text-stone-500">
-            {missingChecks.length
+            {isDemo
+              ? "Convert this demo to production onboarding before requesting go-live approval."
+              : missingChecks.length
               ? `Still required: ${missingChecks.map((key) => onboardingLabels[key] || key).join(", ")}.`
               : "All prerequisites are complete. Approval will activate the park."}
           </p>
         </div>
-        <button onClick={() => setGoLiveConfirm(true)} className={buttonClass("primary")}><FaRocket /> Approve go-live</button>
+        <button disabled={isDemo} onClick={() => setGoLiveConfirm(true)} className={buttonClass("primary", "disabled:cursor-not-allowed disabled:opacity-50")}><FaRocket /> {isDemo ? "Convert to production first" : "Approve go-live"}</button>
       </div>
       <ConfirmDialog
         open={goLiveConfirm}
