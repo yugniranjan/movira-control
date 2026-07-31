@@ -87,7 +87,9 @@ export default function PosCardTree({ locationId }) {
             )}
           </div>
         </div>
-        <AddTerminal locationId={locationId} busy={busy} onDone={() => load()} setError={setError} />
+        {!loading && !error && tree?.routed && supported ? (
+          <AddTerminal locationId={locationId} busy={busy} onDone={() => load()} setError={setError} />
+        ) : null}
       </div>
 
       {error && (

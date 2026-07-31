@@ -41,7 +41,6 @@ import {
   useCreateSaasInvoicePaymentLinkMutation,
   useCreateSaasPlanMutation,
   useDeleteSaasPlanMutation,
-  useDeleteSaasParkMutation,
   useGetSaasParkAuditLogsQuery,
   useGetSaasParkByLocationIdQuery,
   useGetSaasParkPaymentEventsQuery,
@@ -1554,7 +1553,6 @@ export function ParksList() {
     status: statusFilter,
     organizationId: organizationFilter,
   });
-  const [archivePark] = useDeleteSaasParkMutation();
   const [permanentDeletePark] = usePermanentDeleteSaasParkMutation();
   const [loadDeletePreview] = useLazyGetSaasParkPermanentDeletePreviewQuery();
   const [updateLifecycle] = useUpdateSaasParkLifecycleMutation();
@@ -1567,46 +1565,20 @@ export function ParksList() {
     setConfirmDialog(null);
   };
 
-  const archiveConfirmed = async (park) => {
-    try {
-      await archivePark(park.locationId).unwrap();
-      toast.success("Park archived.");
-      setStatusFilter("archived");
-      setPage(1);
-      closeConfirmDialog();
-    } catch (err) {
-      toast.error(err?.data?.message || "Failed to archive park.");
-    }
-  };
-
-  const onArchive = (park) => {
-    setConfirmDialog({
-      type: "control-delete",
-      tone: "warning",
-      eyebrow: "Delete options",
-      title: `Delete options for ${park.name}`,
-      message: "Choose archive for a safe reversible delete, or permanent delete when the park and its scoped data should be removed completely.",
-      details: [
-        "Archive removes the park from Admin lists and keeps data restorable.",
-        "Permanent delete removes location-scoped data and cannot be undone.",
-        "Type DELETE only if you want to use permanent delete.",
-      ],
-      confirmText: "DELETE",
-      confirmValue: "",
-      confirmLabel: "Archive park",
-      park,
-    });
-  };
-
   const permanentDeleteConfirmed = async (park) => {
     try {
-      await permanentDeletePark({
+      const response = await permanentDeletePark({
         locationId: park.locationId,
         confirmation: "DELETE",
         confirmLocationName: park.name,
         previewAccepted: true,
       }).unwrap();
-      toast.success("Park permanently deleted.");
+      const cleanup = response?.data?.organizationCleanup;
+      toast.success(
+        cleanup?.deleted
+          ? `Park and organization deleted. ${cleanup.deletedUserIds?.length || 0} orphaned user account(s) removed.`
+          : "Park permanently deleted. The organization remains because it has other parks."
+      );
       closeConfirmDialog();
     } catch (err) {
       toast.error(err?.data?.message || err?.data?.error || "Failed to permanently delete park.");
@@ -1676,25 +1648,8 @@ export function ParksList() {
     try {
       const preview = await loadDeletePreview(park.locationId).unwrap();
       const plan = preview?.plan || {};
+      const organizationCleanup = preview?.organizationCleanup || {};
       const topTables = (plan.tables || []).slice(0, 6).map((item) => `${item.tableName}: ${item.count} rows`);
-      if (preview?.blocked) {
-        setConfirmDialog({
-          type: "permanent-delete-blocked",
-          tone: "warning",
-          eyebrow: "Archive required",
-          title: `Archive ${park.name} first`,
-          message: preview.blockerMessage || "Permanent delete is only available after the park is archived.",
-          details: [
-            `Affected rows after archive: ${plan.rowCount || 0}`,
-            `Affected tables after archive: ${plan.tableCount || 0}`,
-            ...(topTables.length ? topTables : ["No location-scoped child rows found in preview."]),
-            "Archive is reversible. Permanent delete is available from the Archived tab after that.",
-          ],
-          confirmLabel: "Archive park first",
-          park,
-        });
-        return;
-      }
       setConfirmDialog({
         type: "permanent-delete",
         tone: "danger",
@@ -1705,6 +1660,12 @@ export function ParksList() {
           `Affected rows: ${plan.rowCount || 0}`,
           `Affected tables: ${plan.tableCount || 0}`,
           ...(topTables.length ? topTables : ["No location-scoped child rows found in preview."]),
+          ...(organizationCleanup.isLastPark
+            ? [
+                "This is the organization's last park, so the organization will also be deleted.",
+                `${organizationCleanup.candidateUserCount || 0} organization user(s) will be checked and only orphaned non-admin users will be deleted.`,
+              ]
+            : ["The organization has other parks and will remain active."]),
           "This action cannot be undone.",
         ],
         confirmText: "DELETE",
@@ -1731,11 +1692,9 @@ export function ParksList() {
       setConfirmDialog((current) => ({ ...current, confirmValue: event.value }));
       return;
     }
-    if (confirmDialog.type === "archive" || confirmDialog.type === "control-delete") return archiveConfirmed(confirmDialog.park);
     if (confirmDialog.type === "pause") return pauseToggleConfirmed(confirmDialog.park);
     if (confirmDialog.type === "restore") return onRestore(confirmDialog.park);
     if (confirmDialog.type === "permanent-preview-failed") return closeConfirmDialog();
-    if (confirmDialog.type === "permanent-delete-blocked") return archiveConfirmed(confirmDialog.park);
     if (confirmDialog.type === "permanent-delete") return permanentDeleteConfirmed(confirmDialog.park);
   };
 
@@ -1859,7 +1818,7 @@ export function ParksList() {
                               <button onClick={() => onPauseToggle(park)} className={iconButtonClass("secondary", "h-8 w-8 rounded-md text-base")} title={park.status === "paused" ? "Resume" : "Pause"}>
                                 {park.status === "paused" ? <FaPlay /> : <FaPause />}
                               </button>
-                              <button onClick={() => onArchive(park)} className={iconButtonClass("danger", "h-8 w-8 rounded-md text-base")} title="Archive safely"><FaTrash /></button>
+                              <button onClick={() => openPermanentDeleteDialog(park)} className={iconButtonClass("danger", "h-8 w-8 rounded-md text-base")} title="Delete permanently"><FaTrash /></button>
                             </>
                           )}
                         </div>
@@ -1897,19 +1856,7 @@ export function ParksList() {
           confirmLabel={confirmDialog?.confirmLabel}
           confirmText={confirmDialog?.confirmText}
           confirmValue={confirmDialog?.confirmValue}
-          requireConfirmTextForPrimary={confirmDialog?.type !== "control-delete"}
-          extraActions={
-            confirmDialog?.type === "control-delete"
-              ? [
-                  {
-                    label: "Delete permanently",
-                    tone: "danger",
-                    disabled: confirmDialog.confirmValue !== "DELETE",
-                    onClick: () => openPermanentDeleteDialog(confirmDialog.park),
-                  },
-                ]
-              : []
-          }
+          requireConfirmTextForPrimary
           loading={confirmDialog?.type === "permanent-preview"}
           confirmDisabled={Boolean(confirmDialog?.blocked)}
           onConfirm={handleConfirmDialog}
@@ -2010,6 +1957,13 @@ export function ParkForm() {
         postalCode: park.postalCode || "",
         displayAddress: park.displayAddress || "",
         monthlyBaseFee: park.monthlyBaseFee || 0,
+      });
+      setCreatedParkAccess({
+        locationId: park.locationId || locationId,
+        parkName: park.name || "Park",
+        ownerEmail: park.ownerEmail || "",
+        temporaryPassword: "",
+        welcomeEmail: null,
       });
     }
   }, [data, isEdit]);
@@ -2202,7 +2156,9 @@ export function ParkForm() {
           <section className="xl:col-span-2 overflow-hidden rounded-xl border border-emerald-200 bg-white shadow-sm">
             <div className="flex flex-col gap-4 bg-emerald-50/80 p-4 sm:flex-row sm:items-start sm:justify-between">
               <div className="min-w-0">
-                <p className="text-xs font-black uppercase tracking-[0.18em] text-emerald-700">Park created</p>
+                <p className="text-xs font-black uppercase tracking-[0.18em] text-emerald-700">
+                  {isEdit ? "Owner access" : "Park created"}
+                </p>
                 <h2 className="mt-1 text-xl font-black text-stone-950">
                   {createdParkAccess.parkName} owner access
                 </h2>
@@ -2211,6 +2167,8 @@ export function ParkForm() {
                   <span className={createdParkAccess.welcomeEmail?.sent ? "text-emerald-700" : "text-amber-700"}>
                     {createdParkAccess.welcomeEmail?.sent
                       ? `queued for ${createdParkAccess.ownerEmail}`
+                      : !createdParkAccess.welcomeEmail
+                      ? "Generate a fresh temporary password and resend the welcome email when needed."
                       : `not sent${createdParkAccess.welcomeEmail?.reason ? ` · ${createdParkAccess.welcomeEmail.reason}` : ""}`}
                   </span>
                 </p>
@@ -2241,7 +2199,7 @@ export function ParkForm() {
                   </div>
                 ) : (
                   <p className="mt-2 text-sm font-semibold text-stone-600">
-                    This park uses an existing owner account, so no password was generated. Reset it only if the owner cannot access the account.
+                    No temporary password is currently displayed. Generate a new one only when the owner needs access resent.
                   </p>
                 )}
                 <p className="mt-2 text-xs font-semibold text-stone-500">

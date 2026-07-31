@@ -6,10 +6,14 @@ import {
   refreshAccessToken,
 } from "../../api/authSession";
 
-async function request(method, path, body, { retried = false } = {}) {
+async function request(method, path, body, { retried = false, locationId = null } = {}) {
   const headers = { "Content-Type": "application/json" };
   const token = readStoredToken();
   if (token) headers.Authorization = `Bearer ${token}`;
+  const normalizedLocationId = Number(locationId);
+  if (Number.isInteger(normalizedLocationId) && normalizedLocationId > 0) {
+    headers["X-Location-Id"] = String(normalizedLocationId);
+  }
 
   const res = await fetch(`${resolveApiBaseUrl()}${path}`, {
     method,
@@ -28,7 +32,9 @@ async function request(method, path, body, { retried = false } = {}) {
 
   if (res.status === 401 && !retried && !path.startsWith("/auth/")) {
     const refreshedToken = await refreshAccessToken();
-    if (refreshedToken) return request(method, path, body, { retried: true });
+    if (refreshedToken) {
+      return request(method, path, body, { retried: true, locationId });
+    }
     clearAuthSession();
     redirectToLogin();
   }
@@ -49,9 +55,9 @@ async function request(method, path, body, { retried = false } = {}) {
 }
 
 export const http = {
-  get: (p) => request("GET", p),
-  post: (p, b) => request("POST", p, b),
-  put: (p, b) => request("PUT", p, b),
-  patch: (p, b) => request("PATCH", p, b),
-  del: (p) => request("DELETE", p),
+  get: (p, options) => request("GET", p, undefined, options),
+  post: (p, b, options) => request("POST", p, b, options),
+  put: (p, b, options) => request("PUT", p, b, options),
+  patch: (p, b, options) => request("PATCH", p, b, options),
+  del: (p, options) => request("DELETE", p, undefined, options),
 };
