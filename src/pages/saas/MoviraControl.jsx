@@ -44,12 +44,12 @@ import {
   useGetSaasParkAuditLogsQuery,
   useGetSaasParkByLocationIdQuery,
   useGetSaasParkPaymentEventsQuery,
+  useGetSaasPlatformBillingGatewayQuery,
   useGetSaasParksQuery,
   useGetSaasModulesQuery,
   useGetSaasPlansQuery,
   useLazyGetSaasInvoiceDocumentQuery,
   useLazyGetSaasParkPermanentDeletePreviewQuery,
-  useRecordSaasInvoicePaymentMutation,
   useRefundSaasInvoicePaymentMutation,
   useRefreshSaasInvoiceLifecycleMutation,
   useUpdateSaasParkBillingMutation,
@@ -265,9 +265,6 @@ const platformBillingMethodOptions = [
   { value: "not_configured", label: "Not configured" },
   { value: "online_payment", label: "Online payment" },
   { value: "online", label: "Online payment" },
-  { value: "card_on_file", label: "Card on file" },
-  { value: "bank_debit", label: "Bank debit" },
-  { value: "manual_invoice", label: "Manual invoice" },
 ];
 
 const platformBillingStatusOptions = [
@@ -303,6 +300,7 @@ const paymentEventTypeOptions = [
   { value: "invoice_payment_captured", label: "Payment captured" },
   { value: "invoice_payment_refunded", label: "Payment refunded" },
   { value: "invoice_payment_link_created", label: "Payment link" },
+  { value: "invoice_payment_link_resent", label: "Payment link resent" },
   { value: "invoice_marked_overdue", label: "Marked overdue" },
   { value: "invoice_reminder_sent", label: "Reminder sent" },
   { value: "invoice_reminder_failed", label: "Reminder failed" },
@@ -324,6 +322,7 @@ const auditActionOptions = [
   { value: "invoice.generated", label: "Invoice generated" },
   { value: "invoice.payment_recorded", label: "Payment recorded" },
   { value: "invoice.payment_link_created", label: "Payment link created" },
+  { value: "invoice.payment_link_resent", label: "Payment link resent" },
   { value: "invoice.payment_refunded", label: "Payment refunded" },
   { value: "invoice.marked_overdue", label: "Marked overdue" },
   { value: "invoice.reminder_sent", label: "Reminder sent" },
@@ -2680,7 +2679,7 @@ export function ParkDetail() {
       {section === "billing" ? <BillingPanel park={park} plans={data?.catalogs?.plans || []} moduleCatalog={catalogModules} planUsage={data?.planUsage} /> : null}
       {section === "payments" ? <PaymentsPanel park={park} /> : null}
       {section === "payment-history" ? <PaymentHistoryPanel park={park} paymentEvents={paymentEvents} /> : null}
-      {section === "billing-history" ? <InvoiceHistoryTable park={park} invoices={invoices} /> : null}
+      {section === "billing-history" ? <InvoiceHistoryTable park={park} invoices={invoices} paymentEvents={paymentEvents} /> : null}
       {section === "onboarding" ? <OnboardingPanel park={park} /> : null}
       {section === "audit" ? <AuditPanel park={park} initialLogs={auditLogs} /> : null}
       {!section ? <OverviewPanel park={park} /> : null}
@@ -3411,8 +3410,12 @@ function InvoicePreviewModal({ preview, onClose }) {
   );
 }
 
-function InvoiceHistoryTable({ park, invoices }) {
-  const [recordPayment, { isLoading }] = useRecordSaasInvoicePaymentMutation();
+function InvoiceHistoryTable({ park, invoices, paymentEvents = [] }) {
+  const { data: liveGatewayData = {}, isLoading: isLoadingLiveGateway } = useGetSaasPlatformBillingGatewayQuery({
+    channel: "payment_link",
+    currency: park.currency || "",
+    mode: "live",
+  });
   const [createPaymentLink, createLinkState] = useCreateSaasInvoicePaymentLinkMutation();
   const [refreshLifecycle, refreshLifecycleState] = useRefreshSaasInvoiceLifecycleMutation();
   const [voidInvoice, voidInvoiceState] = useVoidSaasInvoiceMutation();
@@ -3422,6 +3425,10 @@ function InvoiceHistoryTable({ park, invoices }) {
   const [voidConfirm, setVoidConfirm] = useState(null);
   const [refundConfirm, setRefundConfirm] = useState(null);
   const [invoicePreview, setInvoicePreview] = useState(null);
+  const liveGatewayReady = Boolean(
+    liveGatewayData.active?.mode === "live" &&
+      liveGatewayData.active?.credential?.status === "active"
+  );
 
   const handleRefreshLifecycle = async () => {
     try {
@@ -3445,27 +3452,19 @@ function InvoiceHistoryTable({ park, invoices }) {
     }
   };
 
-  const handleRecordPayment = async (invoice) => {
-    const remaining = Math.max(0, Number(invoice.totalAmount || 0) - Number(invoice.paidAmount || 0));
-    try {
-      await recordPayment({
-        locationId: park.locationId,
-        invoiceId: invoice.invoiceId,
-        amount: remaining || invoice.totalAmount,
-        paymentMethod: park.paymentMethod || "manual_invoice",
-        provider: "manual",
-      }).unwrap();
-      toast.success("Invoice payment recorded.");
-    } catch (err) {
-      toast.error(err?.data?.message || "Failed to record invoice payment.");
-    }
-  };
-  const handleCreatePaymentLink = async (invoice) => {
+  const linkSentForInvoice = (invoiceId) => paymentEvents.some(
+    (event) =>
+      Number(event.invoiceId || event.invoice?.invoiceId) === Number(invoiceId) &&
+      ["invoice_payment_link_created", "invoice_payment_link_resent"].includes(event.eventType)
+  );
+  const handleCreatePaymentLink = async (invoice, resend = false) => {
     try {
       const result = await createPaymentLink({
         locationId: park.locationId,
         invoiceId: invoice.invoiceId,
         appBaseUrl: window.location.origin,
+        resend,
+        notificationRequestId: window.crypto?.randomUUID?.() || `${Date.now()}-${invoice.invoiceId}`,
       }).unwrap();
       if (result?.paymentLinkUrl) {
         let copied = false;
@@ -3475,13 +3474,14 @@ function InvoiceHistoryTable({ park, invoices }) {
         } catch {
           copied = false;
         }
-        window.open(result.paymentLinkUrl, "_blank", "noopener,noreferrer");
-        toast.success(copied ? "Payment link created and copied." : "Payment link created.");
+        toast.success(
+          `${result.resent ? "Payment link resent" : "Payment link sent"} to ${result.recipientEmail || "the billing email"}${copied ? " and copied." : "."}`
+        );
       } else {
-        toast.success("Payment link request created.");
+        toast.success(result.resent ? "Payment link resent." : "Payment link sent.");
       }
     } catch (err) {
-      toast.error(err?.data?.message || "Failed to create payment link.");
+      toast.error(err?.data?.message || "Failed to send payment link.");
     }
   };
   const handleOpenInvoiceDocument = async (invoice) => {
@@ -3499,10 +3499,8 @@ function InvoiceHistoryTable({ park, invoices }) {
       await handleRefreshLifecycle();
     } else if (current.type === "open_invoice") {
       await handleOpenInvoiceDocument(current.invoice);
-    } else if (current.type === "record_payment") {
-      await handleRecordPayment(current.invoice);
     } else if (current.type === "payment_link") {
-      await handleCreatePaymentLink(current.invoice);
+      await handleCreatePaymentLink(current.invoice, current.resend);
     }
     setActionConfirm(null);
   };
@@ -3511,9 +3509,7 @@ function InvoiceHistoryTable({ park, invoices }) {
       ? refreshLifecycleState.isLoading
       : actionConfirm?.type === "open_invoice"
         ? invoiceDocumentState.isFetching
-        : actionConfirm?.type === "record_payment"
-          ? isLoading
-          : actionConfirm?.type === "payment_link"
+        : actionConfirm?.type === "payment_link"
             ? createLinkState.isLoading
             : false;
   const actionConfirmConfig = (() => {
@@ -3540,23 +3536,20 @@ function InvoiceHistoryTable({ park, invoices }) {
         confirmLabel: "Preview invoice",
       };
     }
-    if (actionConfirm.type === "record_payment") {
-      return {
-        tone: "warning",
-        eyebrow: "Record payment",
-        title: `Record payment for ${invoice.invoiceNumber}?`,
-        message: "This marks money as received for the SaaS invoice. Only use it after payment is actually confirmed.",
-        details: [`Amount to record: ${money(remaining || invoice.totalAmount, invoice.currency || park.currency)}`, "This updates invoice balance, payment history, and audit logs."],
-        confirmLabel: "Record payment",
-      };
-    }
+    const resend = Boolean(actionConfirm.resend);
     return {
       tone: "warning",
-      eyebrow: "Create payment link",
-      title: `Create payment link for ${invoice.invoiceNumber}?`,
-      message: "This creates a customer-payable SaaS invoice link and may open/copy it for sharing.",
-      details: [`Amount due: ${money(remaining, invoice.currency || park.currency)}`, "Use only when you are ready to send the owner a real collection link."],
-      confirmLabel: "Create link",
+      eyebrow: resend ? "Resend payment link" : "Send payment link",
+      title: `${resend ? "Resend" : "Send"} payment link for ${invoice.invoiceNumber}?`,
+      message: resend
+        ? "This reuses the current unpaid live payment link and sends it to the park billing email again."
+        : "This creates a live customer-payable SaaS invoice link and sends it to the park billing email.",
+      details: [
+        `Amount due: ${money(remaining, invoice.currency || park.currency)}`,
+        "A live Movira SaaS billing gateway and live platform credentials are required.",
+        "Cash and manual settlement are not available for live SaaS billing.",
+      ],
+      confirmLabel: resend ? "Resend link" : "Send link",
     };
   })();
   const handleVoidInvoice = async (event) => {
@@ -3622,6 +3615,15 @@ function InvoiceHistoryTable({ park, invoices }) {
           </>
         )}
       />
+      {!isLoadingLiveGateway && !liveGatewayReady ? (
+        <div className="mx-4 mt-4 flex flex-col gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-xs font-black uppercase tracking-[0.16em] text-amber-700">Live SaaS billing setup required</p>
+            <p className="mt-1 text-sm font-bold text-amber-950">Add an enabled live Stripe or Razorpay platform gateway and its live credentials before sending invoice payment links.</p>
+          </div>
+          <Link to="/movira-control/billing" className={buttonClass("secondary", "shrink-0 border-amber-300 text-amber-900")}>Open SaaS Billing</Link>
+        </div>
+      ) : null}
       <div className={listingScrollClass}>
         <table className={listingTableClass("min-w-[960px]")}>
           <thead className={listingHeadClass}>
@@ -3643,6 +3645,7 @@ function InvoiceHistoryTable({ park, invoices }) {
               const canVoid = Number(invoice.paidAmount || 0) <= 0 && !terminalStatuses.includes(invoice.status);
               const paidAmount = Number(invoice.paidAmount || 0);
               const canRefund = paidAmount > 0 && !["void", "refunded"].includes(invoice.status);
+              const linkAlreadySent = linkSentForInvoice(invoice.invoiceId);
               return (
                 <tr key={invoice.invoiceId} className={listingRowClass}>
                   <td className="px-4 py-3">
@@ -3664,24 +3667,16 @@ function InvoiceHistoryTable({ park, invoices }) {
                       >
                         Preview invoice
                       </button>
-                      <button
-                        type="button"
-                        disabled={!canPay || isLoading}
-                        onClick={() => setActionConfirm({ type: "record_payment", invoice })}
-                        className={buttonClass(canPay ? "success" : "secondary", "min-h-9 px-3 py-1.5 text-xs")}
-                      >
-                        {canPay ? `Record ${money(remaining, invoice.currency || park.currency)}` : "Settled"}
-                      </button>
                       {canPay ? (
                         <button
                           type="button"
-                          disabled={createLinkState.isLoading}
-                          onClick={() => setActionConfirm({ type: "payment_link", invoice })}
-                          className={buttonClass("secondary", "min-h-9 px-3 py-1.5 text-xs")}
+                          disabled={createLinkState.isLoading || isLoadingLiveGateway}
+                          onClick={() => setActionConfirm({ type: "payment_link", invoice, resend: linkAlreadySent })}
+                          className={buttonClass(linkAlreadySent ? "secondary" : "success", "min-h-9 px-3 py-1.5 text-xs")}
                         >
-                          Payment link
+                          {linkAlreadySent ? "Resend payment link" : `Send ${money(remaining, invoice.currency || park.currency)} link`}
                         </button>
-                      ) : null}
+                      ) : <Pill className="border-emerald-200 bg-emerald-50 text-emerald-700">Settled</Pill>}
                       {canVoid ? (
                         <button
                           type="button"
@@ -3958,7 +3953,7 @@ function PaymentHistoryPanel({ park, paymentEvents }) {
                 <Pill className={billingStatusClass(event.status)}>{event.status}</Pill>
               </div>
               <p className="mt-1 text-xs font-semibold text-stone-500">
-                {event.invoice?.invoiceNumber ? `Invoice ${event.invoice.invoiceNumber}` : "No invoice"} · {event.paymentMethod || "manual"} · {dateTime(event.createdAt)}
+                {event.invoice?.invoiceNumber ? `Invoice ${event.invoice.invoiceNumber}` : "No invoice"} · {event.paymentMethod || "online"} · {dateTime(event.createdAt)}
               </p>
               {event.actor ? <p className="mt-1 text-xs font-semibold text-stone-400">By {event.actor.name || event.actor.email}</p> : null}
             </div>

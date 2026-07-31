@@ -179,9 +179,9 @@ export const moviraControlApi = baseApi.injectEndpoints({
       transformResponse: (response) => response?.data || response || [],
     }),
     getSaasPlatformBillingGateway: builder.query({
-      query: ({ channel = "payment_link", currency = "" } = {}) => ({
+      query: ({ channel = "payment_link", currency = "", mode = "" } = {}) => ({
         url: "/saas/platform-billing-gateway",
-        params: { channel, currency },
+        params: { channel, currency, mode },
       }),
       providesTags: [{ type: "SaasControl", id: "platform-billing-gateway" }],
       transformResponse: (response) => response?.data || response || {},
@@ -314,20 +314,6 @@ export const moviraControlApi = baseApi.injectEndpoints({
         body,
       }),
       invalidatesTags: (result, error, { locationId }) => ["SaasControl", { type: "SaasControl", id: locationId }, { type: "SaasControl", id: `audit-${locationId}` }],
-    }),
-    recordSaasInvoicePayment: builder.mutation({
-      query: ({ locationId, invoiceId, ...body }) => ({
-        url: `/saas/parks/${locationId}/invoices/${invoiceId}/payments`,
-        method: "POST",
-        body,
-      }),
-      invalidatesTags: (result, error, { locationId }) => [
-        "SaasControl",
-        { type: "SaasControl", id: locationId },
-        { type: "SaasControl", id: `audit-${locationId}` },
-        { type: "SaasControl", id: `payment-events-${locationId}` },
-      ],
-      transformResponse: (response) => response?.data || response,
     }),
     createSaasInvoicePaymentLink: builder.mutation({
       query: ({ locationId, invoiceId, ...body }) => ({
@@ -475,7 +461,6 @@ export const {
   useUpdateVenueReaderMutation,
   useDeleteVenueReaderMutation,
   useUpdateSaasParkBillingMutation,
-  useRecordSaasInvoicePaymentMutation,
   useCreateSaasInvoicePaymentLinkMutation,
   useRefreshSaasInvoiceLifecycleMutation,
   useVoidSaasInvoiceMutation,
