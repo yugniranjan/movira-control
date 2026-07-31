@@ -2445,7 +2445,7 @@ export function ParkForm() {
             <div className="flex items-center gap-2"><FaCreditCard className="text-orange-600" /> Payment setup</div>
           </div>
           <div className="mt-6 space-y-2">
-            <button disabled={Boolean(createdParkAccess) || createState.isLoading || updateState.isLoading} className={buttonClass("primary", "w-full")}>
+            <button disabled={(!isEdit && Boolean(createdParkAccess)) || createState.isLoading || updateState.isLoading} className={buttonClass("primary", "w-full")}>
               {isEdit ? "Update park" : createdParkAccess ? "Park created" : "Create park"}
             </button>
             <Link to="/movira-control/parks" className={buttonClass("secondary", "w-full")}>Cancel</Link>
