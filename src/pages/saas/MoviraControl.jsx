@@ -3191,7 +3191,7 @@ function BillingPanel({ park, plans = [], moduleCatalog = modules, planUsage = n
           <div className="min-w-0">
             <p className="text-xs font-black uppercase text-orange-700">Billing setup</p>
             <h2 className="mt-0.5 text-lg font-black text-stone-950">Base fee and invoice controls</h2>
-            <p className="mt-0.5 text-xs font-semibold text-stone-500 sm:text-sm">Plan, tax, discount, and enabled modules determine the recurring bill.</p>
+            <p className="mt-0.5 text-xs font-semibold text-stone-500 sm:text-sm">Plan, tax, promos, and enabled modules determine the recurring bill.</p>
           </div>
           <div className="flex shrink-0 items-center gap-2">
             <Pill className="hidden border-orange-200 bg-orange-50 text-orange-700 sm:inline-flex">
@@ -3272,7 +3272,7 @@ function BillingPanel({ park, plans = [], moduleCatalog = modules, planUsage = n
             <input type="date" value={form.billingStartDate} onChange={(event) => setForm({ ...form, billingStartDate: event.target.value })} className="input-nexus mt-1 w-full px-3 py-2.5 text-sm" />
           </label>
           <label>
-            <span className="text-xs font-black uppercase text-stone-500">Discount</span>
+            <span className="text-xs font-black uppercase text-stone-500">Promo</span>
             <input type="number" value={form.discountAmount} onChange={(event) => setForm({ ...form, discountAmount: event.target.value })} className="input-nexus mt-1 w-full px-3 py-2.5 text-sm" />
           </label>
         </div>
@@ -3340,7 +3340,7 @@ function BillingPanel({ park, plans = [], moduleCatalog = modules, planUsage = n
               {discount > 0 ? (
                 <tr>
                   <td className="px-3 py-2.5">
-                    <p className="font-black text-stone-950">Discount</p>
+                    <p className="font-black text-stone-950">Promo</p>
                     <p className="text-xs font-semibold text-stone-500">Manual monthly adjustment</p>
                   </td>
                   <td className="px-3 py-2.5 font-bold text-stone-500">Credit</td>
@@ -3374,7 +3374,7 @@ function BillingPanel({ park, plans = [], moduleCatalog = modules, planUsage = n
             <span className="text-stone-950">{money(moduleTotal, park.currency)}</span>
           </div>
           <div className="flex justify-between gap-3">
-            <span className="text-stone-500">Discount</span>
+            <span className="text-stone-500">Promo</span>
             <span className="text-emerald-700">-{money(discount, park.currency)}</span>
           </div>
           <div className="flex justify-between gap-3">
