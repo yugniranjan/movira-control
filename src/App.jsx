@@ -5,6 +5,7 @@ import { store } from './app/store';
 import { Toaster } from 'sonner';
 import Loader from './components/Loader';
 import ErrorBoundary from './components/ErrorBoundary';
+import AppDialogHost from './components/common/AppDialogHost';
 
 function App() {
   useEffect(() => {
@@ -33,6 +34,7 @@ function App() {
         <div data-app="admin">
           <Toaster position="top-right" richColors offset={60} dir="ltr"/>
           <AppRoutes />
+          <AppDialogHost />
         </div>
       </Provider>
     </ErrorBoundary>

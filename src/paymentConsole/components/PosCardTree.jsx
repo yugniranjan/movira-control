@@ -10,6 +10,7 @@
 //   POST   /pos/devices                           (create a Terminal/till)
 //   POST   /pos/devices/:id/regenerate-pairing-code
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { appConfirm } from "../../services/appDialog";
 import {
   FiCpu,
   FiPlus,
@@ -249,8 +250,8 @@ function TerminalRow({ locationId, terminal, enrollment, busy, run }) {
                   size="sm"
                   title="Remove reader"
                   disabled={busy}
-                  onClick={() => {
-                    if (window.confirm(`Remove reader "${r.displayName}"?`)) {
+                  onClick={async () => {
+                    if (await appConfirm({ title: `Remove reader "${r.displayName}"?`, message: "This reader will no longer be available for payments.", confirmLabel: "Remove" })) {
                       run(() => api.removeReaderRow(r.terminalId, locationId));
                     }
                   }}
