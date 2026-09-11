@@ -202,7 +202,7 @@ export const moviraControlApi = baseApi.injectEndpoints({
         body,
         headers: locationHeaders(body.locationId),
       }),
-      invalidatesTags: ["Payment"],
+      invalidatesTags: ["Payment", "SaasControl"],
       transformResponse: (response) => response?.data || response,
     }),
     updatePaymentCredential: builder.mutation({
@@ -212,7 +212,7 @@ export const moviraControlApi = baseApi.injectEndpoints({
         body,
         headers: locationHeaders(locationId),
       }),
-      invalidatesTags: ["Payment"],
+      invalidatesTags: ["Payment", "SaasControl"],
       transformResponse: (response) => response?.data || response,
     }),
     deletePaymentCredential: builder.mutation({
@@ -221,7 +221,7 @@ export const moviraControlApi = baseApi.injectEndpoints({
         method: "DELETE",
         headers: locationHeaders(locationId),
       }),
-      invalidatesTags: ["Payment"],
+      invalidatesTags: ["Payment", "SaasControl"],
     }),
     testPaymentCredential: builder.mutation({
       query: (body) => ({
@@ -242,7 +242,7 @@ export const moviraControlApi = baseApi.injectEndpoints({
         method: "PUT",
         body,
       }),
-      invalidatesTags: (result, error, { locationId }) => ["Payment", { type: "Payment", id: `routes-${locationId}` }],
+      invalidatesTags: (result, error, { locationId }) => ["Payment", { type: "Payment", id: `routes-${locationId}` }, { type: "SaasControl", id: locationId }],
       transformResponse: (response) => response?.data || response,
     }),
     deleteVenuePaymentRoute: builder.mutation({
@@ -250,7 +250,7 @@ export const moviraControlApi = baseApi.injectEndpoints({
         url: paymentConfigPaths.route(locationId, channel),
         method: "DELETE",
       }),
-      invalidatesTags: (result, error, { locationId }) => ["Payment", { type: "Payment", id: `routes-${locationId}` }],
+      invalidatesTags: (result, error, { locationId }) => ["Payment", { type: "Payment", id: `routes-${locationId}` }, { type: "SaasControl", id: locationId }],
     }),
     getVenuePosTree: builder.query({
       query: (locationId) => paymentConfigPaths.posTree(locationId),

@@ -37,6 +37,7 @@ import ConfirmDialog from "../../components/common/ConfirmDialog";
 import SearchableSelect from "../../components/common/SearchableSelect";
 import { PanelShimmer, ShimmerBlock } from "../../components/Shimmer";
 import { parkPaymentMode, parkPaymentModeLabel } from "../../features/saas/parkPaymentMode";
+import { gatewayValues, resolveCredential } from "../../features/saas/paymentConfiguration";
 
 const providers = [
   { key: "stripe", name: "Stripe", short: "S", color: "bg-indigo-50 text-indigo-700 border-indigo-200" },
@@ -53,29 +54,6 @@ const channels = [
   { key: "pos", label: "POS / card terminal", detail: "Cashier card-present payments.", capability: "terminal" },
   { key: "recurring", label: "Recurring memberships", detail: "Card-on-file billing.", capability: "recurring" },
 ];
-
-const fallbackCompatibility = {
-  online_booking: {
-    stripe: { adapterKey: "stripe.online", status: "live" },
-    nuvei: { adapterKey: "nuvei.online", status: "live" },
-  },
-  payment_link: {
-    stripe: { adapterKey: "stripe.online", status: "live" },
-    nuvei: { adapterKey: "nuvei.online", status: "live" },
-  },
-  kiosk: {
-    stripe: { adapterKey: "stripe.online", status: "live" },
-    nuvei: { adapterKey: "nuvei.online", status: "live" },
-  },
-  pos: {
-    stripe: { adapterKey: "stripe.terminal", status: "beta" },
-    nuvei: { adapterKey: "nuvei.terminalCloud", status: "beta" },
-  },
-  recurring: {
-    stripe: { adapterKey: "stripe.online", status: "live" },
-    nuvei: { adapterKey: "nuvei.online", status: "live" },
-  },
-};
 
 function Badge({ children, tone = "stone" }) {
   const tones = {
@@ -99,16 +77,6 @@ function ProviderMark({ provider, size = "md" }) {
     <span className={`grid shrink-0 place-items-center rounded-lg border font-black ${sizes} ${item.color}`}>
       {item.short}
     </span>
-  );
-}
-
-function resolveCredential({ provider, locationId, mode, credentials }) {
-  if (!provider || !mode) return null;
-  const usable = credentials.filter((item) => item.status !== "disabled");
-  return (
-    usable.find((item) => item.provider === provider && Number(item.locationId) === Number(locationId) && item.mode === mode) ||
-    usable.find((item) => item.provider === provider && item.locationId == null && item.mode === mode) ||
-    null
   );
 }
 
@@ -220,7 +188,7 @@ function AddGatewayModal({ park, schemas, onClose }) {
   async function runTest() {
     if (!validate()) return;
     try {
-      const result = await testCredential({ provider, mode, values, locationId: park.locationId }).unwrap();
+      const result = await testCredential({ provider, mode, values: gatewayValues(provider, mode, values), locationId: park.locationId }).unwrap();
       setTestResult(result?.data || result);
     } catch (err) {
       toast.error(err?.data?.message || "Connection test failed.");
@@ -238,7 +206,7 @@ function AddGatewayModal({ park, schemas, onClose }) {
         provider,
         mode,
         label: label.trim() || `${providerMap[provider]?.name || provider} - ${park.name}`,
-        values,
+        values: gatewayValues(provider, mode, values),
         locationId: park.locationId,
       }).unwrap();
       toast.success("Gateway added.");
@@ -291,7 +259,7 @@ function AddGatewayModal({ park, schemas, onClose }) {
             {fields.map((field) => (
               <Field key={field.key} label={field.required === false ? `${field.label} (optional)` : field.label} hint={field.hint} error={fieldErrors[field.key]}>
                 {field.type === "select" ? (
-                  <Select value={values[field.key] || field.default || ""} onChange={(event) => setField(field.key, event.target.value)}>
+                  <Select disabled={field.key === "environment"} value={gatewayValues(provider, mode, values)[field.key] || field.default || ""} onChange={(event) => setField(field.key, event.target.value)}>
                     {(field.options || []).map((option) => (
                       <option key={option.value} value={option.value}>
                         {option.label}
@@ -397,7 +365,7 @@ function RouteModal({ park, channel, currentRoute, credentials, compatibility, o
                 <p className="font-black text-stone-950">{providerMap[key]?.name || key}</p>
                 <p className="text-xs font-semibold text-stone-500">{available[key]?.adapterKey}</p>
               </div>
-              <Badge tone={available[key]?.status === "live" ? "green" : "blue"}>{available[key]?.status || "available"}</Badge>
+              <Badge tone={available[key]?.status === "live" ? "green" : "blue"}>{available[key]?.status === "live" ? "supported" : available[key]?.status || "available"}</Badge>
             </button>
           ))}
         </div>
@@ -451,16 +419,33 @@ function RouteModal({ park, channel, currentRoute, credentials, compatibility, o
   );
 }
 
-function EditGatewayModal({ credential, onClose }) {
+function EditGatewayModal({ credential, schemas, onClose }) {
   const [form, setForm] = useState({
     label: credential.label || "",
     status: credential.status || "active",
   });
   const [updateCredential, updateState] = useUpdatePaymentCredentialMutation();
+  const [replaceKeys, setReplaceKeys] = useState(false);
+  const [values, setValues] = useState({});
+  const [testResult, setTestResult] = useState(null);
+  const [testCredential, testState] = useTestPaymentCredentialMutation();
+  const fields = schemas?.[credential.provider]?.fields || [];
+  const replacementValues = gatewayValues(credential.provider, credential.mode, values);
+
+  async function testReplacement() {
+    setTestResult(null);
+    try {
+      const result = await testCredential({ provider: credential.provider, mode: credential.mode, locationId: credential.locationId, values: replacementValues }).unwrap();
+      setTestResult(result?.data || result);
+    } catch (error) {
+      toast.error(error?.data?.message || "Connection test failed.");
+    }
+  }
 
   async function save() {
+    if (replaceKeys && !testResult?.ok) return;
     try {
-      await updateCredential({ credentialId: credential.credentialId, locationId: credential.locationId, ...form }).unwrap();
+      await updateCredential({ credentialId: credential.credentialId, locationId: credential.locationId, ...form, ...(replaceKeys ? { values: replacementValues } : {}) }).unwrap();
       toast.success("Gateway updated.");
       onClose();
     } catch (err) {
@@ -494,11 +479,21 @@ function EditGatewayModal({ credential, onClose }) {
             </Select>
           </Field>
         </div>
-        <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm font-semibold text-amber-800">
-          Secret key rotation is intentionally kept out of this quick edit panel. Add a new gateway or use the dedicated rotation flow when changing live keys.
-        </div>
+        <label className="flex items-center gap-2 text-sm font-semibold"><input type="checkbox" checked={replaceKeys} onChange={(event) => { setReplaceKeys(event.target.checked); setTestResult(null); }} /> Replace gateway credentials</label>
+        {replaceKeys && <>
+          <p className="text-sm text-stone-600">Enter the full replacement credentials for this merchant account, including its webhook secret where required.</p>
+          <div className="grid gap-4 md:grid-cols-2">
+            {fields.map((field) => <Field key={field.key} label={field.required === false ? `${field.label} (optional)` : field.label}>
+              {field.type === "select" ? <Select disabled={field.key === "environment"} value={replacementValues[field.key] || field.default || ""} onChange={(event) => { setValues((current) => ({ ...current, [field.key]: event.target.value })); setTestResult(null); }}>
+                {(field.options || []).map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+              </Select> : <Input type={field.secret ? "password" : "text"} autoComplete="off" value={values[field.key] || ""} onChange={(event) => { setValues((current) => ({ ...current, [field.key]: event.target.value })); setTestResult(null); }} />}
+            </Field>)}
+          </div>
+          <button type="button" onClick={testReplacement} disabled={testState.isLoading || !fields.length} className="inline-flex items-center gap-2 rounded-lg border px-4 py-2 text-sm font-semibold"><FaRedo /> {testState.isLoading ? "Testing..." : "Test replacement credentials"}</button>
+          {testResult && <p role="status" className={`text-sm ${testResult.ok ? "text-emerald-700" : "text-red-700"}`}>{testResult.message || (testResult.ok ? "Connection test passed." : "Connection test failed.")}</p>}
+        </>}
         <div className="flex justify-end border-t border-stone-200 pt-4">
-          <button type="button" onClick={save} disabled={updateState.isLoading || !form.label.trim()} className="btn-nexus inline-flex min-h-10 items-center gap-2 rounded-lg px-4 py-2 text-sm font-black disabled:opacity-50">
+          <button type="button" onClick={save} disabled={updateState.isLoading || !form.label.trim() || (replaceKeys && !testResult?.ok)} className="btn-nexus inline-flex min-h-10 items-center gap-2 rounded-lg px-4 py-2 text-sm font-black disabled:opacity-50">
             <FaSave /> Save gateway
           </button>
         </div>
@@ -733,12 +728,14 @@ export default function ParkPaymentConsole({ park }) {
   const [routeEditing, setRouteEditing] = useState(null);
   const [deleteGatewayTarget, setDeleteGatewayTarget] = useState(null);
   const { data: schemas = {}, isLoading: schemasLoading } = useGetPaymentProviderSchemasQuery(locationId);
-  const { data: compatibilityData = {} } = useGetPaymentCompatibilityQuery(locationId);
-  const { data: credentials = [], isLoading: credentialsLoading } = useGetPaymentCredentialsQuery(locationId);
-  const { data: routes = {}, isLoading: routesLoading } = useGetVenuePaymentRoutesQuery(locationId);
+  const { data: compatibilityData = {}, isLoading: compatibilityLoading, isError: compatibilityError, refetch: reloadCompatibility } = useGetPaymentCompatibilityQuery(locationId);
+  const { data: credentials = [], isLoading: credentialsLoading, isError: credentialsError, refetch: reloadCredentials } = useGetPaymentCredentialsQuery(locationId);
+  const { data: routes = {}, isLoading: routesLoading, isError: routesError, refetch: reloadRoutes } = useGetVenuePaymentRoutesQuery(locationId);
   const [deleteCredential] = useDeletePaymentCredentialMutation();
-  const compatibility = Object.keys(compatibilityData || {}).length ? compatibilityData : fallbackCompatibility;
+  const compatibility = compatibilityData;
   const requiredMode = parkPaymentMode(scopedPark);
+  const configurationError = credentialsError || routesError || compatibilityError;
+  const configurationLoading = credentialsLoading || routesLoading || compatibilityLoading;
 
   const parkCredentials = useMemo(
     () => credentials.filter((credential) => Number(credential.locationId) === Number(locationId) && credential.mode === requiredMode),
@@ -751,9 +748,9 @@ export default function ParkPaymentConsole({ park }) {
   const configuredChannels = channels.filter((channel) => routes[channel.key]).length;
   const unresolvedChannels = channels.filter((channel) => {
     const route = routes[channel.key];
-    return route && (route.mode !== requiredMode || !resolveCredential({ provider: route.provider, mode: route.mode, locationId, credentials }));
+    return route && (route.mode !== requiredMode || !resolveCredential({ provider: route.provider, mode: route.mode, locationId, credentials }) || compatibility[channel.key]?.[route.provider]?.adapterKey !== route.adapterKey);
   });
-  const availableCredentials = parkCredentials.length + inheritedCredentials.length;
+  const availableCredentials = providers.filter(({ key }) => resolveCredential({ provider: key, mode: requiredMode, locationId, credentials })).length;
 
   async function removeCredential(credential) {
     try {
@@ -767,6 +764,7 @@ export default function ParkPaymentConsole({ park }) {
 
   return (
     <div className="space-y-4">
+      {configurationError && <div role="alert" className="flex items-center justify-between gap-3 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">Payment configuration could not be fully loaded.<button type="button" onClick={() => { reloadCredentials(); reloadRoutes(); reloadCompatibility(); }} className="inline-flex items-center gap-2 rounded-lg border px-3 py-2"><FaRedo /> Retry</button></div>}
       <section className="rounded-xl border border-stone-200 bg-white p-4 shadow-sm sm:p-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
@@ -800,8 +798,8 @@ export default function ParkPaymentConsole({ park }) {
             {
               step: "3",
               label: "Route health",
-              value: unresolvedChannels.length ? `${unresolvedChannels.length} need attention` : configuredChannels ? "Healthy" : "Waiting for routes",
-              ready: configuredChannels > 0 && unresolvedChannels.length === 0,
+              value: configurationError ? "Unavailable" : configurationLoading ? "Checking" : unresolvedChannels.length ? `${unresolvedChannels.length} need attention` : configuredChannels ? "Configured" : "Waiting for routes",
+              ready: !configurationError && !configurationLoading && configuredChannels > 0 && unresolvedChannels.length === 0,
             },
           ].map((item) => (
             <div key={item.step} className={`flex items-center gap-3 rounded-xl border px-3 py-2.5 ${item.ready ? "border-emerald-200 bg-emerald-50" : "border-stone-200 bg-stone-50"}`}>
@@ -897,14 +895,16 @@ export default function ParkPaymentConsole({ park }) {
           </div>
           {routesLoading ? <ShimmerBlock className="h-7 w-28 rounded-full" /> : null}
         </div>
+        {compatibilityError && <div role="alert" className="mt-3 flex items-center justify-between gap-3 text-sm text-red-700">Payment provider options could not be loaded.<button type="button" onClick={reloadCompatibility} className="inline-flex items-center gap-2 rounded-lg border px-3 py-2"><FaRedo /> Retry</button></div>}
         <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
           {channels.map((channel) => {
             const route = routes[channel.key];
             const resolved = route?.mode === requiredMode
               ? resolveCredential({ provider: route.provider, mode: route.mode, locationId, credentials })
               : null;
+            const compatible = !!route && compatibility[channel.key]?.[route.provider]?.adapterKey === route.adapterKey;
             return (
-              <button key={channel.key} type="button" onClick={() => setRouteEditing(channel)} className="group rounded-xl border border-stone-200 p-3 text-left transition hover:-translate-y-0.5 hover:border-orange-200 hover:bg-orange-50/40 hover:shadow-sm">
+              <button key={channel.key} type="button" disabled={compatibilityLoading || compatibilityError || !compatibility[channel.key]} onClick={() => setRouteEditing(channel)} className="group rounded-xl border border-stone-200 p-3 text-left transition hover:-translate-y-0.5 hover:border-orange-200 hover:bg-orange-50/40 hover:shadow-sm disabled:opacity-50">
                 <div className="flex items-start gap-3">
                   <div className="grid h-10 w-10 place-items-center rounded-lg bg-orange-50 text-orange-700">
                     {route ? <ProviderMark provider={route.provider} size="sm" /> : <FaCreditCard />}
@@ -912,7 +912,7 @@ export default function ParkPaymentConsole({ park }) {
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2">
                       <p className="font-black text-stone-950">{channel.label}</p>
-                      {route ? <Badge tone={resolved ? "green" : "red"}>{resolved ? "configured" : "missing credential"}</Badge> : <Badge>not configured</Badge>}
+                      {route ? <Badge tone={resolved && compatible ? "green" : "red"}>{route.mode !== requiredMode ? `requires ${requiredMode}` : !compatible ? "check provider" : resolved ? "configured" : "credential unavailable"}</Badge> : <Badge>not configured</Badge>}
                     </div>
                     <p className="mt-1 text-sm font-semibold text-stone-500">{channel.detail}</p>
                     {route ? (
@@ -932,7 +932,7 @@ export default function ParkPaymentConsole({ park }) {
         {unresolvedChannels.length ? (
           <div className="mt-4 rounded-xl border border-red-200 bg-red-50 p-3 text-sm font-bold text-red-700">
             <FaExclamationTriangle className="mr-2 inline" />
-            {unresolvedChannels.length} route{unresolvedChannels.length === 1 ? "" : "s"} will fail until matching credentials are added.
+            {unresolvedChannels.length} route{unresolvedChannels.length === 1 ? "" : "s"} need attention. Check the provider, active credentials, and required {requiredMode} mode.
           </div>
         ) : null}
       </section>
@@ -943,7 +943,7 @@ export default function ParkPaymentConsole({ park }) {
       />
 
       {addGatewayOpen ? <AddGatewayModal park={scopedPark} schemas={schemas} onClose={() => setAddGatewayOpen(false)} /> : null}
-      {editingGateway ? <EditGatewayModal credential={editingGateway} onClose={() => setEditingGateway(null)} /> : null}
+      {editingGateway ? <EditGatewayModal credential={editingGateway} schemas={schemas} onClose={() => setEditingGateway(null)} /> : null}
       {routeEditing ? (
         <RouteModal
           park={scopedPark}
