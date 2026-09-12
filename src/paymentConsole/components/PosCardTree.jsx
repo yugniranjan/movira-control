@@ -230,9 +230,8 @@ function TerminalRow({ locationId, terminal, enrollment, busy, run }) {
                 <Badge tone="brand">
                   <FiStar size={10} /> Default
                 </Badge>
-              ) : (
-                <Badge tone={r.status === "online" ? "green" : "neutral"}>{r.status}</Badge>
-              )}
+              ) : null}
+              <Badge tone={r.status === "online" ? "green" : "neutral"}>{r.status}</Badge>
               <div className="ml-auto flex items-center gap-1">
                 {!r.isDefault && (
                   <Button

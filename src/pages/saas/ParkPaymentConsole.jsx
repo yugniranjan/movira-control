@@ -643,6 +643,7 @@ function PosTree({ park, onConfigurePos }) {
                     <span className="font-bold text-stone-800">{reader.displayName}</span>
                     <code className="text-xs font-semibold text-stone-500">{reader.providerTerminalId || "simulated"}</code>
                     {reader.isDefault ? <Badge tone="orange"><FaStar /> Default</Badge> : null}
+                    <Badge tone={reader.status === "online" ? "green" : "neutral"}>{reader.status}</Badge>
                     <div className="ml-auto flex gap-1">
                       {!reader.isDefault ? (
                         <button
