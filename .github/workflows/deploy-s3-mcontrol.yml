@@ -52,6 +52,9 @@ jobs:
       - name: Install dependencies
         run: npm ci --no-audit --no-fund
 
+      - name: Test deployment verification
+        run: node --test scripts/verify-deployment.test.mjs
+
       - name: Stamp build provenance
         run: |
           printf '{"commit":"%s","runId":"%s","builtAt":"%s"}\n' \
@@ -96,14 +99,4 @@ jobs:
             --id "${INVALIDATION_ID}"
 
       - name: Verify production deployment
-        run: |
-          BUILD_INFO="$(curl --fail --silent --show-error \
-            "${APP_URL}/build-info.json?run=${GITHUB_RUN_ID}")"
-          test "$(printf '%s' "${BUILD_INFO}" | jq -r '.commit')" = "${GITHUB_SHA}"
-
-          API_STATUS="$(curl --silent --show-error \
-            --output /tmp/movira-control-api-smoke.json \
-            --write-out '%{http_code}' \
-            "${APP_URL}/api/control/locations/all")"
-          test "${API_STATUS}" = "401"
-          test "$(jq -r '.statusCode' /tmp/movira-control-api-smoke.json)" = "401"
+        run: node scripts/verify-deployment.mjs
