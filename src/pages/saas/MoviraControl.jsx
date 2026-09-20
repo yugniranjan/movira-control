@@ -115,9 +115,12 @@ const defaultForm = {
   phone: "",
   city: "",
   state: "",
-  country: "Canada",
-  timezone: "America/Toronto",
-  currency: "CAD",
+  country: "",
+  timezone: "",
+  currency: "",
+  customerTaxName: "",
+  customerTaxPercent: "",
+  customerTaxCalculation: "add_to_price",
   streetNumberOrBuildingName: "",
   streetName: "",
   postalCode: "",
@@ -132,6 +135,8 @@ const countryProfiles = [
     value: "Canada",
     label: "Canada",
     timezone: "America/Toronto",
+    timezones: ["America/Toronto", "America/Vancouver", "America/Edmonton", "America/Winnipeg", "America/Regina", "America/Halifax", "America/Moncton", "America/St_Johns", "America/Whitehorse", "America/Yellowknife", "America/Iqaluit"],
+    taxNames: ["GST", "HST", "PST", "QST", "No tax"],
     currency: "CAD",
     dialCode: "+1",
     cityPlaceholder: "St. Catharines",
@@ -142,6 +147,8 @@ const countryProfiles = [
     value: "United States",
     label: "United States",
     timezone: "America/New_York",
+    timezones: ["America/New_York", "America/Chicago", "America/Denver", "America/Phoenix", "America/Los_Angeles", "America/Anchorage", "Pacific/Honolulu"],
+    taxNames: ["Sales Tax", "No tax"],
     currency: "USD",
     dialCode: "+1",
     cityPlaceholder: "Orlando",
@@ -152,6 +159,8 @@ const countryProfiles = [
     value: "India",
     label: "India",
     timezone: "Asia/Kolkata",
+    timezones: ["Asia/Kolkata"],
+    taxNames: ["GST", "No tax"],
     currency: "INR",
     dialCode: "+91",
     cityPlaceholder: "Jalaun",
@@ -162,6 +171,8 @@ const countryProfiles = [
     value: "United Kingdom",
     label: "United Kingdom",
     timezone: "Europe/London",
+    timezones: ["Europe/London"],
+    taxNames: ["VAT", "No tax"],
     currency: "GBP",
     dialCode: "+44",
     cityPlaceholder: "London",
@@ -172,6 +183,8 @@ const countryProfiles = [
     value: "Australia",
     label: "Australia",
     timezone: "Australia/Sydney",
+    timezones: ["Australia/Sydney", "Australia/Melbourne", "Australia/Brisbane", "Australia/Adelaide", "Australia/Perth", "Australia/Darwin", "Australia/Hobart"],
+    taxNames: ["GST", "No tax"],
     currency: "AUD",
     dialCode: "+61",
     cityPlaceholder: "Sydney",
@@ -188,7 +201,7 @@ const countryOptions = countryProfiles.map((profile) => ({
 
 const getCountryProfile = (country) =>
   countryProfiles.find((profile) => profile.value.toLowerCase() === String(country || "").trim().toLowerCase()) ||
-  countryProfiles[0];
+  { value: String(country || ""), dialCode: "", currency: "", timezones: [], taxNames: [], cityPlaceholder: "City", statePlaceholder: "State / province", postalPlaceholder: "Postal code" };
 
 const normalizeEmail = (value) => String(value || "").trim().toLowerCase();
 
@@ -201,6 +214,7 @@ const normalizePhoneForCountry = (phone, country) => {
   const digits = raw.replace(/\D/g, "");
   if (!digits) return raw;
   const dialCode = getCountryProfile(country).dialCode;
+  if (!dialCode) return raw;
   const dialDigits = dialCode.replace(/\D/g, "");
   return digits.startsWith(dialDigits) ? `+${digits}` : `${dialCode} ${digits}`;
 };
@@ -210,6 +224,7 @@ const phoneLocalValue = (phone, country) => {
   if (!raw) return "";
   const dialDigits = getCountryProfile(country).dialCode.replace(/\D/g, "");
   const digits = raw.replace(/\D/g, "");
+  if (!dialDigits) return digits || raw;
   if (digits.startsWith(dialDigits)) return digits.slice(dialDigits.length);
   return digits || raw.replace(/^\+\d+\s*/, "");
 };
@@ -2046,9 +2061,12 @@ export function ParkForm() {
         phone: park.phone || "",
         city: park.city || "",
         state: park.state || "",
-        country: park.country || "Canada",
-        timezone: park.timezone || "America/Toronto",
-        currency: park.currency || "CAD",
+        country: park.country || "",
+        timezone: park.timezone || "",
+        currency: park.currency || "",
+        customerTaxName: park.customerTax?.name || "",
+        customerTaxPercent: park.customerTax?.percent ?? "",
+        customerTaxCalculation: park.customerTax?.calculation || "add_to_price",
         streetNumberOrBuildingName: park.streetNumberOrBuildingName || "",
         streetName: park.streetName || "",
         postalCode: park.postalCode || "",
@@ -2092,8 +2110,10 @@ export function ParkForm() {
     setForm((current) => ({
       ...current,
       country: profile.value,
-      timezone: profile.timezone,
+      timezone: profile.timezones.length === 1 ? profile.timezones[0] : "",
       currency: profile.currency,
+      customerTaxName: "",
+      customerTaxPercent: "",
       phone: normalizePhoneForCountry(current.phone, profile.value),
     }));
   };
@@ -2195,6 +2215,14 @@ export function ParkForm() {
     const missingMessage = requiredParkProfileFields.find(([key]) => !String(form[key] || "").trim())?.[1];
     if (missingMessage) {
       toast.error(missingMessage);
+      return;
+    }
+    if (!form.customerTaxName.trim() || !/^(?:\d+(?:\.\d+)?|\.\d+)$/.test(String(form.customerTaxPercent).trim()) || !Number.isFinite(Number(form.customerTaxPercent)) || Number(form.customerTaxPercent) < 0 || Number(form.customerTaxPercent) > 100) {
+      toast.error("Set an explicit customer sales tax name and rate for this park (0% if exempt).");
+      return;
+    }
+    if (form.customerTaxName.trim().toLowerCase() === "no tax" && Number(form.customerTaxPercent) !== 0) {
+      toast.error("'No tax' must have a 0% rate.");
       return;
     }
     if (form.ownerEmail && !isValidEmail(form.ownerEmail)) {
@@ -2577,12 +2605,40 @@ export function ParkForm() {
               </label>
               <label className="block">
                 <span className="text-xs font-black uppercase text-stone-500">Timezone *</span>
-                <input value={form.timezone} readOnly required className="input-nexus mt-1 w-full bg-stone-50 px-3 py-2.5 text-sm text-stone-600" />
+                <SearchableSelect
+                  value={form.timezone}
+                  onChange={(value) => update("timezone", value)}
+                  placeholder="Select park timezone"
+                  searchPlaceholder="Search timezone..."
+                  className="mt-1"
+                  buttonClassName="min-h-11 py-2.5"
+                  options={[...new Set([...selectedCountryProfile.timezones, ...(form.timezone ? [form.timezone] : [])])].map((zone) => ({ value: zone, label: zone.replaceAll("_", " ") }))}
+                />
               </label>
               <label className="block">
                 <span className="text-xs font-black uppercase text-stone-500">Currency *</span>
                 <input value={form.currency} readOnly required className="input-nexus mt-1 w-full bg-stone-50 px-3 py-2.5 text-sm text-stone-600" />
               </label>
+              <p className="md:col-span-3 text-xs font-semibold text-stone-600">All session dates, booking windows and staff-facing times use this park timezone—not the customer's or server's clock.</p>
+              <div className="md:col-span-3 rounded-xl border border-stone-200 bg-stone-50 p-4">
+                <p className="text-xs font-black uppercase tracking-wider text-orange-700">Customer sales tax *</p>
+                <p className="mt-1 text-xs font-semibold text-stone-600">Used by bookings, online checkout and POS. This is separate from Movira's monthly SaaS invoice tax. Select the rate for this park's jurisdiction and what it sells; 0% must be chosen explicitly when applicable.</p>
+                <div className="mt-3 grid gap-3 md:grid-cols-3">
+                  <label className="block">
+                    <span className="text-xs font-black uppercase text-stone-500">Tax name *</span>
+                    <input list="park-customer-tax-names" value={form.customerTaxName} onChange={(event) => update("customerTaxName", event.target.value)} placeholder="e.g. GST, HST or VAT" className="input-nexus mt-1 w-full px-3 py-2.5 text-sm" />
+                    <datalist id="park-customer-tax-names">{selectedCountryProfile.taxNames.map((name) => <option key={name} value={name} />)}</datalist>
+                  </label>
+                  <label className="block">
+                    <span className="text-xs font-black uppercase text-stone-500">Rate % *</span>
+                    <input type="number" min="0" max="100" step="0.01" value={form.customerTaxPercent} onChange={(event) => update("customerTaxPercent", event.target.value)} placeholder="Enter verified rate" className="input-nexus mt-1 w-full px-3 py-2.5 text-sm" />
+                  </label>
+                  <label className="block">
+                    <span className="text-xs font-black uppercase text-stone-500">Price display *</span>
+                    <SearchableSelect value={form.customerTaxCalculation} onChange={(value) => update("customerTaxCalculation", value)} className="mt-1" buttonClassName="min-h-11 py-2.5" options={[{ value: "add_to_price", label: "Tax added at checkout" }, { value: "include_in_price", label: "Tax included in prices" }]} />
+                  </label>
+                </div>
+              </div>
               <label className="block">
                 <span className="text-xs font-black uppercase text-stone-500">City *</span>
                 <input value={form.city} onChange={(event) => update("city", event.target.value)} placeholder={selectedCountryProfile.cityPlaceholder} required className="input-nexus mt-1 w-full px-3 py-2.5 text-sm" />
