@@ -532,52 +532,52 @@ function buttonClass(variant = "secondary", extra = "") {
 
 function iconButtonClass(variant = "secondary", extra = "") {
   const base =
-    "inline-grid h-9 w-9 place-items-center rounded-lg border text-sm shadow-sm transition hover:-translate-y-0.5 focus:outline-none focus:ring-4 focus:ring-[var(--brand-primary)]/15 disabled:pointer-events-none disabled:opacity-50";
+    "inline-grid h-9 w-9 place-items-center rounded-lg border text-sm shadow-sm transition hover:-translate-y-0.5 focus:outline-none focus:ring-4 focus:ring-(--brand-primary)/15 disabled:pointer-events-none disabled:opacity-50";
   const variants = {
-    secondary: "border-[var(--stroke-soft)] bg-[var(--surface-panel)] text-[var(--text-base)] hover:border-[var(--brand-primary-border)] hover:bg-[var(--surface-muted)] hover:text-[var(--text-strong)]",
+    secondary: "border-(--stroke-soft) bg-(--surface-panel) text-(--text-base) hover:border-(--brand-primary-border) hover:bg-(--surface-muted) hover:text-(--text-strong)",
     danger: "border-red-200 bg-red-50 text-red-700 hover:border-red-300 hover:bg-red-100",
   };
   return `${base} ${variants[variant] || variants.secondary} ${extra}`;
 }
 
 const listingShellClass =
-  "min-w-0 overflow-hidden rounded-xl border border-[var(--stroke-soft)] bg-[var(--surface-panel)] shadow-[var(--shadow-card)]";
+  "min-w-0 overflow-hidden rounded-xl border border-(--stroke-soft) bg-(--surface-panel) shadow-(--shadow-card)";
 const listingToolbarClass =
-  "sticky top-0 z-30 flex flex-wrap items-center justify-between gap-2 border-b border-[var(--stroke-soft)] bg-[var(--surface-panel-strong)]/95 p-2.5 backdrop-blur sm:p-3";
+  "sticky top-0 z-30 flex flex-wrap items-center justify-between gap-2 border-b border-(--stroke-soft) bg-(--surface-panel-strong)/95 p-2.5 backdrop-blur sm:p-3";
 const listingScrollClass = "max-h-[min(68vh,760px)] overflow-auto";
-const listingTableClass = (minWidth = "min-w-[900px]") =>
+const listingTableClass = (minWidth = "min-w-225") =>
   `w-full ${minWidth} border-separate border-spacing-0 text-sm`;
 const listingHeadClass =
-  "sticky top-0 z-20 bg-[var(--brand-primary-deep)] text-left text-[11px] font-black uppercase tracking-[0.12em] text-white shadow-[0_1px_0_var(--stroke-soft)]";
-const listingThClass = (extra = "") => `whitespace-nowrap border-b border-[var(--stroke-soft)] px-3 py-2.5 align-middle ${extra}`;
+  "sticky top-0 z-20 bg-(--brand-primary-deep) text-left text-[11px] font-black uppercase tracking-[0.12em] text-white shadow-[0_1px_0_var(--stroke-soft)]";
+const listingThClass = (extra = "") => `whitespace-nowrap border-b border-(--stroke-soft) px-3 py-2.5 align-middle ${extra}`;
 const listingBodyClass =
-  "divide-y divide-[var(--stroke-soft)] bg-[var(--surface-panel)] text-[var(--text-base)] [&_p.font-black]:text-[var(--text-strong)] [&_td.font-black]:text-[var(--text-strong)] [&_td]:text-[var(--text-base)]";
-const listingRowClass = "transition hover:bg-[var(--brand-primary-soft)]/45 [&>td]:border-b [&>td]:border-[var(--stroke-soft)]";
+  "divide-y divide-(--stroke-soft) bg-(--surface-panel) text-(--text-base) [&_p.font-black]:text-(--text-strong) [&_td.font-black]:text-(--text-strong) [&_td]:text-(--text-base)";
+const listingRowClass = "transition hover:bg-(--brand-primary-soft)/45 [&>td]:border-b [&>td]:border-(--stroke-soft)";
 const listingFooterClass =
-  "sticky bottom-0 z-20 flex flex-wrap items-center justify-end gap-2 border-t border-[var(--stroke-soft)] bg-[var(--surface-panel-strong)]/95 p-2.5 backdrop-blur";
+  "sticky bottom-0 z-20 flex flex-wrap items-center justify-end gap-2 border-t border-(--stroke-soft) bg-(--surface-panel-strong)/95 p-2.5 backdrop-blur";
 
 function CompactListingMetric({ label, value }) {
   return (
-    <span className="inline-flex min-h-8 max-w-[190px] items-center gap-1.5 rounded-lg border border-[var(--stroke-soft)] bg-[var(--surface-muted)] px-2 py-1 text-xs">
-      <span className="shrink-0 font-bold text-[var(--text-muted)]">{label}</span>
-      <strong className="truncate font-black text-[var(--text-strong)]">{value}</strong>
+    <span className="inline-flex min-h-8 max-w-47.5 items-center gap-1.5 rounded-lg border border-(--stroke-soft) bg-(--surface-muted) px-2 py-1 text-xs">
+      <span className="shrink-0 font-bold text-(--text-muted)">{label}</span>
+      <strong className="truncate font-black text-(--text-strong)">{value}</strong>
     </span>
   );
 }
 
 function CompactListingHeader({ eyebrow, title, description, controls, meta }) {
   return (
-    <div className="sticky top-0 z-30 border-b border-[var(--stroke-soft)] bg-[var(--surface-panel-strong)]/95 px-3 py-2.5 backdrop-blur">
+    <div className="sticky top-0 z-30 border-b border-(--stroke-soft) bg-(--surface-panel-strong)/95 px-3 py-2.5 backdrop-blur">
       <div className="flex min-w-0 flex-col gap-2 xl:flex-row xl:items-center">
-        <div className="min-w-0 xl:w-[310px] xl:shrink-0">
+        <div className="min-w-0 xl:w-77.5 xl:shrink-0">
           <div className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-0.5">
-            <p className="shrink-0 text-[10px] font-black uppercase tracking-[0.14em] text-[var(--brand-primary)]">
+            <p className="shrink-0 text-[10px] font-black uppercase tracking-[0.14em] text-(--brand-primary)">
               {eyebrow}
             </p>
-            <h2 className="min-w-0 truncate text-base font-black text-[var(--text-strong)]">{title}</h2>
+            <h2 className="min-w-0 truncate text-base font-black text-(--text-strong)">{title}</h2>
           </div>
           {description ? (
-            <p className="mt-0.5 truncate text-xs font-semibold text-[var(--text-muted)]">{description}</p>
+            <p className="mt-0.5 truncate text-xs font-semibold text-(--text-muted)">{description}</p>
           ) : null}
         </div>
         {controls ? <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">{controls}</div> : null}
@@ -768,7 +768,7 @@ function ParkRecordsMenu({ park, section, isRecordView }) {
         onClick={() => setOpen((current) => !current)}
         className={`${buttonClass("secondary")} ${
           isRecordView
-            ? "border-[var(--brand-primary-border)] bg-[var(--brand-primary-soft)] text-[var(--brand-primary)]"
+            ? "border-(--brand-primary-border) bg-(--brand-primary-soft) text-(--brand-primary)"
             : ""
         }`}
       >
@@ -780,7 +780,7 @@ function ParkRecordsMenu({ park, section, isRecordView }) {
               ref={menuRef}
               role="menu"
               style={{ left: position.left, top: position.top }}
-              className="fixed z-[1000] w-56 rounded-xl border border-[var(--stroke-soft)] bg-[var(--surface-panel-strong)] p-1.5 shadow-[0_18px_45px_rgba(15,23,42,0.2)]"
+              className="fixed z-1000 w-56 rounded-xl border border-(--stroke-soft) bg-(--surface-panel-strong) p-1.5 shadow-[0_18px_45px_rgba(15,23,42,0.2)]"
             >
               {parkRecordViews
                 .filter((view) => !(isDemoPark(park) && view.suffix === "billing-history"))
@@ -801,10 +801,10 @@ function ParkRecordsMenu({ park, section, isRecordView }) {
                     }}
                     className={`flex min-h-9 items-center gap-2 rounded-lg px-3 text-sm font-bold transition ${
                       section === view.suffix
-                        ? "bg-[var(--brand-primary-soft)] text-[var(--brand-primary)]"
+                        ? "bg-(--brand-primary-soft) text-(--brand-primary)"
                         : locked
-                          ? "cursor-not-allowed text-[var(--text-muted)] opacity-60"
-                          : "text-[var(--text-base)] hover:bg-[var(--surface-muted)]"
+                          ? "cursor-not-allowed text-(--text-muted) opacity-60"
+                          : "text-(--text-base) hover:bg-(--surface-muted)"
                     }`}
                   >
                     {locked ? <FaLock className="text-xs" /> : <FaEye className="text-xs" />}
@@ -830,31 +830,31 @@ function SetupNavigation({ park, section }) {
   const isRecordView = parkRecordViews.some((item) => item.suffix === section);
 
   return (
-    <div className="sticky top-[72px] z-30 mb-3 overflow-visible rounded-xl border border-[var(--stroke-soft)] bg-[var(--surface-panel)]/95 p-2.5 shadow-[var(--shadow-card)] backdrop-blur">
+    <div className="sticky top-18 z-30 mb-3 overflow-visible rounded-xl border border-(--stroke-soft) bg-(--surface-panel)/95 p-2.5 shadow-(--shadow-card) backdrop-blur">
       <div className="grid min-w-0 gap-2 xl:grid-cols-[190px_minmax(260px,1fr)_auto] xl:items-center">
         <div className="flex min-w-0 items-center gap-2.5">
-          <div className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-[var(--brand-primary-soft)] text-[var(--brand-primary)]">
+          <div className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-(--brand-primary-soft) text-(--brand-primary)">
             <FaRocket />
           </div>
           <div className="min-w-0">
-            <p className="text-[10px] font-black uppercase tracking-[0.14em] text-[var(--text-muted)]">
+            <p className="text-[10px] font-black uppercase tracking-[0.14em] text-(--text-muted)">
               {demo ? "Testing readiness" : "Launch readiness"}
             </p>
             <div className="mt-1 flex min-w-0 items-baseline gap-2">
-              <p className="shrink-0 text-xl font-black leading-none text-[var(--text-strong)]">{score}%</p>
-              <span className="truncate text-xs font-bold text-[var(--text-muted)]">{completedSteps}/{totalSteps} checks</span>
+              <p className="shrink-0 text-xl font-black leading-none text-(--text-strong)">{score}%</p>
+              <span className="truncate text-xs font-bold text-(--text-muted)">{completedSteps}/{totalSteps} checks</span>
             </div>
           </div>
         </div>
 
         <div className="min-w-0">
-          <div className="mb-1.5 flex items-center justify-between gap-3 text-[11px] font-bold text-[var(--text-muted)]">
+          <div className="mb-1.5 flex items-center justify-between gap-3 text-[11px] font-bold text-(--text-muted)">
             <span>{score === 100 ? (demo ? "Demo setup complete" : "Setup complete") : "Complete each stage to unlock the next"}</span>
             <span>{score === 100 ? (demo ? "Sandbox ready" : "Ready for launch") : "In progress"}</span>
           </div>
-          <div className="h-2 overflow-hidden rounded-full bg-[var(--surface-muted)]">
+          <div className="h-2 overflow-hidden rounded-full bg-(--surface-muted)">
             <div
-              className="h-full rounded-full bg-[var(--brand-primary)] transition-all"
+              className="h-full rounded-full bg-(--brand-primary) transition-all"
               style={{ width: `${Math.max(0, Math.min(100, score))}%` }}
             />
           </div>
@@ -866,7 +866,7 @@ function SetupNavigation({ park, section }) {
         </div>
       </div>
 
-      <div className={`mt-2 grid gap-1.5 border-t border-[var(--stroke-soft)] pt-2 ${demo ? "sm:grid-cols-3" : "sm:grid-cols-5"}`}>
+      <div className={`mt-2 grid gap-1.5 border-t border-(--stroke-soft) pt-2 ${demo ? "sm:grid-cols-3" : "sm:grid-cols-5"}`}>
         {stages.map((stage, index) => {
           const done = isSetupStageComplete(park, stage);
           const available = isSetupStageAvailable(park, index, stages);
@@ -883,12 +883,12 @@ function SetupNavigation({ park, section }) {
               title={available ? stage.label : `Complete ${stages[index - 1]?.label || "the previous stage"} first`}
               className={`flex min-h-10 min-w-0 items-center gap-2 rounded-lg border px-2.5 py-1.5 transition ${
                 active
-                  ? "border-[var(--brand-primary-border)] bg-[var(--brand-primary-soft)] text-[var(--brand-primary)] shadow-sm"
+                  ? "border-(--brand-primary-border) bg-(--brand-primary-soft) text-(--brand-primary) shadow-sm"
                   : done
                     ? "border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
                     : available
-                      ? "border-[var(--stroke-soft)] bg-[var(--surface-panel-strong)] text-[var(--text-base)] hover:border-[var(--brand-primary-border)] hover:bg-[var(--surface-muted)]"
-                      : "cursor-not-allowed border-[var(--stroke-soft)] bg-[var(--surface-muted)] text-[var(--text-muted)] opacity-65"
+                      ? "border-(--stroke-soft) bg-(--surface-panel-strong) text-(--text-base) hover:border-(--brand-primary-border) hover:bg-(--surface-muted)"
+                      : "cursor-not-allowed border-(--stroke-soft) bg-(--surface-muted) text-(--text-muted) opacity-65"
               }`}
             >
               <span
@@ -896,8 +896,8 @@ function SetupNavigation({ park, section }) {
                   done
                     ? "bg-emerald-600 text-white"
                     : active
-                      ? "bg-[var(--brand-primary)] text-white"
-                      : "border border-[var(--stroke-soft)] bg-[var(--surface-panel)] text-[var(--text-muted)]"
+                      ? "bg-(--brand-primary) text-white"
+                      : "border border-(--stroke-soft) bg-(--surface-panel) text-(--text-muted)"
                 }`}
               >
                 {done ? <FaCheckCircle className="text-[10px]" /> : available ? index + 1 : <FaLock className="text-[9px]" />}
@@ -1110,7 +1110,7 @@ export function PlansManager() {
         <section className={listingShellClass}>
           <div className={listingToolbarClass}>
             <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
-              <div className="relative min-w-full flex-1 sm:min-w-[260px] md:max-w-md">
+              <div className="relative min-w-full flex-1 sm:min-w-65 md:max-w-md">
                 <FaSearch className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-stone-400" />
                 <input
                   value={search}
@@ -1140,7 +1140,7 @@ export function PlansManager() {
           </div>
 
           <div className={listingScrollClass}>
-            <table className={listingTableClass("min-w-[900px]")}>
+            <table className={listingTableClass("min-w-225")}>
               <thead className={listingHeadClass}>
                 <tr>
                   <th className={listingThClass()}>Plan</th>
@@ -1211,7 +1211,7 @@ export function PlansManager() {
       </div>
 
       {planModalOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-stone-950/45 px-4 py-6 backdrop-blur-sm" onClick={closeForm}>
+        <div className="fixed inset-0 z-100 flex items-center justify-center bg-stone-950/45 px-4 py-6 backdrop-blur-sm" onClick={closeForm}>
           <form
             onSubmit={handleSavePlan}
             className="w-full max-w-3xl overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-2xl"
@@ -1425,7 +1425,7 @@ function ModulePricingPanel() {
 
       <section className={listingShellClass}>
         <div className={listingToolbarClass}>
-          <div className="relative min-w-full flex-1 sm:min-w-[260px] md:max-w-md">
+          <div className="relative min-w-full flex-1 sm:min-w-65 md:max-w-md">
             <FaSearch className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-stone-400" />
             <input
               value={search}
@@ -1438,7 +1438,7 @@ function ModulePricingPanel() {
         </div>
 
         <div className={listingScrollClass}>
-          <table className={listingTableClass("min-w-[860px]")}>
+          <table className={listingTableClass("min-w-215")}>
             <thead className={listingHeadClass}>
               <tr>
                 <th className={listingThClass()}>Module</th>
@@ -1485,7 +1485,7 @@ function ModulePricingPanel() {
       </section>
 
       {editingModule && form ? (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-stone-950/45 px-4 py-6 backdrop-blur-sm" onClick={closeEdit}>
+        <div className="fixed inset-0 z-100 flex items-center justify-center bg-stone-950/45 px-4 py-6 backdrop-blur-sm" onClick={closeEdit}>
           <form
             onSubmit={handleSaveModule}
             className="w-full max-w-2xl overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-2xl"
@@ -1831,7 +1831,7 @@ export function ParksList() {
         </section>
 
         <div className={listingShellClass}>
-          <div className="sticky top-0 z-30 grid gap-2 border-b border-[var(--stroke-soft)] bg-[var(--surface-panel-strong)]/95 p-3 backdrop-blur sm:grid-cols-[minmax(180px,320px)_minmax(180px,260px)_1fr_auto] sm:items-center">
+          <div className="sticky top-0 z-30 grid gap-2 border-b border-(--stroke-soft) bg-(--surface-panel-strong)/95 p-3 backdrop-blur sm:grid-cols-[minmax(180px,320px)_minmax(180px,260px)_1fr_auto] sm:items-center">
             <div className="relative min-w-0">
               <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-stone-400" />
               <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search parks..." className="input-nexus w-full py-1.5 pl-8 pr-3 text-sm" />
@@ -1877,7 +1877,7 @@ export function ParksList() {
           </div>
           {parks.length ? (
             <div className={listingScrollClass}>
-            <table className={listingTableClass("min-w-[980px]")}>
+            <table className={listingTableClass("min-w-245")}>
               <thead className={listingHeadClass}>
                 <tr>
                   <th className={listingThClass("py-2.5")}>Park</th>
@@ -2296,7 +2296,7 @@ export function ParkForm() {
                 <h2 className="mt-1 text-xl font-black text-stone-950">
                   {createdParkAccess.parkName} owner access
                 </h2>
-                <p className="mt-1 break-words text-sm font-semibold text-stone-600">
+                <p className="mt-1 wrap-break-word text-sm font-semibold text-stone-600">
                   Welcome email:{" "}
                   <span className={createdParkAccess.welcomeEmail?.sent ? "text-emerald-700" : "text-amber-700"}>
                     {createdParkAccess.welcomeEmail?.sent
@@ -2354,7 +2354,7 @@ export function ParkForm() {
         ) : null}
         <div className="min-w-0 space-y-4">
           <section className="min-w-0 overflow-hidden rounded-xl border border-stone-200 bg-white shadow-sm">
-            <div className="border-b border-stone-200 bg-gradient-to-r from-violet-50/80 to-white px-4 py-3">
+            <div className="border-b border-stone-200 bg-linear-to-r from-violet-50/80 to-white px-4 py-3">
               <p className="text-xs font-black uppercase tracking-[0.18em] text-violet-700">Workspace purpose</p>
               <h2 className="mt-1 text-lg font-black text-stone-950">Choose demo or production onboarding</h2>
               <p className="mt-1 text-sm font-semibold text-stone-600">This choice controls access, payments, expiry, and the go-live path.</p>
@@ -2420,10 +2420,10 @@ export function ParkForm() {
           </section>
 
           <section className="min-w-0 overflow-hidden rounded-xl border border-stone-200 bg-white shadow-sm">
-            <div className="flex flex-wrap items-start justify-between gap-3 border-b border-stone-200 bg-gradient-to-r from-orange-50/80 to-white px-4 py-3">
+            <div className="flex flex-wrap items-start justify-between gap-3 border-b border-stone-200 bg-linear-to-r from-orange-50/80 to-white px-4 py-3">
               <div className="min-w-0">
                 <p className="text-xs font-black uppercase tracking-[0.18em] text-orange-700">Park profile</p>
-                <h2 className="mt-1 break-words text-lg font-black text-stone-950">Workspace identity</h2>
+                <h2 className="mt-1 wrap-break-word text-lg font-black text-stone-950">Workspace identity</h2>
               </div>
               <Pill className="border-orange-200 bg-white text-orange-700">{isEdit ? "Editing" : "New setup"}</Pill>
             </div>
@@ -2475,10 +2475,10 @@ export function ParkForm() {
           </section>
 
           <section className="min-w-0 overflow-hidden rounded-xl border border-stone-200 bg-white shadow-sm">
-            <div className="flex flex-wrap items-start justify-between gap-3 border-b border-stone-200 bg-gradient-to-r from-stone-50 to-white px-4 py-3">
+            <div className="flex flex-wrap items-start justify-between gap-3 border-b border-stone-200 bg-linear-to-r from-stone-50 to-white px-4 py-3">
               <div className="min-w-0">
                 <p className="text-xs font-black uppercase tracking-[0.18em] text-orange-700">Customer assignment</p>
-                <h2 className="mt-1 break-words text-lg font-black text-stone-950">Assign the account that owns this park</h2>
+                <h2 className="mt-1 wrap-break-word text-lg font-black text-stone-950">Assign the account that owns this park</h2>
               </div>
               <Pill className="border-emerald-200 bg-emerald-50 text-emerald-700">Auto create on save</Pill>
             </div>
@@ -2586,7 +2586,7 @@ export function ParkForm() {
           </section>
 
           <section className="min-w-0 overflow-hidden rounded-xl border border-stone-200 bg-white shadow-sm">
-            <div className="border-b border-stone-200 bg-gradient-to-r from-stone-50 to-white px-4 py-3">
+            <div className="border-b border-stone-200 bg-linear-to-r from-stone-50 to-white px-4 py-3">
               <p className="text-xs font-black uppercase tracking-[0.18em] text-orange-700">Location</p>
               <h2 className="mt-1 text-lg font-black text-stone-950">Operating region</h2>
             </div>
@@ -3356,7 +3356,7 @@ function BillingPanel({ park, plans = [], moduleCatalog = modules, planUsage = n
         </div>
 
         <div className="mt-3 w-full max-w-full overflow-x-auto rounded-lg border border-stone-200">
-          <table className="w-full min-w-[620px] table-fixed divide-y divide-stone-200 text-sm">
+          <table className="w-full min-w-155 table-fixed divide-y divide-stone-200 text-sm">
             <colgroup>
               <col className="w-[56%]" />
               <col className="w-[24%]" />
@@ -3492,7 +3492,7 @@ function InvoicePreviewModal({ preview, onClose }) {
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[180] flex items-center justify-center bg-stone-950/35 p-0 backdrop-blur-[3px] sm:p-5"
+      className="fixed inset-0 z-180 flex items-center justify-center bg-stone-950/35 p-0 backdrop-blur-[3px] sm:p-5"
       role="presentation"
       onMouseDown={(event) => {
         if (event.target === event.currentTarget) onClose();
@@ -3502,20 +3502,20 @@ function InvoicePreviewModal({ preview, onClose }) {
         role="dialog"
         aria-modal="true"
         aria-labelledby="invoice-preview-title"
-        className="flex h-full w-full min-w-0 flex-col overflow-hidden border-[color:var(--stroke-soft)] bg-[color:var(--surface-panel)] shadow-2xl sm:h-[min(92vh,920px)] sm:max-w-6xl sm:rounded-xl sm:border"
+        className="flex h-full w-full min-w-0 flex-col overflow-hidden border-(--stroke-soft) bg-(--surface-panel) shadow-2xl sm:h-[min(92vh,920px)] sm:max-w-6xl sm:rounded-xl sm:border"
       >
-        <header className="flex shrink-0 flex-col gap-3 border-b border-[color:var(--stroke-soft)] bg-[color:var(--surface-panel)] px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-5">
+        <header className="flex shrink-0 flex-col gap-3 border-b border-(--stroke-soft) bg-(--surface-panel) px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-5">
           <div className="flex min-w-0 items-center gap-3">
-            <span className="grid size-10 shrink-0 place-items-center rounded-lg bg-[color:var(--brand-primary-soft)] text-[color:var(--brand-primary)]">
+            <span className="grid size-10 shrink-0 place-items-center rounded-lg bg-(--brand-primary-soft) text-(--brand-primary)">
               <FaFileInvoiceDollar aria-hidden="true" />
             </span>
             <div className="min-w-0">
-              <p className="text-[11px] font-black uppercase tracking-[0.14em] text-[color:var(--text-muted)]">
+              <p className="text-[11px] font-black uppercase tracking-[0.14em] text-(--text-muted)">
                 Invoice preview
               </p>
               <h2
                 id="invoice-preview-title"
-                className="truncate text-base font-black text-[color:var(--text-strong)] sm:text-lg"
+                className="truncate text-base font-black text-(--text-strong) sm:text-lg"
               >
                 {invoice.invoiceNumber}
               </h2>
@@ -3544,19 +3544,19 @@ function InvoicePreviewModal({ preview, onClose }) {
               onClick={onClose}
               aria-label="Close invoice preview"
               title="Close invoice preview"
-              className="grid size-9 shrink-0 place-items-center rounded-lg border border-[color:var(--stroke-soft)] bg-[color:var(--surface-panel)] text-[color:var(--text-strong)] transition hover:border-[color:var(--brand-primary)] hover:bg-[color:var(--brand-primary-soft)]"
+              className="grid size-9 shrink-0 place-items-center rounded-lg border border-(--stroke-soft) bg-(--surface-panel) text-(--text-strong) transition hover:border-(--brand-primary) hover:bg-(--brand-primary-soft)"
             >
               <FaTimes aria-hidden="true" />
             </button>
           </div>
         </header>
-        <div className="min-h-0 flex-1 bg-[color:var(--app-background)] p-2 sm:p-4">
+        <div className="min-h-0 flex-1 bg-(--app-background) p-2 sm:p-4">
           <iframe
             id="saas-invoice-preview-frame"
             title={`Invoice ${invoice.invoiceNumber}`}
             srcDoc={html}
             sandbox="allow-same-origin"
-            className="h-full w-full rounded-lg border border-[color:var(--stroke-soft)] bg-white shadow-sm"
+            className="h-full w-full rounded-lg border border-(--stroke-soft) bg-white shadow-sm"
           />
         </div>
       </section>
@@ -3780,7 +3780,7 @@ function InvoiceHistoryTable({ park, invoices, paymentEvents = [] }) {
         </div>
       ) : null}
       <div className={listingScrollClass}>
-        <table className={listingTableClass("min-w-[960px]")}>
+        <table className={listingTableClass("min-w-240")}>
           <thead className={listingHeadClass}>
             <tr>
               <th className={listingThClass()}>Invoice</th>
@@ -3989,7 +3989,7 @@ function PaymentsPanel({ park }) {
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-stone-200 pb-3">
           <div className="min-w-0">
             <p className="text-xs font-black uppercase text-orange-700">Payment control</p>
-            <h2 className="mt-1 break-words text-lg font-black text-stone-950">
+            <h2 className="mt-1 wrap-break-word text-lg font-black text-stone-950">
               {isDemo ? "Sandbox payment testing" : "Park payment status"}
             </h2>
             <p className="mt-1 text-sm font-semibold text-stone-500">
@@ -4070,8 +4070,8 @@ function PaymentHistoryPanel({ park, paymentEvents }) {
         description="Provider events, references, and payment outcomes."
         controls={(
           <>
-            <div className="relative min-w-[210px] flex-1">
-              <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-[var(--text-muted)]" />
+            <div className="relative min-w-52.5 flex-1">
+              <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-(--text-muted)" />
               <input
                 value={search}
                 onChange={(event) => {
@@ -4359,8 +4359,8 @@ function AuditPanel({ park, initialLogs = [] }) {
         description={`Billing, onboarding, lifecycle, and payment changes for ${park.name}.`}
         controls={(
           <>
-            <div className="relative min-w-[220px] flex-1">
-              <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-[var(--text-muted)]" />
+            <div className="relative min-w-55 flex-1">
+              <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-(--text-muted)" />
               <input
                 value={search}
                 onChange={(event) => {
@@ -4393,7 +4393,7 @@ function AuditPanel({ park, initialLogs = [] }) {
               value={auditSummary.latest ? dateTime(auditSummary.latest) : "-"}
             />
             {isFetching ? (
-              <Pill className="border-[var(--stroke-soft)] bg-[var(--surface-muted)] text-[var(--text-muted)]">
+              <Pill className="border-(--stroke-soft) bg-(--surface-muted) text-(--text-muted)">
                 Refreshing
               </Pill>
             ) : null}
@@ -4423,7 +4423,7 @@ function AuditPanel({ park, initialLogs = [] }) {
                       {Object.entries(item.metadata).slice(0, 9).map(([key, value]) => (
                         <div key={key} className="min-w-0 rounded-md bg-white px-2.5 py-2">
                           <span className="block font-black uppercase tracking-wide text-stone-400">{key}</span>
-                          <span className="mt-0.5 block break-words text-stone-700">
+                          <span className="mt-0.5 block wrap-break-word text-stone-700">
                             {typeof value === "object" ? JSON.stringify(value) : String(value ?? "-")}
                           </span>
                         </div>
@@ -4457,7 +4457,7 @@ function AuditPanel({ park, initialLogs = [] }) {
         </div>
 
       {pagination.totalPages > 1 ? (
-        <div className="sticky bottom-0 z-20 flex flex-wrap items-center justify-between gap-2 border-t border-[var(--stroke-soft)] bg-[var(--surface-panel-strong)]/95 px-4 py-2 backdrop-blur">
+        <div className="sticky bottom-0 z-20 flex flex-wrap items-center justify-between gap-2 border-t border-(--stroke-soft) bg-(--surface-panel-strong)/95 px-4 py-2 backdrop-blur">
           <span className="text-xs font-bold text-stone-500">
             Page {page} of {pagination.totalPages}
           </span>
