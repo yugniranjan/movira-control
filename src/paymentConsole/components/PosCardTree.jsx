@@ -224,6 +224,8 @@ function TerminalRow({ locationId, terminal, enrollment, busy, run }) {
               <code className="font-mono text-[11px] text-[var(--text-muted)] truncate">
                 {r.providerTerminalId}
                 {r.registerId ? ` · ${r.registerId}` : ""}
+                {r.model ? ` · ${r.model}` : ""}
+                {r.serialNumber ? ` · ${r.serialNumber}` : ""}
               </code>
               {r.simulated && <Badge tone="blue">Simulator</Badge>}
               {r.isDefault ? (
@@ -272,6 +274,8 @@ const UUID_RE = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0
 function AddReader({ locationId, terminal, enrollment, busy, run }) {
   const [open, setOpen] = useState(false);
   const [label, setLabel] = useState("");
+  const [model, setModel] = useState("");
+  const [serialNumber, setSerialNumber] = useState("");
   const [tid, setTid] = useState("");
   const [registerId, setRegisterId] = useState("");
   const [authKey, setAuthKey] = useState("");
@@ -293,6 +297,8 @@ function AddReader({ locationId, terminal, enrollment, busy, run }) {
         locationId: locationId,
         posDeviceId: terminal.posDeviceId,
         label: label.trim() || undefined,
+        model: model.trim() || undefined,
+        serialNumber: serialNumber.trim() || undefined,
         makeDefault: (terminal.readers || []).length === 0, // first reader = default
         deviceKind: "real",
         providerTerminalId: isNuvei && tid.trim() ? tid.trim() : undefined,
@@ -302,6 +308,8 @@ function AddReader({ locationId, terminal, enrollment, busy, run }) {
       })
     );
     setLabel("");
+    setModel("");
+    setSerialNumber("");
     setTid("");
     setRegisterId("");
     setAuthKey("");
@@ -332,6 +340,8 @@ function AddReader({ locationId, terminal, enrollment, busy, run }) {
       </div>
 
       <Input value={label} onChange={(e) => setLabel(e.target.value)} placeholder="Reader label (optional)" />
+      <Input aria-label="Reader model" maxLength={120} value={model} onChange={(e) => setModel(e.target.value)} placeholder="Model (optional)" />
+      <Input aria-label="Reader serial number" maxLength={120} value={serialNumber} onChange={(e) => setSerialNumber(e.target.value)} placeholder="Serial number (optional)" />
 
       {isNuvei && (
         <>
