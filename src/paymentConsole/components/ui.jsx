@@ -40,7 +40,7 @@ const BADGE_TONES = {
   green: "bg-green-50 text-green-700",
   amber: "bg-amber-50 text-amber-700",
   red: "bg-red-50 text-red-700",
-  brand: "bg-orange-50 text-[var(--brand-primary-deep)]",
+  brand: "bg-violet-50 text-[var(--brand-primary-deep)]",
   indigo: "bg-indigo-50 text-indigo-700",
   blue: "bg-blue-50 text-blue-700",
 };

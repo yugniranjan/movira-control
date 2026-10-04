@@ -40,7 +40,7 @@ function RouteCell({ venue, channel, route, credentials, onClick }) {
       <button
         type="button"
         onClick={onClick}
-        className="w-full text-left px-2 py-2 rounded-md border border-dashed border-[var(--stroke-soft)] hover:border-[var(--brand-primary)] hover:bg-orange-50/40 text-xs text-[var(--text-muted)] flex items-center gap-1.5 transition-colors"
+        className="w-full text-left px-2 py-2 rounded-md border border-dashed border-[var(--stroke-soft)] hover:border-[var(--brand-primary)] hover:bg-violet-50/40 text-xs text-[var(--text-muted)] flex items-center gap-1.5 transition-colors"
       >
         <FiPlus size={11} /> Add route
       </button>

@@ -491,7 +491,7 @@ function statusClass(status) {
   if (status === "paused") return "bg-blue-50 text-blue-700 border-blue-200";
   if (status === "archived") return "bg-stone-100 text-stone-600 border-stone-200";
   if (status === "needs_checks") return "bg-amber-50 text-amber-700 border-amber-200";
-  return "bg-orange-50 text-orange-700 border-orange-200";
+  return "bg-violet-50 text-violet-700 border-violet-200";
 }
 
 function billingStatusClass(status) {
@@ -499,7 +499,7 @@ function billingStatusClass(status) {
   if (status === "recovered" || status === "sent") return "border-emerald-200 bg-emerald-50 text-emerald-700";
   if (status === "partial") return "border-blue-200 bg-blue-50 text-blue-700";
   if (status === "overdue" || status === "past_due" || status === "suspended") return "border-red-200 bg-red-50 text-red-700";
-  if (status === "open") return "border-orange-200 bg-orange-50 text-orange-700";
+  if (status === "open") return "border-violet-200 bg-violet-50 text-violet-700";
   if (status === "failed" || status === "refunded") return "border-red-200 bg-red-50 text-red-700";
   if (status === "void") return "border-stone-200 bg-stone-100 text-stone-500";
   return "border-amber-200 bg-amber-50 text-amber-700";
@@ -591,7 +591,7 @@ function StatCard({ icon: Icon, label, value, detail, compact = false }) {
   return (
     <div className={`min-w-0 rounded-xl border border-stone-200 bg-white shadow-sm ${compact ? "p-3" : "p-4"}`}>
       <div className={`flex items-center ${compact ? "gap-2.5" : "gap-3"}`}>
-        <div className={`grid shrink-0 place-items-center rounded-lg bg-orange-50 text-orange-700 ${compact ? "h-9 w-9 text-sm" : "h-11 w-11"}`}>
+        <div className={`grid shrink-0 place-items-center rounded-lg bg-violet-50 text-violet-700 ${compact ? "h-9 w-9 text-sm" : "h-11 w-11"}`}>
           {createElement(Icon)}
         </div>
         <div className="min-w-0 flex-1">
@@ -609,7 +609,7 @@ function StatCard({ icon: Icon, label, value, detail, compact = false }) {
 function EmptyState({ title, detail, action }) {
   return (
     <div className="rounded-xl border border-dashed border-stone-300 bg-stone-50 p-8 text-center">
-      <div className="mx-auto grid h-12 w-12 place-items-center rounded-xl bg-white text-orange-700 shadow-sm">
+      <div className="mx-auto grid h-12 w-12 place-items-center rounded-xl bg-white text-violet-700 shadow-sm">
         <FaRocket />
       </div>
       <h3 className="mt-3 text-lg font-black text-stone-950">{title}</h3>
@@ -623,7 +623,7 @@ function ProgressBar({ value }) {
   const safeValue = Math.max(0, Math.min(100, Number(value || 0)));
   return (
     <div className="h-2.5 rounded-full bg-stone-100">
-      <div className="h-2.5 rounded-full bg-orange-600 transition-all" style={{ width: `${safeValue}%` }} />
+      <div className="h-2.5 rounded-full bg-violet-600 transition-all" style={{ width: `${safeValue}%` }} />
     </div>
   );
 }
@@ -920,8 +920,8 @@ function NextActionCard({ park }) {
   const progress = setupProgressForPark(park);
   const complete = progress.score === 100;
   return (
-    <div className="rounded-xl border border-orange-200 bg-orange-50 p-4">
-      <p className="text-xs font-black uppercase text-orange-700">Next action</p>
+    <div className="rounded-xl border border-violet-200 bg-violet-50 p-4">
+      <p className="text-xs font-black uppercase text-violet-700">Next action</p>
       <h3 className="mt-1 text-lg font-black text-stone-950">
         {demo && complete ? "Demo testing ready" : nextStep.label}
       </h3>
@@ -1089,7 +1089,7 @@ export function PlansManager() {
                 type="button"
                 onClick={() => setActiveCatalogTab(tab.key)}
                 className={`rounded-md px-4 py-2 text-sm font-black transition ${
-                  activeCatalogTab === tab.key ? "bg-orange-50 text-orange-700 shadow-sm" : "text-stone-600 hover:bg-white"
+                  activeCatalogTab === tab.key ? "bg-violet-50 text-violet-700 shadow-sm" : "text-stone-600 hover:bg-white"
                 }`}
               >
                 {tab.label}
@@ -1123,14 +1123,14 @@ export function PlansManager() {
                 <button
                   type="button"
                   onClick={() => setIncludeArchived(false)}
-                  className={`rounded-md px-3 py-1.5 text-xs font-black ${!includeArchived ? "bg-white text-orange-700 shadow-sm" : "text-stone-500"}`}
+                  className={`rounded-md px-3 py-1.5 text-xs font-black ${!includeArchived ? "bg-white text-violet-700 shadow-sm" : "text-stone-500"}`}
                 >
                   Active
                 </button>
                 <button
                   type="button"
                   onClick={() => setIncludeArchived(true)}
-                  className={`rounded-md px-3 py-1.5 text-xs font-black ${includeArchived ? "bg-white text-orange-700 shadow-sm" : "text-stone-500"}`}
+                  className={`rounded-md px-3 py-1.5 text-xs font-black ${includeArchived ? "bg-white text-violet-700 shadow-sm" : "text-stone-500"}`}
                 >
                   All
                 </button>
@@ -1170,7 +1170,7 @@ export function PlansManager() {
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex flex-wrap gap-1.5">
-                        {plan.recommended ? <Pill className="border-orange-200 bg-orange-50 text-orange-700">recommended</Pill> : null}
+                        {plan.recommended ? <Pill className="border-violet-200 bg-violet-50 text-violet-700">recommended</Pill> : null}
                         {plan.internalOnly ? <Pill className="border-blue-200 bg-blue-50 text-blue-700">internal</Pill> : null}
                         {!plan.recommended && !plan.internalOnly ? <span className="text-xs font-bold text-stone-400">-</span> : null}
                       </div>
@@ -1219,7 +1219,7 @@ export function PlansManager() {
           >
             <div className="flex items-start justify-between gap-4 border-b border-stone-200 p-5">
               <div>
-                <p className="text-xs font-black uppercase tracking-[0.18em] text-orange-700">{editingPlan ? "Update plan" : "New plan"}</p>
+                <p className="text-xs font-black uppercase tracking-[0.18em] text-violet-700">{editingPlan ? "Update plan" : "New plan"}</p>
                 <h3 className="mt-1 text-2xl font-black text-stone-950">{editingPlan ? `Edit ${editingPlan.label}` : "Create SaaS billing plan"}</h3>
                 <p className="mt-1 text-sm font-semibold text-stone-500">Plans define base SaaS fee and how many parks an owner can run.</p>
               </div>
@@ -1309,7 +1309,7 @@ export function PlansManager() {
                   type="checkbox"
                   checked={form.recommended}
                   onChange={(event) => setForm((current) => ({ ...current, recommended: event.target.checked }))}
-                  className="h-4 w-4 accent-orange-600"
+                  className="h-4 w-4 accent-violet-600"
                 />
                 <span>
                   <span className="block text-sm font-black text-stone-950">Recommended plan</span>
@@ -1321,7 +1321,7 @@ export function PlansManager() {
                   type="checkbox"
                   checked={form.internalOnly}
                   onChange={(event) => setForm((current) => ({ ...current, internalOnly: event.target.checked }))}
-                  className="h-4 w-4 accent-orange-600"
+                  className="h-4 w-4 accent-violet-600"
                 />
                 <span>
                   <span className="block text-sm font-black text-stone-950">Internal only</span>
@@ -1493,7 +1493,7 @@ function ModulePricingPanel() {
           >
             <div className="flex items-start justify-between gap-4 border-b border-stone-200 p-5">
               <div>
-                <p className="text-xs font-black uppercase tracking-[0.18em] text-orange-700">Module pricing</p>
+                <p className="text-xs font-black uppercase tracking-[0.18em] text-violet-700">Module pricing</p>
                 <h3 className="mt-1 text-2xl font-black text-stone-950">Edit {editingModule.label}</h3>
                 <p className="mt-1 text-sm font-semibold text-stone-500">This price is used for park modules, billing totals, and generated SaaS invoices.</p>
               </div>
@@ -1605,7 +1605,7 @@ function Overview() {
         <section className="rounded-xl border border-stone-200 bg-white p-5 shadow-sm">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <p className="text-sm font-bold uppercase text-orange-700">Parks onboarding</p>
+              <p className="text-sm font-bold uppercase text-violet-700">Parks onboarding</p>
               <h2 className="mt-1 text-2xl font-black text-stone-950">Create, bill, configure, and approve every park.</h2>
               <p className="mt-1 text-sm font-semibold text-stone-500">Start from the parks list, then work through modules, billing, payments, and launch readiness.</p>
             </div>
@@ -1616,7 +1616,7 @@ function Overview() {
           {parks.length ? (
             <div className="mt-5 grid gap-3 lg:grid-cols-3">
               {parks.map((park) => (
-              <Link key={park.locationId} to={`/movira-control/parks/${park.locationId}`} className="rounded-xl border border-stone-200 p-4 transition hover:border-orange-300 hover:bg-orange-50/30">
+              <Link key={park.locationId} to={`/movira-control/parks/${park.locationId}`} className="rounded-xl border border-stone-200 p-4 transition hover:border-violet-300 hover:bg-violet-50/30">
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <h3 className="font-black text-stone-950">{park.name}</h3>
@@ -1867,7 +1867,7 @@ export function ParksList() {
                     setPage(1);
                   }}
                   className={`rounded-md px-3 py-1.5 text-sm font-black transition ${
-                    statusFilter === value ? "bg-white text-orange-700 shadow-sm" : "text-stone-500 hover:text-stone-800"
+                    statusFilter === value ? "bg-white text-violet-700 shadow-sm" : "text-stone-500 hover:text-stone-800"
                   }`}
                 >
                   {label}
@@ -2384,7 +2384,7 @@ export function ParkForm() {
                       selected
                         ? option.value === "demo"
                           ? "border-violet-400 bg-violet-50 ring-4 ring-violet-100"
-                          : "border-orange-400 bg-orange-50 ring-4 ring-orange-100"
+                          : "border-violet-400 bg-violet-50 ring-4 ring-violet-100"
                         : "border-stone-200 bg-white hover:border-stone-300"
                     } ${disabled ? "cursor-not-allowed opacity-45" : ""}`}
                   >
@@ -2420,12 +2420,12 @@ export function ParkForm() {
           </section>
 
           <section className="min-w-0 overflow-hidden rounded-xl border border-stone-200 bg-white shadow-sm">
-            <div className="flex flex-wrap items-start justify-between gap-3 border-b border-stone-200 bg-linear-to-r from-orange-50/80 to-white px-4 py-3">
+            <div className="flex flex-wrap items-start justify-between gap-3 border-b border-stone-200 bg-linear-to-r from-violet-50/80 to-white px-4 py-3">
               <div className="min-w-0">
-                <p className="text-xs font-black uppercase tracking-[0.18em] text-orange-700">Park profile</p>
+                <p className="text-xs font-black uppercase tracking-[0.18em] text-violet-700">Park profile</p>
                 <h2 className="mt-1 wrap-break-word text-lg font-black text-stone-950">Workspace identity</h2>
               </div>
-              <Pill className="border-orange-200 bg-white text-orange-700">{isEdit ? "Editing" : "New setup"}</Pill>
+              <Pill className="border-violet-200 bg-white text-violet-700">{isEdit ? "Editing" : "New setup"}</Pill>
             </div>
             <div className="grid gap-4 p-4 md:grid-cols-2">
               <label className="block md:col-span-2">
@@ -2477,19 +2477,19 @@ export function ParkForm() {
           <section className="min-w-0 overflow-hidden rounded-xl border border-stone-200 bg-white shadow-sm">
             <div className="flex flex-wrap items-start justify-between gap-3 border-b border-stone-200 bg-linear-to-r from-stone-50 to-white px-4 py-3">
               <div className="min-w-0">
-                <p className="text-xs font-black uppercase tracking-[0.18em] text-orange-700">Customer assignment</p>
+                <p className="text-xs font-black uppercase tracking-[0.18em] text-violet-700">Customer assignment</p>
                 <h2 className="mt-1 wrap-break-word text-lg font-black text-stone-950">Assign the account that owns this park</h2>
               </div>
               <Pill className="border-emerald-200 bg-emerald-50 text-emerald-700">Auto create on save</Pill>
             </div>
             <div className="grid gap-4 p-4 md:grid-cols-[minmax(0,1.1fr)_minmax(0,1.5fr)]">
-              <div className="rounded-xl border border-orange-100 bg-orange-50/50 p-4">
+              <div className="rounded-xl border border-violet-100 bg-violet-50/50 p-4">
                 <div className="flex items-start gap-3">
-                  <div className="grid h-11 w-11 shrink-0 place-items-center rounded-lg bg-white text-orange-700 shadow-sm">
+                  <div className="grid h-11 w-11 shrink-0 place-items-center rounded-lg bg-white text-violet-700 shadow-sm">
                     <FaUserPlus />
                   </div>
                   <div className="min-w-0">
-                    <p className="text-xs font-black uppercase text-orange-700">Selected owner</p>
+                    <p className="text-xs font-black uppercase text-violet-700">Selected owner</p>
                     <p className="mt-1 truncate text-base font-black text-stone-950">{selectedCustomerName}</p>
                     <p className="mt-1 truncate text-sm font-semibold text-stone-600">{selectedCustomerEmail}</p>
                     {selectedCustomerPhone ? (
@@ -2545,7 +2545,7 @@ export function ParkForm() {
                 </label>
                 <label className="block">
                   <span className="text-xs font-black uppercase text-stone-500">Phone *</span>
-                  <div className="mt-1 flex min-h-11 overflow-hidden rounded-lg border-2 border-[#d6c8b8] bg-white shadow-[0_2px_0_rgba(23,21,18,0.08)] transition focus-within:border-orange-400 focus-within:ring-4 focus-within:ring-orange-500/15">
+                  <div className="mt-1 flex min-h-11 overflow-hidden rounded-lg border-2 border-[#d6c8b8] bg-white shadow-[0_2px_0_rgba(23,21,18,0.08)] transition focus-within:border-violet-400 focus-within:ring-4 focus-within:ring-violet-500/15">
                     <span className="grid min-w-14 place-items-center border-r border-stone-200 bg-stone-50 px-3 text-sm font-black text-stone-600">
                       {selectedCountryProfile.dialCode}
                     </span>
@@ -2587,7 +2587,7 @@ export function ParkForm() {
 
           <section className="min-w-0 overflow-hidden rounded-xl border border-stone-200 bg-white shadow-sm">
             <div className="border-b border-stone-200 bg-linear-to-r from-stone-50 to-white px-4 py-3">
-              <p className="text-xs font-black uppercase tracking-[0.18em] text-orange-700">Location</p>
+              <p className="text-xs font-black uppercase tracking-[0.18em] text-violet-700">Location</p>
               <h2 className="mt-1 text-lg font-black text-stone-950">Operating region</h2>
             </div>
             <div className="grid gap-4 p-4 md:grid-cols-3">
@@ -2621,7 +2621,7 @@ export function ParkForm() {
               </label>
               <p className="md:col-span-3 text-xs font-semibold text-stone-600">All session dates, booking windows and staff-facing times use this park timezone—not the customer's or server's clock.</p>
               <div className="md:col-span-3 rounded-xl border border-stone-200 bg-stone-50 p-4">
-                <p className="text-xs font-black uppercase tracking-wider text-orange-700">Customer sales tax *</p>
+                <p className="text-xs font-black uppercase tracking-wider text-violet-700">Customer sales tax *</p>
                 <p className="mt-1 text-xs font-semibold text-stone-600">Used by bookings, online checkout and POS. This is separate from Movira's monthly SaaS invoice tax. Select the rate for this park's jurisdiction and what it sells; 0% must be chosen explicitly when applicable.</p>
                 <div className="mt-3 grid gap-3 md:grid-cols-3">
                   <label className="block">
@@ -2666,14 +2666,14 @@ export function ParkForm() {
         <aside className="h-fit min-w-0 rounded-xl border border-stone-200 bg-white p-4 shadow-sm xl:sticky xl:top-4">
           <p className="text-xs font-black uppercase text-stone-500">Setup starts here</p>
           <h3 className="mt-1 text-xl font-black text-stone-950">{isEdit ? "Save profile changes" : "Create workspace"}</h3>
-          <div className={`mt-3 rounded-lg border px-3 py-2 text-sm font-black ${form.deploymentMode === "demo" ? "border-violet-200 bg-violet-50 text-violet-800" : "border-orange-200 bg-orange-50 text-orange-800"}`}>
+          <div className={`mt-3 rounded-lg border px-3 py-2 text-sm font-black ${form.deploymentMode === "demo" ? "border-violet-200 bg-violet-50 text-violet-800" : "border-violet-200 bg-violet-50 text-violet-800"}`}>
             {form.deploymentMode === "demo" ? `Demo mode · expires ${dateOnly(form.demoExpiresAt)}` : "Production onboarding"}
           </div>
           <div className="mt-4 space-y-3 text-sm font-bold text-stone-600">
             <div className="flex items-center gap-2"><FaCheckCircle className="text-emerald-600" /> Park workspace</div>
-            <div className="flex items-center gap-2"><FaLayerGroup className="text-orange-600" /> Module access</div>
-            <div className="flex items-center gap-2"><FaFileInvoiceDollar className="text-orange-600" /> Billing preview</div>
-            <div className="flex items-center gap-2"><FaCreditCard className="text-orange-600" /> Payment setup</div>
+            <div className="flex items-center gap-2"><FaLayerGroup className="text-violet-600" /> Module access</div>
+            <div className="flex items-center gap-2"><FaFileInvoiceDollar className="text-violet-600" /> Billing preview</div>
+            <div className="flex items-center gap-2"><FaCreditCard className="text-violet-600" /> Payment setup</div>
           </div>
           <div className="mt-6 space-y-2">
             <button disabled={(!isEdit && Boolean(createdParkAccess)) || createState.isLoading || updateState.isLoading} className={buttonClass("primary", "w-full")}>
@@ -2695,9 +2695,9 @@ export function ParkForm() {
                 handleCreateCustomerOwner();
               }}
             >
-              <div className="flex items-start justify-between gap-4 border-b border-stone-200 bg-orange-50/70 px-5 py-4">
+              <div className="flex items-start justify-between gap-4 border-b border-stone-200 bg-violet-50/70 px-5 py-4">
                 <div className="min-w-0">
-                  <p className="text-xs font-black uppercase tracking-[0.18em] text-orange-700">New paying customer</p>
+                  <p className="text-xs font-black uppercase tracking-[0.18em] text-violet-700">New paying customer</p>
                   <h3 id="create-owner-title" className="mt-1 text-xl font-black text-stone-950">Create a login owner account</h3>
                   <p className="mt-1 text-sm font-semibold text-stone-600">Use this when the customer does not already exist in Movira.</p>
                 </div>
@@ -2725,7 +2725,7 @@ export function ParkForm() {
                 </label>
                 <label className="block">
                   <span className="text-xs font-black uppercase text-stone-500">Phone *</span>
-                  <div className="mt-1 flex min-h-11 overflow-hidden rounded-lg border-2 border-[#d6c8b8] bg-white shadow-[0_2px_0_rgba(23,21,18,0.08)] transition focus-within:border-orange-400 focus-within:ring-4 focus-within:ring-orange-500/15">
+                  <div className="mt-1 flex min-h-11 overflow-hidden rounded-lg border-2 border-[#d6c8b8] bg-white shadow-[0_2px_0_rgba(23,21,18,0.08)] transition focus-within:border-violet-400 focus-within:ring-4 focus-within:ring-violet-500/15">
                     <span className="grid min-w-14 place-items-center border-r border-stone-200 bg-stone-50 px-3 text-sm font-black text-stone-600">
                       {selectedCountryProfile.dialCode}
                     </span>
@@ -2855,7 +2855,7 @@ function OverviewPanel({ park }) {
         <section className="rounded-xl border border-stone-200 bg-white p-5 shadow-sm">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <p className="text-xs font-black uppercase text-orange-700">Park summary</p>
+              <p className="text-xs font-black uppercase text-violet-700">Park summary</p>
               <h2 className="mt-1 text-xl font-black text-stone-950">{park.name}</h2>
             </div>
             <Pill className={statusClass(park.status)}>{park.status}</Pill>
@@ -2879,7 +2879,7 @@ function OverviewPanel({ park }) {
         <section className="rounded-xl border border-stone-200 bg-white p-5 shadow-sm">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <p className="text-xs font-black uppercase text-orange-700">Entitlement contract</p>
+              <p className="text-xs font-black uppercase text-violet-700">Entitlement contract</p>
               <h2 className="mt-1 text-lg font-black text-stone-950">Main app module access</h2>
             </div>
             <Pill className={park.entitlements?.blocked ? "border-red-200 bg-red-50 text-red-700" : "border-emerald-200 bg-emerald-50 text-emerald-700"}>
@@ -3010,7 +3010,7 @@ function ModulesPanel({
       <section className="rounded-xl border border-stone-200 bg-white p-5 shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <p className="text-xs font-black uppercase text-orange-700">Module access</p>
+            <p className="text-xs font-black uppercase text-violet-700">Module access</p>
             <h2 className="mt-1 text-xl font-black text-stone-950">Access and complete process map</h2>
             <p className="mt-1 max-w-3xl text-sm font-semibold text-stone-500">
               Required modules are enabled automatically. Recommended modules complete the end-to-end customer or operating flow.
@@ -3032,7 +3032,7 @@ function ModulesPanel({
       <section className="rounded-xl border border-stone-200 bg-white p-4 shadow-sm sm:p-5">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
-            <p className="text-xs font-black uppercase text-orange-700">Process bundles</p>
+            <p className="text-xs font-black uppercase text-violet-700">Process bundles</p>
             <h3 className="mt-1 text-lg font-black text-stone-950">Choose the outcome you want to run</h3>
           </div>
           <p className="text-xs font-bold text-stone-500">Required = minimum working flow · Recommended = complete experience</p>
@@ -3107,7 +3107,7 @@ function ModulesPanel({
 
       <div>
         <div className="mb-3">
-          <p className="text-xs font-black uppercase text-orange-700">Individual access</p>
+          <p className="text-xs font-black uppercase text-violet-700">Individual access</p>
           <h3 className="mt-1 text-lg font-black text-stone-950">What each module unlocks</h3>
         </div>
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
@@ -3117,10 +3117,10 @@ function ModulesPanel({
           const relatedLabels = (module.recommendedWith || []).map(moduleLabel);
           const requiredBy = getRemovalBlockers(module.key, [...selected], normalizedModules).map(moduleLabel);
           return (
-          <article key={module.key} className={`rounded-xl border p-4 text-left shadow-sm transition ${enabled ? "border-orange-300 bg-orange-50" : "border-stone-200 bg-white"}`}>
+          <article key={module.key} className={`rounded-xl border p-4 text-left shadow-sm transition ${enabled ? "border-violet-300 bg-violet-50" : "border-stone-200 bg-white"}`}>
             <div className="flex items-center justify-between">
               <h3 className="font-black text-stone-950">{module.label}</h3>
-              <Pill className={enabled ? "border-orange-200 bg-white text-orange-700" : "border-stone-200 text-stone-500"}>{enabled ? "Enabled" : "Off"}</Pill>
+              <Pill className={enabled ? "border-violet-200 bg-white text-violet-700" : "border-stone-200 text-stone-500"}>{enabled ? "Enabled" : "Off"}</Pill>
             </div>
             <p className="mt-2 text-sm font-semibold text-stone-500">{module.description}</p>
             <div className="mt-3">
@@ -3140,7 +3140,7 @@ function ModulesPanel({
               <p className="mt-2 text-xs font-bold text-stone-500">Works best with: {relatedLabels.join(", ")}</p>
             ) : null}
             {enabled && requiredBy.length ? (
-              <p className="mt-2 text-xs font-bold text-orange-700">Currently required by: {requiredBy.join(", ")}</p>
+              <p className="mt-2 text-xs font-bold text-violet-700">Currently required by: {requiredBy.join(", ")}</p>
             ) : null}
             <p className="mt-3 text-sm font-black text-stone-950">{money(module.monthly, park.currency)}/month</p>
             <button
@@ -3245,12 +3245,12 @@ function BillingPanel({ park, plans = [], moduleCatalog = modules, planUsage = n
         >
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-stone-200 pb-3">
           <div className="min-w-0">
-            <p className="text-xs font-black uppercase text-orange-700">Billing setup</p>
+            <p className="text-xs font-black uppercase text-violet-700">Billing setup</p>
             <h2 className="mt-0.5 text-lg font-black text-stone-950">Base fee and invoice controls</h2>
             <p className="mt-0.5 text-xs font-semibold text-stone-500 sm:text-sm">Plan, tax, promos, and enabled modules determine the recurring bill.</p>
           </div>
           <div className="flex shrink-0 items-center gap-2">
-            <Pill className="hidden border-orange-200 bg-orange-50 text-orange-700 sm:inline-flex">
+            <Pill className="hidden border-violet-200 bg-violet-50 text-violet-700 sm:inline-flex">
               {form.billingCycle || "monthly"}
             </Pill>
             <button
@@ -3263,12 +3263,12 @@ function BillingPanel({ park, plans = [], moduleCatalog = modules, planUsage = n
           </div>
         </div>
 
-        <div className="mt-3 rounded-lg border border-orange-100 bg-orange-50/50 p-3">
+        <div className="mt-3 rounded-lg border border-violet-100 bg-violet-50/50 p-3">
           <div className="grid min-w-0 gap-3 xl:grid-cols-[minmax(220px,340px)_1fr]">
             <label>
               <span className="flex items-center justify-between gap-2 text-xs font-black uppercase text-stone-500">
                 <span>Customer plan</span>
-                <Link to="/movira-control/plans" className="text-orange-700 hover:text-orange-800">
+                <Link to="/movira-control/plans" className="text-violet-700 hover:text-violet-800">
                   Manage plans
                 </Link>
               </span>
@@ -3281,15 +3281,15 @@ function BillingPanel({ park, plans = [], moduleCatalog = modules, planUsage = n
               />
             </label>
             <div className="grid min-w-0 gap-2 sm:grid-cols-3">
-              <div className="rounded-md border border-orange-100 bg-white px-3 py-2">
+              <div className="rounded-md border border-violet-100 bg-white px-3 py-2">
                 <p className="text-xs font-black uppercase text-stone-500">Base fee</p>
                 <p className="mt-0.5 text-base font-black text-stone-950">{money(selectedPlan?.monthlyBaseFee || 0, park.currency)}/mo</p>
               </div>
-              <div className="rounded-md border border-orange-100 bg-white px-3 py-2">
+              <div className="rounded-md border border-violet-100 bg-white px-3 py-2">
                 <p className="text-xs font-black uppercase text-stone-500">Park limit</p>
                 <p className="mt-0.5 text-base font-black text-stone-950">{selectedPlan?.maxParks === null ? "Unlimited" : selectedPlan?.maxParks}</p>
               </div>
-              <div className="rounded-md border border-orange-100 bg-white px-3 py-2">
+              <div className="rounded-md border border-violet-100 bg-white px-3 py-2">
                 <p className="text-xs font-black uppercase text-stone-500">Current usage</p>
                 <p className="mt-0.5 text-base font-black text-stone-950">
                   {planUsage?.activeParks ?? "-"}{selectedPlan?.maxParks === null ? "" : ` / ${selectedPlan?.maxParks}`}
@@ -3438,8 +3438,8 @@ function BillingPanel({ park, plans = [], moduleCatalog = modules, planUsage = n
             <span className="text-stone-950">{money(taxAmount, park.currency)}</span>
           </div>
         </div>
-        <div className="mt-4 rounded-lg bg-orange-50 p-3">
-          <p className="text-xs font-black uppercase text-orange-700">Total due</p>
+        <div className="mt-4 rounded-lg bg-violet-50 p-3">
+          <p className="text-xs font-black uppercase text-violet-700">Total due</p>
           <p className="mt-0.5 text-2xl font-black text-stone-950">{money(monthlyTotal, park.currency)}</p>
           <p className="mt-0.5 text-xs font-bold text-stone-500">per month</p>
         </div>
@@ -3988,7 +3988,7 @@ function PaymentsPanel({ park }) {
       <form onSubmit={submit} className="min-w-0 rounded-xl border border-stone-200 bg-white p-4 shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-stone-200 pb-3">
           <div className="min-w-0">
-            <p className="text-xs font-black uppercase text-orange-700">Payment control</p>
+            <p className="text-xs font-black uppercase text-violet-700">Payment control</p>
             <h2 className="mt-1 wrap-break-word text-lg font-black text-stone-950">
               {isDemo ? "Sandbox payment testing" : "Park payment status"}
             </h2>
@@ -4019,7 +4019,7 @@ function PaymentsPanel({ park }) {
               </div>
             </>
           ) : null}
-          <div className="rounded-lg border border-orange-100 bg-orange-50/40 p-3">
+          <div className="rounded-lg border border-violet-100 bg-violet-50/40 p-3">
             <span className="text-xs font-black uppercase text-stone-500">Guest payments</span>
             <div className="mt-1 flex flex-col gap-2 sm:flex-row sm:items-start">
               <SearchableSelect
@@ -4234,7 +4234,7 @@ function OnboardingPanel({ park }) {
     <div className="rounded-xl border border-stone-200 bg-white p-5 shadow-sm">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-stone-200 pb-4">
         <div>
-          <p className="text-xs font-black uppercase text-orange-700">Launch checklist</p>
+          <p className="text-xs font-black uppercase text-violet-700">Launch checklist</p>
           <h2 className="mt-1 text-xl font-black text-stone-950">Operational readiness</h2>
         </div>
         <div className="w-full max-w-xs">
@@ -4265,7 +4265,7 @@ function OnboardingPanel({ park }) {
             done
               ? "border-emerald-200 bg-emerald-50"
               : isManual
-                ? "border-stone-200 bg-white hover:-translate-y-0.5 hover:border-orange-200"
+                ? "border-stone-200 bg-white hover:-translate-y-0.5 hover:border-violet-200"
                 : "cursor-default border-stone-200 bg-stone-50"
           }`;
           return (
@@ -4407,7 +4407,7 @@ function AuditPanel({ park, initialLogs = [] }) {
             <article key={item.id} className="grid gap-4 px-4 py-4 lg:grid-cols-[minmax(0,1fr)_220px]">
               <div className="flex min-w-0 gap-3">
                 <div className="flex flex-col items-center pt-1">
-                  <span className="h-3 w-3 rounded-full border-2 border-orange-200 bg-orange-600" />
+                  <span className="h-3 w-3 rounded-full border-2 border-violet-200 bg-violet-600" />
                   <span className="mt-2 h-full min-h-12 w-px bg-stone-200" />
                 </div>
                 <div className="min-w-0 flex-1">

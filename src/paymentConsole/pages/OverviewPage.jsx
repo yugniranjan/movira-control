@@ -34,7 +34,7 @@ function Stat({ icon: Icon, label, value, hint, to }) {
   const body = (
     <Card className="h-full p-3 transition-colors hover:border-[var(--brand-primary)]">
       <div className="flex items-center justify-between gap-3">
-        <span className="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-orange-50 text-[var(--brand-primary-deep)]">
+        <span className="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-violet-50 text-[var(--brand-primary-deep)]">
           {createElement(Icon, { size: 18 })}
         </span>
         {to && <FiArrowRight className="text-[var(--text-muted)]" />}

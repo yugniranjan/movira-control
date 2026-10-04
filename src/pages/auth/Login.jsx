@@ -12,13 +12,7 @@ import {
   FiShield,
 } from "react-icons/fi";
 import { toast } from "sonner";
-import {
-  applyTheme,
-  getStoredTheme,
-  persistTheme,
-  resolveThemeForUser,
-  themeOptions,
-} from "../../lib/theme";
+import ThemeToggle from "../../components/ThemeToggle";
 
 const trustNotes = [
   "Manage SaaS parks, plans, billing, and onboarding.",
@@ -41,15 +35,10 @@ export default function MoviraLogin() {
     Boolean(localStorage.getItem(REMEMBERED_EMAIL_KEY))
   );
   const [passwordVisible, setPasswordVisible] = useState(false);
-  const [theme, setTheme] = useState(() => getStoredTheme() || "dark");
 
   useEffect(() => {
     if (token) navigate("/movira-control/parks", { replace: true });
   }, [token, navigate]);
-
-  useEffect(() => {
-    applyTheme(theme);
-  }, [theme]);
 
   const isFormValid = email && password;
 
@@ -67,10 +56,6 @@ export default function MoviraLogin() {
       } else {
         localStorage.removeItem(REMEMBERED_EMAIL_KEY);
       }
-      if (!getStoredTheme()) {
-        const nextTheme = resolveThemeForUser(res?.user);
-        setTheme(applyTheme(nextTheme));
-      }
       navigate("/movira-control/parks", { replace: true });
     } catch (err) {
       const code = err?.data?.code || err?.data?.reason;
@@ -87,41 +72,16 @@ export default function MoviraLogin() {
     }
   };
 
-  const handleThemeChange = (nextTheme) => {
-    setTheme(persistTheme(nextTheme));
-  };
-
   return (
     <main data-app="admin" className="login-shell">
       <header className="login-admin-header">
         <div className="login-brand-lockup" aria-label="Movira360">
           <div className="login-brand-badge">
-            <img src="/branding/movira360-mark.png" alt="" />
+            <img src="/branding/movira360-logo.png" alt="" />
           </div>
           <span>Movira360</span>
         </div>
-
-        <div className="login-theme-switcher" aria-label="Choose theme">
-          {themeOptions.map((option) => {
-            const isActive = theme === option.id;
-            return (
-              <button
-                key={option.id}
-                type="button"
-                onClick={() => handleThemeChange(option.id)}
-                className={`login-theme-button ${isActive ? "is-active" : ""}`}
-                aria-pressed={isActive}
-                title={option.label}
-              >
-                <span
-                  className="login-theme-swatch"
-                  style={{ background: option.swatch }}
-                />
-                <span>{option.shortLabel}</span>
-              </button>
-            );
-          })}
-        </div>
+        <ThemeToggle />
       </header>
 
       <div className="login-admin-body">

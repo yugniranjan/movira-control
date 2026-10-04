@@ -52,7 +52,7 @@ class ErrorBoundary extends React.Component {
               cursor: "pointer",
               fontWeight: 700,
               color: "#fff",
-              background: "var(--brand-primary, #FF7A24)",
+              background: "var(--brand-primary, #8B5CFF)",
             }}
           >
             Reload

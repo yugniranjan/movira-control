@@ -11,7 +11,7 @@ const toneMap = {
     icon: FaExclamationTriangle,
     iconWrap: "bg-amber-50 text-amber-700",
     eyebrow: "text-amber-700",
-    confirm: "border border-orange-600 bg-orange-600 text-white shadow-sm hover:-translate-y-0.5 hover:bg-orange-700",
+    confirm: "border border-violet-600 bg-violet-600 text-white shadow-sm hover:-translate-y-0.5 hover:bg-violet-700",
   },
   info: {
     icon: FaInfoCircle,

@@ -298,7 +298,7 @@ export default function PaymentsPage() {
             onClick={() => setTab(t.key)}
             className={`min-h-9 rounded-lg px-4 text-sm font-black transition-colors ${
               tab === t.key
-                ? "bg-orange-50 text-orange-700 shadow-sm"
+                ? "bg-violet-50 text-violet-700 shadow-sm"
                 : "text-stone-600 hover:bg-stone-50 hover:text-stone-950"
             }`}
           >

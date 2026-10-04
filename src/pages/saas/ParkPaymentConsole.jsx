@@ -58,7 +58,7 @@ const channels = [
 function Badge({ children, tone = "stone" }) {
   const tones = {
     stone: "border-stone-200 bg-stone-50 text-stone-600",
-    orange: "border-orange-200 bg-orange-50 text-orange-700",
+    orange: "border-violet-200 bg-violet-50 text-violet-700",
     green: "border-emerald-200 bg-emerald-50 text-emerald-700",
     red: "border-red-200 bg-red-50 text-red-700",
     blue: "border-blue-200 bg-blue-50 text-blue-700",
@@ -230,7 +230,7 @@ function AddGatewayModal({ park, schemas, onClose }) {
                 setFieldErrors({});
                 setTestResult(null);
               }}
-              className={`rounded-xl border p-4 text-left transition ${provider === item.key ? "border-orange-300 bg-orange-50" : "border-stone-200 bg-white hover:bg-stone-50"}`}
+              className={`rounded-xl border p-4 text-left transition ${provider === item.key ? "border-violet-300 bg-violet-50" : "border-stone-200 bg-white hover:bg-stone-50"}`}
             >
               <ProviderMark provider={item.key} />
               <p className="mt-3 font-black text-stone-950">{item.name}</p>
@@ -249,7 +249,7 @@ function AddGatewayModal({ park, schemas, onClose }) {
           </Field>
         </div>
 
-        <div className="rounded-xl border border-orange-200 bg-orange-50 p-3 text-sm font-semibold text-orange-800">
+        <div className="rounded-xl border border-violet-200 bg-violet-50 p-3 text-sm font-semibold text-violet-800">
           <FaMapMarkerAlt className="mr-2 inline" />
           Scope: {park.name}. This will not become an organization-wide gateway.
         </div>
@@ -358,7 +358,7 @@ function RouteModal({ park, channel, currentRoute, credentials, compatibility, o
               key={key}
               type="button"
               onClick={() => setProvider(key)}
-              className={`flex items-center gap-3 rounded-xl border p-3 text-left transition ${provider === key ? "border-orange-300 bg-orange-50" : "border-stone-200 hover:bg-stone-50"}`}
+              className={`flex items-center gap-3 rounded-xl border p-3 text-left transition ${provider === key ? "border-violet-300 bg-violet-50" : "border-stone-200 hover:bg-stone-50"}`}
             >
               <ProviderMark provider={key} />
               <div>
@@ -571,7 +571,7 @@ function PosTree({ park, onConfigurePos }) {
     <section className="rounded-xl border border-stone-200 bg-white p-5 shadow-sm">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="text-xs font-black uppercase text-orange-700">Card terminals</p>
+          <p className="text-xs font-black uppercase text-violet-700">Card terminals</p>
           <h3 className="mt-1 break-words text-lg font-black text-stone-950">Tills and card readers</h3>
           <p className="mt-1 text-sm font-semibold text-stone-500">POS readers are available after the POS channel is routed.</p>
         </div>
@@ -639,7 +639,7 @@ function PosTree({ park, onConfigurePos }) {
               <div className="mt-3 space-y-2">
                 {(terminal.readers || []).map((reader) => (
                   <div key={reader.terminalId} className="flex flex-wrap items-center gap-2 rounded-lg bg-stone-50 p-2">
-                    <FaCreditCard className="text-orange-700" />
+                    <FaCreditCard className="text-violet-700" />
                     <span className="font-bold text-stone-800">{reader.displayName}</span>
                     <code className="text-xs font-semibold text-stone-500">{reader.providerTerminalId || "simulated"}</code>
                     {reader.isDefault ? <Badge tone="orange"><FaStar /> Default</Badge> : null}
@@ -769,12 +769,12 @@ export default function ParkPaymentConsole({ park }) {
       <section className="rounded-xl border border-stone-200 bg-white p-4 shadow-sm sm:p-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <p className="text-xs font-black uppercase text-orange-700">Guest payment console</p>
+            <p className="text-xs font-black uppercase text-violet-700">Guest payment console</p>
             <h3 className="mt-1 text-lg font-black text-stone-950">Payment setup progress</h3>
             <p className="mt-1 text-sm font-semibold text-stone-500">
               Configure gateway access, route each payment channel, then attach POS terminals for {park.name}.
             </p>
-            <p className="mt-2 text-xs font-black uppercase tracking-wide text-orange-700">
+            <p className="mt-2 text-xs font-black uppercase tracking-wide text-violet-700">
               {parkPaymentModeLabel(scopedPark)} payment configuration only
             </p>
           </div>
@@ -890,7 +890,7 @@ export default function ParkPaymentConsole({ park }) {
       <section className="rounded-xl border border-stone-200 bg-white p-4 shadow-sm sm:p-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <p className="text-xs font-black uppercase text-orange-700">Step 2 · Channel routing</p>
+            <p className="text-xs font-black uppercase text-violet-700">Step 2 · Channel routing</p>
             <h3 className="mt-1 text-lg font-black text-stone-950">Where each payment channel sends money</h3>
             <p className="mt-1 text-sm font-semibold text-stone-500">Open a channel to choose its provider, mode, and adapter.</p>
           </div>
@@ -905,9 +905,9 @@ export default function ParkPaymentConsole({ park }) {
               : null;
             const compatible = !!route && compatibility[channel.key]?.[route.provider]?.adapterKey === route.adapterKey;
             return (
-              <button key={channel.key} type="button" disabled={compatibilityLoading || compatibilityError || !compatibility[channel.key]} onClick={() => setRouteEditing(channel)} className="group rounded-xl border border-stone-200 p-3 text-left transition hover:-translate-y-0.5 hover:border-orange-200 hover:bg-orange-50/40 hover:shadow-sm disabled:opacity-50">
+              <button key={channel.key} type="button" disabled={compatibilityLoading || compatibilityError || !compatibility[channel.key]} onClick={() => setRouteEditing(channel)} className="group rounded-xl border border-stone-200 p-3 text-left transition hover:-translate-y-0.5 hover:border-violet-200 hover:bg-violet-50/40 hover:shadow-sm disabled:opacity-50">
                 <div className="flex items-start gap-3">
-                  <div className="grid h-10 w-10 place-items-center rounded-lg bg-orange-50 text-orange-700">
+                  <div className="grid h-10 w-10 place-items-center rounded-lg bg-violet-50 text-violet-700">
                     {route ? <ProviderMark provider={route.provider} size="sm" /> : <FaCreditCard />}
                   </div>
                   <div className="min-w-0 flex-1">
@@ -921,7 +921,7 @@ export default function ParkPaymentConsole({ park }) {
                         {providerMap[route.provider]?.name || route.provider} · {route.mode} · {route.adapterKey}
                       </p>
                     ) : null}
-                    <span className="mt-3 inline-flex items-center gap-1 text-xs font-black text-orange-700">
+                    <span className="mt-3 inline-flex items-center gap-1 text-xs font-black text-violet-700">
                       {route ? "Edit route" : "Configure route"} <FaArrowRight className="transition group-hover:translate-x-0.5" />
                     </span>
                   </div>

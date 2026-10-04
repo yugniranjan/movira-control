@@ -329,7 +329,7 @@ export default function VenueDetailPage() {
       actions={
         <Link
           to="/movira-control/payments/venues"
-          className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-stone-300 bg-white px-4 py-2 text-sm font-black text-stone-800 shadow-sm hover:border-orange-300 hover:bg-orange-50"
+          className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-stone-300 bg-white px-4 py-2 text-sm font-black text-stone-800 shadow-sm hover:border-violet-300 hover:bg-violet-50"
         >
           <FiArrowLeft /> All venues
         </Link>
@@ -352,7 +352,7 @@ export default function VenueDetailPage() {
 
       <Card className="p-4">
         <div className="flex items-center gap-4">
-          <span className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-orange-50 text-[var(--brand-primary-deep)]">
+          <span className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-violet-50 text-[var(--brand-primary-deep)]">
             <FiMapPin size={22} />
           </span>
           <div className="min-w-0">

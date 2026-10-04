@@ -5,6 +5,7 @@ import { FiCreditCard, FiDollarSign, FiGrid, FiLayers, FiLogOut, FiMapPin, FiSet
 import { logout } from "../features/auth/authSlice";
 import { useLogoutMutation } from "../features/auth/authApi";
 import { canAccessPolicy } from "../auth/access";
+import ThemeToggle from "../components/ThemeToggle";
 
 const navItems = [
   { to: "/movira-control/parks", label: "Control", icon: FiGrid, policy: "control" },
@@ -15,7 +16,7 @@ const navItems = [
   { to: "/movira-control/payments/gateways", label: "Gateways", icon: FiSettings, policy: "gateways" },
 ];
 
-const MOVIRA360_MARK_SRC = "/branding/movira360-mark.png";
+const MOVIRA360_MARK_SRC = "/branding/movira360-logo.png";
 
 function initialsFor(user) {
   const name = user?.name || user?.firstName || user?.email || "MC";
@@ -114,6 +115,7 @@ export default function ControlAdminLayout() {
             </div>
           </div>
           <div className="flex min-w-0 shrink-0 items-center gap-2 sm:gap-3">
+            <ThemeToggle />
             <div className="hidden min-w-0 max-w-[220px] text-right sm:block">
               <p className="truncate text-sm font-black">{user?.name || user?.email || "Admin"}</p>
               <p className="truncate text-xs font-semibold text-stone-500">{user?.email || "Movira"}</p>

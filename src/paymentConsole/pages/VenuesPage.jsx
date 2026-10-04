@@ -166,7 +166,7 @@ export default function VenuesPage() {
             <Card className="p-5 h-full hover:border-[var(--brand-primary)] transition-colors">
               <div className="flex items-start justify-between gap-3">
                 <div className="flex items-start gap-3 min-w-0">
-                  <span className="inline-flex items-center justify-center w-10 h-10 rounded-xl bg-orange-50 text-[var(--brand-primary-deep)] shrink-0">
+                  <span className="inline-flex items-center justify-center w-10 h-10 rounded-xl bg-violet-50 text-[var(--brand-primary-deep)] shrink-0">
                     <FiMapPin size={18} />
                   </span>
                   <div className="min-w-0">

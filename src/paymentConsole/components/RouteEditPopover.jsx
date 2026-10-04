@@ -158,7 +158,7 @@ export default function RouteEditPopover({
                     disabled={disabled}
                     className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg border text-left transition-colors ${
                       isSelected
-                        ? "border-[var(--brand-primary)] bg-orange-50/60"
+                        ? "border-[var(--brand-primary)] bg-violet-50/60"
                         : "border-[var(--stroke-soft)] hover:border-[var(--stroke-strong)]"
                     } ${disabled ? "opacity-50 cursor-not-allowed" : ""}`}
                   >

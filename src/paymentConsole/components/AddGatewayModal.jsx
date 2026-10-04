@@ -216,7 +216,7 @@ export default function AddGatewayModal({
             <button
               key={p.key}
               onClick={() => pickProvider(p.key)}
-              className="group flex w-full items-center gap-4 rounded-lg border border-stone-200 bg-white p-4 text-left shadow-sm transition hover:border-orange-300 hover:bg-orange-50/60 focus:outline-none focus:ring-4 focus:ring-orange-500/15"
+              className="group flex w-full items-center gap-4 rounded-lg border border-stone-200 bg-white p-4 text-left shadow-sm transition hover:border-violet-300 hover:bg-violet-50/60 focus:outline-none focus:ring-4 focus:ring-violet-500/15"
             >
               <ProviderBadge provider={p.key} size={44} />
               <div className="min-w-0">
@@ -228,7 +228,7 @@ export default function AddGatewayModal({
         </div>
       ) : (
         <div className="space-y-4">
-          <div className="flex items-center gap-3 rounded-lg border border-orange-100 bg-orange-50/60 p-3">
+          <div className="flex items-center gap-3 rounded-lg border border-violet-100 bg-violet-50/60 p-3">
             <ProviderBadge provider={provider} size={36} />
             <div className="min-w-0 flex-1">
               <div className="font-display text-sm font-black text-stone-950">{providerByKey[provider].name}</div>
@@ -236,7 +236,7 @@ export default function AddGatewayModal({
                 href={schema.docsUrl}
                 target="_blank"
                 rel="noreferrer"
-                className="inline-flex items-center gap-1 text-xs font-bold text-orange-700 hover:underline"
+                className="inline-flex items-center gap-1 text-xs font-bold text-violet-700 hover:underline"
               >
                 Where do I find these? <FiExternalLink size={11} />
               </a>
@@ -265,9 +265,9 @@ export default function AddGatewayModal({
           </div>
 
           {forceScope === "org" ? (
-            <div className="rounded-lg border border-orange-200 bg-orange-50 px-3 py-2 text-sm font-bold text-stone-700">
+            <div className="rounded-lg border border-violet-200 bg-violet-50 px-3 py-2 text-sm font-bold text-stone-700">
               <span className="inline-flex items-center gap-1.5">
-                <FiGlobe size={14} className="text-orange-700" />
+                <FiGlobe size={14} className="text-violet-700" />
                 Movira-owned credential. It is not tied to any venue or location.
               </span>
             </div>
@@ -319,7 +319,7 @@ export default function AddGatewayModal({
 
                 {scope === "venue" && (
                   scopeLocked && selectedVenue ? (
-                    <div className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-orange-50/60 border border-[var(--brand-primary)]/30 text-sm self-start">
+                    <div className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-violet-50/60 border border-[var(--brand-primary)]/30 text-sm self-start">
                       <FiMapPin className="text-[var(--brand-primary-deep)]" />
                       <span className="font-semibold text-[var(--text-strong)]">{selectedVenue.name}</span>
                       {selectedVenue.city && (

@@ -3,8 +3,8 @@
 :root {
   color-scheme: light;
 
-  --brand-primary: #ff7a24;
-  --brand-primary-deep: #f45b0a;
+  --brand-primary: #7220E6;
+  --brand-primary-deep: #480D9A;
   --brand-secondary: #ffce1f;
 
   --surface-app: #f6f7fb;
@@ -77,8 +77,8 @@ body {
 }
 
 [data-app="admin"] .btn-nexus,
-[data-app="admin"] button.bg-orange-600,
-[data-app="admin"] a.bg-orange-600 {
+[data-app="admin"] button.bg-violet-600,
+[data-app="admin"] a.bg-violet-600 {
   background: var(--brand-primary) !important;
   color: #ffffff !important;
   border: 2px solid var(--stroke-strong) !important;
@@ -93,15 +93,15 @@ body {
 }
 
 [data-app="admin"] .btn-nexus:hover:not(:disabled),
-[data-app="admin"] button.bg-orange-600:hover,
-[data-app="admin"] a.bg-orange-600:hover {
+[data-app="admin"] button.bg-violet-600:hover,
+[data-app="admin"] a.bg-violet-600:hover {
   background: color-mix(in srgb, var(--brand-primary) 88%, white) !important;
   transform: translateY(-1px);
 }
 
 [data-app="admin"] .btn-nexus:active,
-[data-app="admin"] button.bg-orange-600:active,
-[data-app="admin"] a.bg-orange-600:active {
+[data-app="admin"] button.bg-violet-600:active,
+[data-app="admin"] a.bg-violet-600:active {
   transform: translateY(2px);
   box-shadow: 0 3px 0 var(--brand-primary-deep) !important;
 }
@@ -185,27 +185,27 @@ body {
   border-color: var(--stroke-soft) !important;
 }
 
-[data-app="admin"] .bg-orange-50,
-[data-app="admin"] .hover\:bg-orange-50:hover {
+[data-app="admin"] .bg-violet-50,
+[data-app="admin"] .hover\:bg-violet-50:hover {
   background-color: var(--brand-primary-soft) !important;
 }
 
-[data-app="admin"] .bg-orange-500,
-[data-app="admin"] .bg-orange-600,
-[data-app="admin"] .bg-orange-700 {
+[data-app="admin"] .bg-violet-500,
+[data-app="admin"] .bg-violet-600,
+[data-app="admin"] .bg-violet-700 {
   background-color: var(--brand-primary) !important;
 }
 
-[data-app="admin"] .text-orange-500,
-[data-app="admin"] .text-orange-600,
-[data-app="admin"] .text-orange-700 {
+[data-app="admin"] .text-violet-500,
+[data-app="admin"] .text-violet-600,
+[data-app="admin"] .text-violet-700 {
   color: var(--brand-primary-deep) !important;
 }
 
-[data-app="admin"] .border-orange-100,
-[data-app="admin"] .border-orange-200,
-[data-app="admin"] .border-orange-300,
-[data-app="admin"] .border-orange-500,
-[data-app="admin"] .border-orange-600 {
+[data-app="admin"] .border-violet-100,
+[data-app="admin"] .border-violet-200,
+[data-app="admin"] .border-violet-300,
+[data-app="admin"] .border-violet-500,
+[data-app="admin"] .border-violet-600 {
   border-color: var(--brand-primary-border) !important;
 }

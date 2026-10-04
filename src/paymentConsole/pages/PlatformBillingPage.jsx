@@ -87,7 +87,7 @@ function PlatformBillingGatewayPanel({ credentials, platformGateway, onSave, sav
           {provider ? (
             <ProviderBadge provider={provider.key} size={38} />
           ) : (
-            <span className="grid h-[38px] w-[38px] shrink-0 place-items-center rounded-lg bg-orange-50 text-orange-700">
+            <span className="grid h-[38px] w-[38px] shrink-0 place-items-center rounded-lg bg-violet-50 text-violet-700">
               <FiCreditCard size={18} />
             </span>
           )}
