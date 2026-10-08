@@ -1,7 +1,7 @@
 import { createElement } from "react";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
-import { FiCreditCard, FiDollarSign, FiGrid, FiLayers, FiLogOut, FiMapPin, FiSettings } from "react-icons/fi";
+import { FiCreditCard, FiDollarSign, FiGrid, FiLayers, FiLogOut, FiSettings } from "react-icons/fi";
 import { logout } from "../features/auth/authSlice";
 import { useLogoutMutation } from "../features/auth/authApi";
 import { canAccessPolicy } from "../auth/access";
@@ -12,7 +12,6 @@ const navItems = [
   { to: "/movira-control/plans", label: "Plans", icon: FiLayers, policy: "plans" },
   { to: "/movira-control/billing", label: "SaaS Billing", icon: FiDollarSign, policy: "billing" },
   { to: "/movira-control/payments", label: "Payments", icon: FiCreditCard, policy: "payments" },
-  { to: "/movira-control/payments/venues", label: "Venues", icon: FiMapPin, policy: "venues" },
   { to: "/movira-control/payments/gateways", label: "Gateways", icon: FiSettings, policy: "gateways" },
 ];
 
@@ -49,7 +48,7 @@ export default function ControlAdminLayout() {
   }
 
   return (
-    <div className="min-h-screen overflow-x-hidden bg-[var(--surface-app)] text-[var(--text-strong)]">
+    <div className="min-h-screen overflow-x-clip bg-[var(--surface-app)] text-[var(--text-strong)]">
       <aside className="fixed inset-y-0 left-0 z-30 hidden w-[68px] flex-col bg-[var(--admin-rail-bg)] shadow-[var(--shadow-sidebar)] lg:flex">
         <div className="flex h-16 items-center justify-center border-b border-white/10">
           <div className="grid h-11 w-11 place-items-center overflow-hidden rounded-xl border border-white/25 bg-white/95 p-1 shadow-[0_4px_0_rgba(0,0,0,0.22)]">
@@ -93,8 +92,11 @@ export default function ControlAdminLayout() {
         </div>
       </aside>
 
-      <div className="lg:pl-[68px]">
-        <header className="sticky top-0 z-40 flex min-h-14 items-center justify-between gap-2 border-b border-[var(--stroke-soft)] bg-[var(--surface-header)]/95 px-2.5 py-1.5 backdrop-blur lg:px-4">
+      <div className="pt-14 lg:pl-[68px]">
+        <header
+          data-control-header
+          className="fixed inset-x-0 top-0 z-40 flex h-14 items-center justify-between gap-2 border-b border-[var(--stroke-soft)] bg-[var(--surface-header)]/95 px-2.5 py-1.5 shadow-[var(--shadow-header)] backdrop-blur lg:left-[68px] lg:px-4"
+        >
           <div className="flex min-w-0 items-center gap-2 lg:hidden">
             <div className="grid h-9 w-9 place-items-center overflow-hidden rounded-lg border border-[var(--mc-border-strong)] bg-white/95 p-1 shadow-sm">
               <img src={MOVIRA360_MARK_SRC} alt="Movira360" className="h-full w-full object-contain" />
@@ -109,8 +111,8 @@ export default function ControlAdminLayout() {
           <div className="hidden min-w-0 items-center lg:flex">
             <div>
               <p className="text-lg font-black tracking-tight">Movira360 Control</p>
-              <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--brand-primary-deep)]">
-                Parks, billing, onboarding, and payment routing.
+              <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--brand-accent)]">
+                Locations, billing, onboarding, and payment routing.
               </p>
             </div>
           </div>

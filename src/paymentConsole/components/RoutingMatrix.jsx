@@ -72,7 +72,7 @@ function RouteCell({ venue, channel, route, credentials, onClick }) {
               <div className="text-xs font-semibold text-[var(--text-strong)] truncate">{cred.label}</div>
               <div className="text-[10px] text-[var(--text-muted)] flex items-center gap-1">
                 {Number(cred.locationId) === Number(venue.locationId) ? (
-                  <span className="text-[var(--brand-primary-deep)] font-semibold">venue</span>
+                  <span className="text-[var(--brand-primary-deep)] font-semibold">location</span>
                 ) : (
                   <span className="inline-flex items-center gap-0.5">
                     <FiCornerDownRight size={10} /> org
@@ -122,7 +122,7 @@ export default function RoutingMatrix({
           <tr>
             <th className="sticky left-0 z-30 border-b border-[var(--stroke-soft)] bg-[var(--surface-panel-strong)] py-3 pr-4 text-left align-bottom">
               <span className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wide">
-                Venue
+                Location
               </span>
             </th>
             {channels.map((c) => (

@@ -6,7 +6,7 @@ import { Badge, Button, Card, EmptyState, PageShell, ProviderBadge, Select, Spin
 import AddGatewayModal from "../components/AddGatewayModal";
 import { PageShimmer } from "../../components/Shimmer";
 
-const SAAS_BILLING_PROVIDERS = new Set(["stripe", "razorpay"]);
+const SAAS_BILLING_PROVIDERS = new Set(["stripe", "nuvei", "razorpay"]);
 const CURRENCY_OPTIONS = [
   { value: "", label: "Any currency" },
   { value: "CAD", label: "CAD - Canadian dollar" },
@@ -63,7 +63,7 @@ function PlatformBillingGatewayPanel({ credentials, platformGateway, onSave, sav
   async function handleSave() {
     setError("");
     if (!selectedCredential) {
-      setError("Add an organization-wide Stripe or Razorpay credential first.");
+      setError("Add an organization-wide Stripe, Nuvei, or Razorpay credential first.");
       return;
     }
     try {
@@ -105,7 +105,7 @@ function PlatformBillingGatewayPanel({ credentials, platformGateway, onSave, sav
               )}
             </div>
             <p className="mt-0.5 max-w-3xl text-xs font-semibold text-stone-500">
-              This is Movira's own collection route for SaaS invoices. Venue/guest payment gateways stay separate.
+              Movira uses this gateway to collect SaaS invoices. Your locations' customer-payment gateways remain separate.
             </p>
           </div>
         </div>
@@ -119,7 +119,7 @@ function PlatformBillingGatewayPanel({ credentials, platformGateway, onSave, sav
             className="min-w-0"
           >
             {orgCredentials.length === 0 ? (
-              <option value="">No Movira org-wide Stripe/Razorpay credential</option>
+              <option value="">No Movira-wide billing credential available</option>
             ) : (
               orgCredentials.map((credential) => {
                 const p = providerByKey[credential.provider];
@@ -228,11 +228,11 @@ export default function PlatformBillingPage() {
     <PageShell
       eyebrow="Movira Collections"
       title="SaaS Billing"
-      description="Add Movira-owned gateway credentials and choose how Movira collects subscription invoices from park owners."
+      description="Add Movira-owned gateway credentials and choose how Movira collects subscription invoices from location owners."
       actions={
         <>
           <Button variant="outline" onClick={() => setReloadKey((key) => key + 1)}>Refresh</Button>
-          <Button onClick={() => setAdding(true)} disabled={!schemas?.stripe && !schemas?.razorpay}>
+          <Button onClick={() => setAdding(true)} disabled={!schemas?.stripe && !schemas?.nuvei && !schemas?.razorpay}>
             <FiPlus /> Add Movira credential
           </Button>
         </>
@@ -260,7 +260,7 @@ export default function PlatformBillingPage() {
       {credentials.filter((c) => c.locationId == null && SAAS_BILLING_PROVIDERS.has(c.provider)).length === 0 ? (
         <Card>
           <EmptyState icon={<FiCreditCard size={30} />} title="No Movira collection credential yet">
-            Add a Movira-owned Stripe or Razorpay credential here. It will not be tied to any venue or location.
+            Add a Movira-owned Stripe, Nuvei, or Razorpay credential. It is used only for SaaS invoice collection and is not tied to a location.
           </EmptyState>
         </Card>
       ) : null}
@@ -270,7 +270,7 @@ export default function PlatformBillingPage() {
         onClose={() => setAdding(false)}
         schemas={schemas || {}}
         venues={[]}
-        allowedProviderKeys={["stripe", "razorpay"]}
+        allowedProviderKeys={["stripe", "nuvei", "razorpay"]}
         forceScope="org"
         title="Add Movira collection credential"
         subtitle="These credentials belong to Movira and are used only to collect SaaS invoices from customers."

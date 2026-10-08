@@ -217,7 +217,7 @@ function AddGatewayModal({ park, schemas, onClose }) {
   }
 
   return (
-    <Modal title="Add park gateway" subtitle="Credentials are saved against this park only." onClose={onClose}>
+    <Modal title="Add location gateway" subtitle="Credentials are saved against this location only." onClose={onClose}>
       <div className="space-y-5">
         <div className="grid gap-3 md:grid-cols-3">
           {providers.map((item) => (
@@ -382,7 +382,7 @@ function RouteModal({ park, channel, currentRoute, credentials, compatibility, o
           </p>
           <p className="mt-1 text-xs font-semibold text-stone-600">
             {resolved
-              ? `${providerMap[resolved.provider]?.name || resolved.provider} · ${resolved.mode} · ${Number(resolved.locationId) === Number(park.locationId) ? "park gateway" : "organization gateway"}`
+              ? `${providerMap[resolved.provider]?.name || resolved.provider} · ${resolved.mode} · ${Number(resolved.locationId) === Number(park.locationId) ? "location gateway" : "organization gateway"}`
               : `Add a ${provider || "provider"} ${mode} credential before this route can process payments.`}
           </p>
         </div>
@@ -710,7 +710,7 @@ function PosTree({ park, onConfigurePos }) {
       message="This reader will be detached from the terminal and can no longer be used for POS payments until added again."
       details={[
         removeReaderTarget ? `Terminal: ${removeReaderTarget.terminal.name}` : "Selected terminal reader.",
-        "Use this only when the hardware reader should no longer accept payments for this park.",
+        "Use this only when the hardware reader should no longer accept payments for this location.",
       ]}
       confirmLabel="Remove reader"
       loading={deleteReaderState.isLoading}
@@ -779,7 +779,7 @@ export default function ParkPaymentConsole({ park }) {
             </p>
           </div>
           <button type="button" onClick={() => setAddGatewayOpen(true)} className="btn-nexus inline-flex min-h-10 items-center gap-2 rounded-lg px-4 py-2 text-sm font-black">
-            <FaPlus /> Add park gateway
+            <FaPlus /> Add location gateway
           </button>
         </div>
         <div className="mt-4 grid gap-2 sm:grid-cols-3">
@@ -831,7 +831,7 @@ export default function ParkPaymentConsole({ park }) {
         <div className="mt-4 grid gap-4 lg:grid-cols-2">
           <div className="min-w-0 rounded-xl border border-stone-200 p-3">
             <div className="flex items-center justify-between gap-2">
-              <p className="text-xs font-black uppercase text-stone-500">Park-specific</p>
+              <p className="text-xs font-black uppercase text-stone-500">Location-specific</p>
               <Badge tone={parkCredentials.length ? "green" : "stone"}>{parkCredentials.length}</Badge>
             </div>
             <div className="mt-2 divide-y divide-stone-100">
@@ -845,7 +845,7 @@ export default function ParkPaymentConsole({ park }) {
                       <Badge tone={credential.mode === "live" ? "green" : "orange"}>{credential.mode}</Badge>
                       {credential.status === "disabled" ? <Badge>disabled</Badge> : null}
                     </div>
-                    <p className="text-xs font-semibold text-stone-500">{providerMap[credential.provider]?.name || credential.provider} · park-specific</p>
+                    <p className="text-xs font-semibold text-stone-500">{providerMap[credential.provider]?.name || credential.provider} · location-specific</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
@@ -860,7 +860,7 @@ export default function ParkPaymentConsole({ park }) {
             ))}
             {!parkCredentials.length ? (
               <div className="rounded-lg border border-dashed border-stone-300 bg-stone-50 p-3 text-sm font-bold text-stone-500">
-                No park-specific gateway. Organization credentials can be used as fallback.
+                No location-specific gateway. Organization credentials can be used as fallback.
               </div>
             ) : null}
           </div>
@@ -962,7 +962,8 @@ export default function ParkPaymentConsole({ park }) {
         title={deleteGatewayTarget ? `Delete ${deleteGatewayTarget.label}?` : "Delete gateway?"}
         message="This gateway credential will be removed from the payment console."
         details={[
-          "Routes using this gateway may stop processing payments.",
+          "Deletion is blocked while any payment route still resolves to this gateway.",
+          "Repoint or remove its routes first; the backend will not leave a route silently broken.",
           "Inherited organization gateways are not affected.",
         ]}
         confirmLabel="Delete gateway"

@@ -60,6 +60,7 @@ body {
   --text-muted: var(--admin-muted-text, var(--text-muted));
   --brand-primary: var(--admin-accent, var(--brand-primary));
   --brand-primary-deep: var(--admin-accent-deep, var(--brand-primary-deep));
+  --brand-contrast: var(--admin-accent-contrast, var(--brand-primary-deep));
   --brand-primary-soft: var(--admin-active-soft, var(--brand-primary-soft));
   --brand-primary-border: color-mix(in srgb, var(--admin-accent, var(--brand-primary)) 46%, transparent);
   --input-bg: var(--admin-header-bg, var(--input-bg));
@@ -199,7 +200,7 @@ body {
 [data-app="admin"] .text-violet-500,
 [data-app="admin"] .text-violet-600,
 [data-app="admin"] .text-violet-700 {
-  color: var(--brand-primary-deep) !important;
+  color: var(--brand-contrast) !important;
 }
 
 [data-app="admin"] .border-violet-100,
@@ -208,4 +209,75 @@ body {
 [data-app="admin"] .border-violet-500,
 [data-app="admin"] .border-violet-600 {
   border-color: var(--brand-primary-border) !important;
+}
+
+/* Dark-mode semantic palette. Legacy pages still use Tailwind's light-theme
+   status utilities, so give those utilities accessible dark surfaces and
+   foregrounds without changing their meaning. */
+:root[data-theme="dark"] [data-app="admin"] :is(.text-violet-500, .text-violet-600, .text-violet-700, .text-violet-800, .text-violet-900, .text-violet-950) {
+  color: #C4B5FD !important;
+}
+
+:root[data-theme="dark"] [data-app="admin"] :is(.text-emerald-600, .text-emerald-700, .text-emerald-800, .text-emerald-900) {
+  color: #6EE7B7 !important;
+}
+
+:root[data-theme="dark"] [data-app="admin"] :is(.text-amber-600, .text-amber-700, .text-amber-800, .text-amber-900, .text-amber-950) {
+  color: #FCD34D !important;
+}
+
+:root[data-theme="dark"] [data-app="admin"] :is(.text-red-600, .text-red-700, .text-red-800, .text-red-900) {
+  color: #FCA5A5 !important;
+}
+
+:root[data-theme="dark"] [data-app="admin"] :is(.bg-violet-50, .bg-violet-100) {
+  background-color: rgba(139, 92, 246, 0.16) !important;
+}
+
+:root[data-theme="dark"] [data-app="admin"] :is(.bg-emerald-50, .bg-emerald-100) {
+  background-color: rgba(16, 185, 129, 0.14) !important;
+}
+
+:root[data-theme="dark"] [data-app="admin"] :is(.bg-amber-50, .bg-amber-100) {
+  background-color: rgba(245, 158, 11, 0.14) !important;
+}
+
+:root[data-theme="dark"] [data-app="admin"] :is(.bg-red-50, .bg-red-100) {
+  background-color: rgba(239, 68, 68, 0.14) !important;
+}
+
+:root[data-theme="dark"] [data-app="admin"] :is(.border-violet-100, .border-violet-200, .border-violet-300) {
+  border-color: rgba(196, 181, 253, 0.42) !important;
+}
+
+:root[data-theme="dark"] [data-app="admin"] :is(.border-emerald-100, .border-emerald-200, .border-emerald-300) {
+  border-color: rgba(110, 231, 183, 0.38) !important;
+}
+
+:root[data-theme="dark"] [data-app="admin"] :is(.border-amber-100, .border-amber-200, .border-amber-300) {
+  border-color: rgba(252, 211, 77, 0.38) !important;
+}
+
+:root[data-theme="dark"] [data-app="admin"] :is(.border-red-100, .border-red-200, .border-red-300) {
+  border-color: rgba(252, 165, 165, 0.38) !important;
+}
+
+.control-form-section-header {
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--brand-primary) 9%, var(--surface-panel-strong)),
+    var(--surface-panel-strong)
+  );
+}
+
+.control-owner-summary {
+  background: color-mix(in srgb, var(--brand-primary) 8%, var(--surface-panel-strong));
+}
+
+:root[data-theme="dark"] [data-app="admin"] .control-form-section-header {
+  background: linear-gradient(90deg, rgba(114, 32, 230, 0.16), #151E31 72%);
+}
+
+:root[data-theme="dark"] [data-app="admin"] .control-owner-summary {
+  background: rgba(114, 32, 230, 0.12);
 }

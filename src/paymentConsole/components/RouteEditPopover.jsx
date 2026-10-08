@@ -80,7 +80,13 @@ export default function RouteEditPopover({
   }, [resolvedCredential, adapterEntry]);
 
   const canSave =
-    !!provider && !!mode && !!adapterEntry && adapterEntry.status !== "phase4" && adapterEntry.status !== "phase5";
+    !!provider &&
+    !!mode &&
+    !!adapterEntry &&
+    adapterEntry.status !== "phase4" &&
+    adapterEntry.status !== "phase5" &&
+    !!resolvedCredential &&
+    !terminalConfigMissing;
 
   async function handleSave() {
     if (!canSave) return;
@@ -201,7 +207,7 @@ export default function RouteEditPopover({
             </div>
             <div className="text-[10px] text-[var(--text-muted)] mt-1">
               {enforcedMode
-                ? `This park is ${enforcedMode}-only; the opposite payment mode is blocked.`
+                ? `This location is ${enforcedMode}-only; the opposite payment mode is blocked.`
                 : "Backend resolves credential by (provider, location, mode), so this picks which key answers."}
             </div>
           </div>
@@ -223,7 +229,7 @@ export default function RouteEditPopover({
                       <div className="text-[10px] text-[var(--text-muted)]">
                         {providerByKey[resolvedCredential.provider]?.name} · {resolvedCredential.mode}
                         {" · "}
-                        {resolvedCredential.source === "venue" ? "venue override" : "org-wide"}
+                        {resolvedCredential.source === "venue" ? "location override" : "org-wide"}
                       </div>
                     </div>
                   </div>
@@ -233,8 +239,7 @@ export default function RouteEditPopover({
                       <span>
                         This credential has <strong>no in-person setup</strong>. Add the Omni-Channel
                         <strong> Register ID</strong> and <strong>Register Auth Key</strong> on the Nuvei
-                        gateway — without them, POS card payments will fail at the till even though this
-                        route saves.
+                        gateway before this POS route can be saved.
                       </span>
                     </div>
                   )}
@@ -244,8 +249,8 @@ export default function RouteEditPopover({
                   <FiAlertTriangle className="mt-0.5 text-amber-600" />
                   <span>
                     No credential matches <strong>{provider}</strong> · <strong>{mode}</strong> for this
-                    venue or org-wide. The route can be saved but will fail at request time until a
-                    credential is added.
+                    location or org-wide. Add and test a matching credential before this route can be
+                    saved.
                   </span>
                 </div>
               )}

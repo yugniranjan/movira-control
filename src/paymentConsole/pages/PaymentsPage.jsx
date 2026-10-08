@@ -35,7 +35,7 @@ const TABS = [
 const SCOPE_FILTERS = [
   { key: "all", label: "All" },
   { key: "org", label: "Organization-wide" },
-  { key: "venue", label: "Per-venue" },
+  { key: "venue", label: "Per-location" },
 ];
 
 // One compact card per gateway. Scope chip carried inline (no separate
@@ -80,7 +80,7 @@ function GatewayCard({ credential, venue, isRouted, onClick }) {
                 </span>
               ) : (
                 <span className="inline-flex items-center gap-1 text-xs font-semibold text-[var(--brand-primary-deep)]">
-                  <FiMapPin size={11} /> {venue ? venue.name : `Venue #${credential.locationId}`}
+                  <FiMapPin size={11} /> {venue ? venue.name : `Location #${credential.locationId}`}
                 </span>
               )}
             </div>
@@ -129,7 +129,7 @@ export default function PaymentsPage() {
       const [credsRes, schRes, vsRes, compatRes] = results;
       // Compatibility is non-critical (the routing picker has a built-in
       // fallback), so it isn't surfaced as a load failure.
-      const names = ["credentials", "provider schemas", "venues"];
+      const names = ["credentials", "provider schemas", "locations"];
       const failures = results
         .slice(0, 3)
         .map((r, i) => (r.status === "rejected" ? `${names[i]}: ${r.reason?.message || "failed"}` : null))
@@ -261,7 +261,7 @@ export default function PaymentsPage() {
   return (
     <PageShell
       title="Payments"
-      description="Connect gateways once, then point each channel at the right one per venue."
+      description="Connect gateways once, then route each location and payment channel to the right gateway."
       actions={
         tab === "gateways" ? (
           <Button onClick={() => setAdding(true)}>
@@ -351,13 +351,13 @@ export default function PaymentsPage() {
                   icon={scopeFilter === "venue" ? <FiMapPin size={28} /> : <FiCreditCard size={28} />}
                   title={
                     scopeFilter === "venue"
-                      ? "No venue-specific gateways yet"
+                      ? "No location-specific gateways yet"
                       : "No organization-wide gateways"
                   }
                 >
                   {scopeFilter === "venue"
-                    ? "Add one from a venue's page when that venue needs its own merchant account."
-                    : "Add a gateway here to be the default for every venue."}
+                    ? "Add one from a location's page when that location needs its own merchant account."
+                    : "Add a gateway here to make it available to every location."}
                 </EmptyState>
               </Card>
             ) : (
@@ -382,7 +382,7 @@ export default function PaymentsPage() {
             <div>
               <h2 className="font-display font-bold text-[var(--text-strong)]">Routing</h2>
               <p className="text-sm text-[var(--text-base)] mt-0.5 max-w-2xl">
-                One row per venue. Each cell is one
+                One row per location. Each cell is one
                 <code className="font-mono mx-1">location_payment_settings</code>
                 row that resolves to a credential via (provider, location, mode) at request time.
               </p>

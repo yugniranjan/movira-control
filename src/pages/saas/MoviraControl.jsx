@@ -4,6 +4,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
 import {
   FaArrowLeft,
+  FaArchive,
   FaBuilding,
   FaCheckCircle,
   FaCreditCard,
@@ -33,6 +34,7 @@ import { ShimmerBlock } from "../../components/Shimmer";
 import ErrorMessage from "../../components/ErrorMessage";
 import ConfirmDialog from "../../components/common/ConfirmDialog";
 import SearchableSelect from "../../components/common/SearchableSelect";
+import { formatPhoneInput, formatPhoneNumber, normalizePhoneNumber } from "../../utils/phoneNumber";
 import {
   useApproveSaasParkGoLiveMutation,
   useCreateSaasParkMutation,
@@ -40,6 +42,7 @@ import {
   useResendSaasOwnerAccessMutation,
   useCreateSaasInvoicePaymentLinkMutation,
   useCreateSaasPlanMutation,
+  useDeleteSaasParkMutation,
   useDeleteSaasPlanMutation,
   useGetSaasParkAuditLogsQuery,
   useGetSaasParkByLocationIdQuery,
@@ -92,7 +95,7 @@ const modules = [
 ];
 
 const onboardingLabels = {
-  parkWorkspace: "Park workspace",
+  parkWorkspace: "Location workspace",
   ownerAccess: "Owner access",
   moduleAccess: "Module access",
   billingPlan: "Billing setup",
@@ -207,27 +210,13 @@ const normalizeEmail = (value) => String(value || "").trim().toLowerCase();
 
 const isValidEmail = (value) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value || "").trim());
 
-const normalizePhoneForCountry = (phone, country) => {
-  const raw = String(phone || "").trim();
-  if (!raw) return "";
-  if (raw.startsWith("+")) return raw;
-  const digits = raw.replace(/\D/g, "");
-  if (!digits) return raw;
-  const dialCode = getCountryProfile(country).dialCode;
-  if (!dialCode) return raw;
-  const dialDigits = dialCode.replace(/\D/g, "");
-  return digits.startsWith(dialDigits) ? `+${digits}` : `${dialCode} ${digits}`;
-};
+const normalizePhoneForCountry = (phone, country) => normalizePhoneNumber(phone, country);
 
-const phoneLocalValue = (phone, country) => {
-  const raw = String(phone || "").trim();
-  if (!raw) return "";
-  const dialDigits = getCountryProfile(country).dialCode.replace(/\D/g, "");
-  const digits = raw.replace(/\D/g, "");
-  if (!dialDigits) return digits || raw;
-  if (digits.startsWith(dialDigits)) return digits.slice(dialDigits.length);
-  return digits || raw.replace(/^\+\d+\s*/, "");
-};
+const phoneLocalValue = (phone, country) => (
+  String(phone || "").trim().startsWith("+")
+    ? formatPhoneNumber(phone, country)
+    : formatPhoneInput(phone, country)
+);
 
 const getUserName = (user) =>
   user?.name ||
@@ -239,7 +228,7 @@ const getUserPhone = (user) => user?.phone || user?.phone_number || user?.contac
 
 const requiredParkProfileFields = [
   ["organizationName", "Organization name is required."],
-  ["name", "Park name is required."],
+  ["name", "Location name is required."],
   ["owner", "Customer name is required."],
   ["phone", "Customer phone is required."],
   ["ownerEmail", "Customer email is required."],
@@ -328,9 +317,9 @@ const paymentEventTypeOptions = [
 
 const auditActionOptions = [
   { value: "all", label: "All actions" },
-  { value: "park.created", label: "Park created" },
-  { value: "park.updated", label: "Park updated" },
-  { value: "park.archived", label: "Park archived" },
+  { value: "park.created", label: "Location created" },
+  { value: "park.updated", label: "Location updated" },
+  { value: "park.archived", label: "Location archived" },
   { value: "park.lifecycle_updated", label: "Lifecycle updated" },
   { value: "billing.updated", label: "Billing updated" },
   { value: "payments.updated", label: "Payments updated" },
@@ -375,7 +364,7 @@ const setupStages = [
   {
     suffix: "",
     label: "Workspace",
-    description: "Park and owner",
+    description: "Location and owner",
     keys: ["parkWorkspace", "ownerAccess"],
   },
   {
@@ -408,7 +397,7 @@ const demoSetupStages = [
   {
     suffix: "",
     label: "Workspace",
-    description: "Park and owner",
+    description: "Location and owner",
     keys: ["parkWorkspace", "ownerAccess"],
   },
   {
@@ -928,11 +917,11 @@ function NextActionCard({ park }) {
       <p className="mt-1 text-sm font-semibold text-stone-600">
         {demo
           ? complete
-            ? "Sandbox access is active. Convert the park when real billing and live operations are required."
+            ? "Sandbox access is active. Convert the location when real billing and live operations are required."
             : "Complete this step to finish the sandbox testing setup."
           : progress.score === 100
             ? "Ready for live operations review."
-            : "Complete this step to move the park closer to go-live."}
+            : "Complete this step to move the location closer to go-live."}
       </p>
       <Link
         to={demo && complete ? `/movira-control/parks/${park.locationId}/edit` : stepHref(park.locationId, nextStep)}
@@ -1103,7 +1092,7 @@ export function PlansManager() {
         <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
           <StatCard compact icon={FaLayerGroup} label="Active plans" value={activePlans.length} detail="available for billing" />
           <StatCard compact icon={FaRocket} label="Recommended" value={recommendedPlan?.label || "-"} detail="highlighted for sales" />
-          <StatCard compact icon={FaMapMarkerAlt} label="Unlimited" value={unlimitedCount} detail="no park cap" />
+          <StatCard compact icon={FaMapMarkerAlt} label="Unlimited" value={unlimitedCount} detail="no location cap" />
           <StatCard compact icon={FaCreditCard} label="Starts at" value={cheapestPlan ? money(cheapestPlan.monthlyBaseFee) : "$0"} detail="monthly base fee" />
         </section>
 
@@ -1145,7 +1134,7 @@ export function PlansManager() {
                 <tr>
                   <th className={listingThClass()}>Plan</th>
                   <th className={listingThClass()}>Base fee</th>
-                  <th className={listingThClass()}>Park limit</th>
+                  <th className={listingThClass()}>Location limit</th>
                   <th className={listingThClass()}>Status</th>
                   <th className={listingThClass()}>Flags</th>
                   <th className={listingThClass("text-right")}>Actions</th>
@@ -1161,7 +1150,7 @@ export function PlansManager() {
                     </td>
                     <td className="px-4 py-3 font-black text-stone-950">{money(plan.monthlyBaseFee)}/mo</td>
                     <td className="px-4 py-3 font-bold text-stone-600">
-                      {plan.maxParks === null ? "Unlimited parks" : `${plan.maxParks} park${plan.maxParks === 1 ? "" : "s"}`}
+                      {plan.maxParks === null ? "Unlimited locations" : `${plan.maxParks} location${plan.maxParks === 1 ? "" : "s"}`}
                     </td>
                     <td className="px-4 py-3">
                       <Pill className={plan.status === "active" && !plan.archivedAt ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-stone-200 bg-stone-100 text-stone-600"}>
@@ -1221,7 +1210,7 @@ export function PlansManager() {
               <div>
                 <p className="text-xs font-black uppercase tracking-[0.18em] text-violet-700">{editingPlan ? "Update plan" : "New plan"}</p>
                 <h3 className="mt-1 text-2xl font-black text-stone-950">{editingPlan ? `Edit ${editingPlan.label}` : "Create SaaS billing plan"}</h3>
-                <p className="mt-1 text-sm font-semibold text-stone-500">Plans define base SaaS fee and how many parks an owner can run.</p>
+                <p className="mt-1 text-sm font-semibold text-stone-500">Plans define the base SaaS fee and how many locations an owner can operate.</p>
               </div>
               <button type="button" onClick={closeForm} className={iconButtonClass("secondary")} aria-label="Close">
                 <FaTimes />
@@ -1262,7 +1251,7 @@ export function PlansManager() {
                 />
               </label>
               <label>
-                <span className="text-xs font-black uppercase text-stone-500">Park limit</span>
+                <span className="text-xs font-black uppercase text-stone-500">Location limit</span>
                 <input
                   type="number"
                   min="1"
@@ -1347,7 +1336,7 @@ export function PlansManager() {
         tone="danger"
         eyebrow="Delete plan"
         title={deletePlan ? `Delete ${deletePlan.label}?` : ""}
-        message="The plan will be archived and removed from normal plan selection. Existing parks keep their saved billing values until changed."
+        message="The plan will be archived and removed from normal plan selection. Existing locations keep their saved billing values until changed."
         details={["Starter/default plan cannot be deleted.", "Archived plans can still be shown from the All filter for audit context."]}
         confirmLabel="Delete plan"
         loading={archiveState.isLoading}
@@ -1495,7 +1484,7 @@ function ModulePricingPanel() {
               <div>
                 <p className="text-xs font-black uppercase tracking-[0.18em] text-violet-700">Module pricing</p>
                 <h3 className="mt-1 text-2xl font-black text-stone-950">Edit {editingModule.label}</h3>
-                <p className="mt-1 text-sm font-semibold text-stone-500">This price is used for park modules, billing totals, and generated SaaS invoices.</p>
+                <p className="mt-1 text-sm font-semibold text-stone-500">This price is used for location modules, billing totals, and generated SaaS invoices.</p>
               </div>
               <button type="button" onClick={closeEdit} className={iconButtonClass("secondary")} aria-label="Close">
                 <FaTimes />
@@ -1585,32 +1574,32 @@ function Overview() {
       actions={
         <div className="flex gap-2">
           <Link to="/movira-control/parks" className={buttonClass("secondary")}>
-            Parks
+            Locations
           </Link>
           <Link to="/movira-control/parks/new" className={buttonClass("primary")}>
-            <FaPlus /> New park
+            <FaPlus /> New location
           </Link>
         </div>
       }
     >
       <div className="space-y-5">
         <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
-          <StatCard icon={FaMapMarkerAlt} label="Total parks" value={summary.total || 0} detail={`${summary.setup || 0} in setup`} />
-          <StatCard icon={FaRocket} label="Live parks" value={summary.live || 0} detail="approved for operations" />
-          <StatCard icon={FaEye} label="Demo parks" value={summary.demo || 0} detail="sandbox testing access" />
+          <StatCard icon={FaMapMarkerAlt} label="Total locations" value={summary.total || 0} detail={`${summary.setup || 0} in setup`} />
+          <StatCard icon={FaRocket} label="Live locations" value={summary.live || 0} detail="approved for operations" />
+          <StatCard icon={FaEye} label="Demo locations" value={summary.demo || 0} detail="sandbox testing access" />
           <StatCard icon={FaCreditCard} label="Monthly SaaS" value={money(summary.monthlyRevenue || 0)} detail="base fee + modules" />
-          <StatCard icon={FaLayerGroup} label="Modules" value={modules.length} detail="controlled per park" />
+          <StatCard icon={FaLayerGroup} label="Modules" value={modules.length} detail="controlled per location" />
         </section>
 
         <section className="rounded-xl border border-stone-200 bg-white p-5 shadow-sm">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <p className="text-sm font-bold uppercase text-violet-700">Parks onboarding</p>
-              <h2 className="mt-1 text-2xl font-black text-stone-950">Create, bill, configure, and approve every park.</h2>
-              <p className="mt-1 text-sm font-semibold text-stone-500">Start from the parks list, then work through modules, billing, payments, and launch readiness.</p>
+              <p className="text-sm font-bold uppercase text-violet-700">Location onboarding</p>
+              <h2 className="mt-1 text-2xl font-black text-stone-950">Create, bill, configure, and approve every location.</h2>
+              <p className="mt-1 text-sm font-semibold text-stone-500">Start from the locations list, then work through modules, billing, payments, and launch readiness.</p>
             </div>
             <Link to="/movira-control/parks/new" className={buttonClass("primary")}>
-              <FaPlus /> Onboard park
+              <FaPlus /> Onboard location
             </Link>
           </div>
           {parks.length ? (
@@ -1638,9 +1627,9 @@ function Overview() {
           ) : (
             <div className="mt-5">
               <EmptyState
-                title="No parks in control yet"
-                detail="Create the first park workspace to start onboarding, billing, and launch checks."
-                action={<Link to="/movira-control/parks/new" className={buttonClass("primary")}><FaPlus /> New park</Link>}
+                title="No locations in Control yet"
+                detail="Create the first location workspace to start onboarding, billing, and launch checks."
+                action={<Link to="/movira-control/parks/new" className={buttonClass("primary")}><FaPlus /> New location</Link>}
               />
             </div>
           )}
@@ -1665,6 +1654,7 @@ export function ParksList() {
     organizationId: organizationFilter,
   });
   const [permanentDeletePark] = usePermanentDeleteSaasParkMutation();
+  const [archivePark, archiveParkState] = useDeleteSaasParkMutation();
   const [loadDeletePreview] = useLazyGetSaasParkPermanentDeletePreviewQuery();
   const [updateLifecycle] = useUpdateSaasParkLifecycleMutation();
   const parks = data.parks || [];
@@ -1687,33 +1677,59 @@ export function ParksList() {
       const cleanup = response?.data?.organizationCleanup;
       toast.success(
         cleanup?.deleted
-          ? `Park and organization deleted. ${cleanup.deletedUserIds?.length || 0} orphaned user account(s) removed.`
-          : "Park permanently deleted. The organization remains because it has other parks."
+          ? `Location and organization deleted. ${cleanup.deletedUserIds?.length || 0} orphaned user account(s) removed.`
+          : "Location permanently deleted. The organization remains because it has other locations."
       );
       closeConfirmDialog();
     } catch (err) {
-      toast.error(err?.data?.message || err?.data?.error || "Failed to permanently delete park.");
+      toast.error(err?.data?.message || err?.data?.error || "Failed to permanently delete location.");
     }
   };
 
   const onRestore = async (park) => {
     try {
       await updateLifecycle({ locationId: park.locationId, status: "setup" }).unwrap();
-      toast.success("Park restored.");
+      toast.success("Location restored.");
       closeConfirmDialog();
     } catch (err) {
-      toast.error(err?.data?.message || "Failed to restore park.");
+      toast.error(err?.data?.message || "Failed to restore location.");
     }
+  };
+
+  const archiveConfirmed = async (park) => {
+    try {
+      await archivePark(park.locationId).unwrap();
+      toast.success("Location archived. Its data is retained and operational access is blocked.");
+      closeConfirmDialog();
+    } catch (err) {
+      toast.error(err?.data?.message || "Failed to archive location.");
+    }
+  };
+
+  const openArchiveDialog = (park) => {
+    setConfirmDialog({
+      type: "archive",
+      tone: "warning",
+      eyebrow: "Archive location",
+      title: `Archive ${park.name}?`,
+      message: "The location will stop appearing in the active list and its operational modules will be blocked. All bookings, customers, payments, CRM data, and configuration will remain safe.",
+      details: [
+        "You can restore the location later from the Archived tab.",
+        "Permanent delete becomes available only after the location is archived.",
+      ],
+      confirmLabel: "Archive location",
+      park,
+    });
   };
 
   const pauseToggleConfirmed = async (park) => {
     const nextStatus = park.status === "paused" ? "setup" : "paused";
     try {
       await updateLifecycle({ locationId: park.locationId, status: nextStatus }).unwrap();
-      toast.success(nextStatus === "paused" ? "Park paused." : "Park resumed.");
+      toast.success(nextStatus === "paused" ? "Location paused." : "Location resumed.");
       closeConfirmDialog();
     } catch (err) {
-      toast.error(err?.data?.message || "Failed to update park status.");
+      toast.error(err?.data?.message || "Failed to update location status.");
     }
   };
 
@@ -1722,12 +1738,12 @@ export function ParksList() {
     setConfirmDialog({
       type: "pause",
       tone: pausing ? "info" : "warning",
-      eyebrow: pausing ? "Pause park" : "Resume park",
+      eyebrow: pausing ? "Pause location" : "Resume location",
       title: `${pausing ? "Pause" : "Resume"} ${park.name}?`,
       message: pausing
-        ? "Customer data will stay safe. The park remains visible for admins, but operations can be treated as temporarily stopped."
-        : "This will move the park back into setup status so work can continue.",
-      confirmLabel: pausing ? "Pause park" : "Resume park",
+        ? "Customer data will stay safe. The location remains visible for admins, but operations can be treated as temporarily stopped."
+        : "This will move the location back into setup status so work can continue.",
+      confirmLabel: pausing ? "Pause location" : "Resume location",
       park,
     });
   };
@@ -1736,10 +1752,10 @@ export function ParksList() {
     setConfirmDialog({
       type: "restore",
       tone: "info",
-      eyebrow: "Restore park",
+      eyebrow: "Restore location",
       title: `Restore ${park.name}?`,
-      message: "The park will move back to active setup and appear in Admin locations again.",
-      confirmLabel: "Restore park",
+      message: "The location will move back to active setup and appear in Admin again.",
+      confirmLabel: "Restore location",
       park,
     });
   };
@@ -1751,7 +1767,7 @@ export function ParksList() {
       eyebrow: "Checking delete impact",
       title: `Preparing permanent delete for ${park.name}`,
       message: "Loading the affected data preview before permanent delete.",
-      details: ["Permanent delete is only available after the park is archived."],
+      details: ["Permanent delete is only available after the location is archived."],
       confirmLabel: "Loading...",
       park,
     });
@@ -1766,17 +1782,17 @@ export function ParksList() {
         tone: "danger",
         eyebrow: "Permanent delete",
         title: `Delete ${park.name} permanently?`,
-        message: "Review the impact below. This removes the park and location-scoped data permanently.",
+        message: "Review the impact below. This removes the location and all location-scoped data permanently.",
         details: [
           `Affected rows: ${plan.rowCount || 0}`,
           `Affected tables: ${plan.tableCount || 0}`,
           ...(topTables.length ? topTables : ["No location-scoped child rows found in preview."]),
           ...(organizationCleanup.isLastPark
             ? [
-                "This is the organization's last park, so the organization will also be deleted.",
+                "This is the organization's last location, so the organization will also be deleted.",
                 `${organizationCleanup.candidateUserCount || 0} organization user(s) will be checked and only orphaned non-admin users will be deleted.`,
               ]
-            : ["The organization has other parks and will remain active."]),
+            : ["The organization has other locations and will remain active."]),
           "This action cannot be undone.",
         ],
         confirmText: "DELETE",
@@ -1804,37 +1820,38 @@ export function ParksList() {
       return;
     }
     if (confirmDialog.type === "pause") return pauseToggleConfirmed(confirmDialog.park);
+    if (confirmDialog.type === "archive") return archiveConfirmed(confirmDialog.park);
     if (confirmDialog.type === "restore") return onRestore(confirmDialog.park);
     if (confirmDialog.type === "permanent-preview-failed") return closeConfirmDialog();
     if (confirmDialog.type === "permanent-delete") return permanentDeleteConfirmed(confirmDialog.park);
   };
 
   if (isLoading) return <Loader />;
-  if (isError) return <ErrorMessage message={error?.data?.message || "Failed to load parks"} />;
+  if (isError) return <ErrorMessage message={error?.data?.message || "Failed to load locations"} />;
 
   return (
     <ControlShell
-      title="Parks"
+      title="Locations"
       actions={
         <Link to="/movira-control/parks/new" className={buttonClass("primary", "min-h-9 px-3 py-1.5")}>
-          <FaPlus /> New park
+          <FaPlus /> New location
         </Link>
       }
     >
       <div className="space-y-3">
         <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
-          <StatCard compact icon={FaMapMarkerAlt} label="Total parks" value={summary.total || pagination.totalRecords || 0} detail={`${summary.setup || 0} in setup`} />
-          <StatCard compact icon={FaRocket} label="Live parks" value={summary.live || 0} detail="approved for operations" />
-          <StatCard compact icon={FaEye} label="Demo parks" value={summary.demo || 0} detail="sandbox testing access" />
+          <StatCard compact icon={FaMapMarkerAlt} label="Total locations" value={summary.total || pagination.totalRecords || 0} detail={`${summary.setup || 0} in setup`} />
+          <StatCard compact icon={FaRocket} label="Live locations" value={summary.live || 0} detail="approved for operations" />
+          <StatCard compact icon={FaEye} label="Demo locations" value={summary.demo || 0} detail="sandbox testing access" />
           <StatCard compact icon={FaCreditCard} label="Monthly SaaS" value={money(summary.monthlyRevenue || 0)} detail="base fee + modules" />
-          <StatCard compact icon={FaBuilding} label="Organizations" value={summary.organizations || 0} detail="own one or more parks" />
+          <StatCard compact icon={FaBuilding} label="Organizations" value={summary.organizations || 0} detail="own one or more locations" />
         </section>
 
         <div className={listingShellClass}>
           <div className="sticky top-0 z-30 grid gap-2 border-b border-(--stroke-soft) bg-(--surface-panel-strong)/95 p-3 backdrop-blur sm:grid-cols-[minmax(180px,320px)_minmax(180px,260px)_1fr_auto] sm:items-center">
             <div className="relative min-w-0">
               <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-stone-400" />
-              <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search parks..." className="input-nexus w-full py-1.5 pl-8 pr-3 text-sm" />
+              <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search locations..." className="input-nexus w-full py-1.5 pl-8 pr-3 text-sm" />
             </div>
             <SearchableSelect
               value={organizationFilter}
@@ -1853,7 +1870,7 @@ export function ParksList() {
                 })),
               ]}
             />
-            <p className="text-right text-sm font-bold text-stone-500 sm:whitespace-nowrap">{pagination.totalRecords || 0} parks</p>
+            <p className="text-right text-sm font-bold text-stone-500 sm:whitespace-nowrap">{pagination.totalRecords || 0} locations</p>
             <div className="inline-flex w-fit justify-self-end rounded-lg border border-stone-200 bg-stone-50 p-1">
               {[
                 ["active", "Active"],
@@ -1880,7 +1897,7 @@ export function ParksList() {
             <table className={listingTableClass("min-w-245")}>
               <thead className={listingHeadClass}>
                 <tr>
-                  <th className={listingThClass("py-2.5")}>Park</th>
+                  <th className={listingThClass("py-2.5")}>Location</th>
                   <th className={listingThClass("py-2.5")}>Organization</th>
                   <th className={listingThClass("py-2.5")}>Customer</th>
                   <th className={listingThClass("py-2.5")}>Status</th>
@@ -1930,7 +1947,7 @@ export function ParksList() {
                               <button onClick={() => onPauseToggle(park)} className={iconButtonClass("secondary", "h-8 w-8 rounded-md text-base")} title={park.status === "paused" ? "Resume" : "Pause"}>
                                 {park.status === "paused" ? <FaPlay /> : <FaPause />}
                               </button>
-                              <button onClick={() => openPermanentDeleteDialog(park)} className={iconButtonClass("danger", "h-8 w-8 rounded-md text-base")} title="Delete permanently"><FaTrash /></button>
+                              <button onClick={() => openArchiveDialog(park)} className={iconButtonClass("danger", "h-8 w-8 rounded-md text-base")} title="Archive location" aria-label={`Archive ${park.name}`}><FaArchive /></button>
                             </>
                           )}
                         </div>
@@ -1944,9 +1961,9 @@ export function ParksList() {
           ) : (
             <div className="p-5">
               <EmptyState
-                title={search ? "No matching parks" : "No parks yet"}
-                detail={search ? "Try a different park name, owner, or city." : "Create a park workspace before assigning billing, modules, and go-live controls."}
-                action={!search ? <Link to="/movira-control/parks/new" className={buttonClass("primary")}><FaPlus /> New park</Link> : null}
+                title={search ? "No matching locations" : "No locations yet"}
+                detail={search ? "Try a different location name, owner, or city." : "Create a location workspace before assigning billing, modules, and go-live controls."}
+                action={!search ? <Link to="/movira-control/parks/new" className={buttonClass("primary")}><FaPlus /> New location</Link> : null}
               />
             </div>
           )}
@@ -1969,7 +1986,7 @@ export function ParksList() {
           confirmText={confirmDialog?.confirmText}
           confirmValue={confirmDialog?.confirmValue}
           requireConfirmTextForPrimary
-          loading={confirmDialog?.type === "permanent-preview"}
+          loading={confirmDialog?.type === "permanent-preview" || archiveParkState.isLoading}
           confirmDisabled={Boolean(confirmDialog?.blocked)}
           onConfirm={handleConfirmDialog}
           onClose={closeConfirmDialog}
@@ -2077,7 +2094,7 @@ export function ParkForm() {
       });
       setCreatedParkAccess({
         locationId: park.locationId || locationId,
-        parkName: park.name || "Park",
+        parkName: park.name || "Location",
         ownerEmail: park.ownerEmail || "",
         temporaryPassword: "",
         welcomeEmail: null,
@@ -2156,7 +2173,7 @@ export function ParkForm() {
       if (welcomeEmail?.sent) {
         toast.success("Customer owner created, selected, and welcome email queued.");
       } else if (!isEdit && welcomeEmail?.reason === "missing_location") {
-        toast.success("Customer owner created and selected. Welcome email will be sent after the park is created.");
+        toast.success("Customer owner created and selected. Welcome email will be sent after the location is created.");
       } else if (password) {
         toast.warning(`Customer owner created and selected, but welcome email was not sent${welcomeEmail?.reason ? `: ${welcomeEmail.reason}` : "."}`);
       } else {
@@ -2218,7 +2235,7 @@ export function ParkForm() {
       return;
     }
     if (!form.customerTaxName.trim() || !/^(?:\d+(?:\.\d+)?|\.\d+)$/.test(String(form.customerTaxPercent).trim()) || !Number.isFinite(Number(form.customerTaxPercent)) || Number(form.customerTaxPercent) < 0 || Number(form.customerTaxPercent) > 100) {
-      toast.error("Set an explicit customer sales tax name and rate for this park (0% if exempt).");
+      toast.error("Set an explicit customer sales tax name and rate for this location (0% if exempt).");
       return;
     }
     if (form.customerTaxName.trim().toLowerCase() === "no tax" && Number(form.customerTaxPercent) !== 0) {
@@ -2254,11 +2271,11 @@ export function ParkForm() {
       const returnedPassword =
         customerOwner?.temporaryPassword || temporaryPassword || "";
       if (!isEdit && welcomeEmail && !welcomeEmail.sent) {
-        toast.warning(`Park created, but welcome email was not sent${welcomeEmail.reason ? `: ${welcomeEmail.reason}` : "."}`);
+        toast.warning(`Location created, but welcome email was not sent${welcomeEmail.reason ? `: ${welcomeEmail.reason}` : "."}`);
       } else if (!isEdit && customerOwner?.created) {
-        toast.success("Park and owner account created. Welcome email queued.");
+        toast.success("Location and owner account created. Welcome email queued.");
       } else {
-        toast.success(isEdit ? "Park updated." : "Park created and welcome email queued.");
+        toast.success(isEdit ? "Location updated." : "Location created and welcome email queued.");
       }
       if (!isEdit) {
         setTemporaryPassword(returnedPassword);
@@ -2274,7 +2291,7 @@ export function ParkForm() {
       }
       navigate(`/movira-control/parks/${savedLocationId}`);
     } catch (err) {
-      toast.error(err?.data?.message || "Failed to save park.");
+      toast.error(err?.data?.message || "Failed to save location.");
     }
   };
 
@@ -2282,8 +2299,8 @@ export function ParkForm() {
 
   return (
     <ControlShell
-      title={isEdit ? "Edit park" : "New park"}
-      actions={<Link to="/movira-control/parks" className={buttonClass("secondary", "w-full sm:w-auto")}><FaArrowLeft /> Parks</Link>}
+      title={isEdit ? "Edit location" : "New location"}
+      actions={<Link to="/movira-control/parks" className={buttonClass("secondary", "w-full sm:w-auto")}><FaArrowLeft /> Locations</Link>}
     >
       <form onSubmit={submit} className="grid max-w-7xl gap-4 xl:grid-cols-[minmax(0,1fr)_300px]">
         {createdParkAccess ? (
@@ -2291,7 +2308,7 @@ export function ParkForm() {
             <div className="flex flex-col gap-4 bg-emerald-50/80 p-4 sm:flex-row sm:items-start sm:justify-between">
               <div className="min-w-0">
                 <p className="text-xs font-black uppercase tracking-[0.18em] text-emerald-700">
-                  {isEdit ? "Owner access" : "Park created"}
+                  {isEdit ? "Owner access" : "Location created"}
                 </p>
                 <h2 className="mt-1 text-xl font-black text-stone-950">
                   {createdParkAccess.parkName} owner access
@@ -2311,7 +2328,7 @@ export function ParkForm() {
                 to={`/movira-control/parks/${createdParkAccess.locationId}`}
                 className={buttonClass("secondary", "w-full sm:w-auto")}
               >
-                Open park <FaArrowLeft className="rotate-180" />
+                Open location <FaArrowLeft className="rotate-180" />
               </Link>
             </div>
             <div className="grid gap-4 border-t border-emerald-100 p-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
@@ -2354,7 +2371,7 @@ export function ParkForm() {
         ) : null}
         <div className="min-w-0 space-y-4">
           <section className="min-w-0 overflow-hidden rounded-xl border border-stone-200 bg-white shadow-sm">
-            <div className="border-b border-stone-200 bg-linear-to-r from-violet-50/80 to-white px-4 py-3">
+            <div className="control-form-section-header border-b border-stone-200 px-4 py-3">
               <p className="text-xs font-black uppercase tracking-[0.18em] text-violet-700">Workspace purpose</p>
               <h2 className="mt-1 text-lg font-black text-stone-950">Choose demo or production onboarding</h2>
               <p className="mt-1 text-sm font-semibold text-stone-600">This choice controls access, payments, expiry, and the go-live path.</p>
@@ -2393,7 +2410,7 @@ export function ParkForm() {
                       <span className={`h-4 w-4 rounded-full border-4 ${selected ? "border-violet-600 bg-white" : "border-stone-300 bg-white"}`} />
                     </span>
                     <span className="mt-2 block text-sm font-semibold leading-5 text-stone-600">{option.description}</span>
-                    {disabled ? <span className="mt-2 block text-xs font-black text-red-700">A live park cannot be moved back to demo.</span> : null}
+                    {disabled ? <span className="mt-2 block text-xs font-black text-red-700">A live location cannot be moved back to demo.</span> : null}
                   </button>
                 );
               })}
@@ -2420,9 +2437,9 @@ export function ParkForm() {
           </section>
 
           <section className="min-w-0 overflow-hidden rounded-xl border border-stone-200 bg-white shadow-sm">
-            <div className="flex flex-wrap items-start justify-between gap-3 border-b border-stone-200 bg-linear-to-r from-violet-50/80 to-white px-4 py-3">
+            <div className="control-form-section-header flex flex-wrap items-start justify-between gap-3 border-b border-stone-200 px-4 py-3">
               <div className="min-w-0">
-                <p className="text-xs font-black uppercase tracking-[0.18em] text-violet-700">Park profile</p>
+                <p className="text-xs font-black uppercase tracking-[0.18em] text-violet-700">Location profile</p>
                 <h2 className="mt-1 wrap-break-word text-lg font-black text-stone-950">Workspace identity</h2>
               </div>
               <Pill className="border-violet-200 bg-white text-violet-700">{isEdit ? "Editing" : "New setup"}</Pill>
@@ -2463,7 +2480,7 @@ export function ParkForm() {
                 </div>
               </label>
               {[
-                ["name", "Park name", "Movira St. Catharines"],
+                ["name", "Location name", "Movira St. Catharines"],
                 ["slug", "Slug", "movira-st-catharines"],
               ].map(([key, label, placeholder]) => (
                 <label key={key} className="block">
@@ -2475,15 +2492,15 @@ export function ParkForm() {
           </section>
 
           <section className="min-w-0 overflow-hidden rounded-xl border border-stone-200 bg-white shadow-sm">
-            <div className="flex flex-wrap items-start justify-between gap-3 border-b border-stone-200 bg-linear-to-r from-stone-50 to-white px-4 py-3">
+            <div className="control-form-section-header flex flex-wrap items-start justify-between gap-3 border-b border-stone-200 px-4 py-3">
               <div className="min-w-0">
                 <p className="text-xs font-black uppercase tracking-[0.18em] text-violet-700">Customer assignment</p>
-                <h2 className="mt-1 wrap-break-word text-lg font-black text-stone-950">Assign the account that owns this park</h2>
+                <h2 className="mt-1 wrap-break-word text-lg font-black text-stone-950">Assign the account that owns this location</h2>
               </div>
               <Pill className="border-emerald-200 bg-emerald-50 text-emerald-700">Auto create on save</Pill>
             </div>
             <div className="grid gap-4 p-4 md:grid-cols-[minmax(0,1.1fr)_minmax(0,1.5fr)]">
-              <div className="rounded-xl border border-violet-100 bg-violet-50/50 p-4">
+              <div className="control-owner-summary rounded-xl border border-violet-100 p-4">
                 <div className="flex items-start gap-3">
                   <div className="grid h-11 w-11 shrink-0 place-items-center rounded-lg bg-white text-violet-700 shadow-sm">
                     <FaUserPlus />
@@ -2545,7 +2562,7 @@ export function ParkForm() {
                 </label>
                 <label className="block">
                   <span className="text-xs font-black uppercase text-stone-500">Phone *</span>
-                  <div className="mt-1 flex min-h-11 overflow-hidden rounded-lg border-2 border-[#d6c8b8] bg-white shadow-[0_2px_0_rgba(23,21,18,0.08)] transition focus-within:border-violet-400 focus-within:ring-4 focus-within:ring-violet-500/15">
+                  <div className="mt-1 flex min-h-11 overflow-hidden rounded-lg border-2 border-[var(--input-border)] bg-[var(--input-bg)] shadow-[0_2px_0_rgba(23,21,18,0.08)] transition focus-within:border-violet-400 focus-within:ring-4 focus-within:ring-violet-500/15">
                     <span className="grid min-w-14 place-items-center border-r border-stone-200 bg-stone-50 px-3 text-sm font-black text-stone-600">
                       {selectedCountryProfile.dialCode}
                     </span>
@@ -2586,7 +2603,7 @@ export function ParkForm() {
           </section>
 
           <section className="min-w-0 overflow-hidden rounded-xl border border-stone-200 bg-white shadow-sm">
-            <div className="border-b border-stone-200 bg-linear-to-r from-stone-50 to-white px-4 py-3">
+            <div className="control-form-section-header border-b border-stone-200 px-4 py-3">
               <p className="text-xs font-black uppercase tracking-[0.18em] text-violet-700">Location</p>
               <h2 className="mt-1 text-lg font-black text-stone-950">Operating region</h2>
             </div>
@@ -2608,7 +2625,7 @@ export function ParkForm() {
                 <SearchableSelect
                   value={form.timezone}
                   onChange={(value) => update("timezone", value)}
-                  placeholder="Select park timezone"
+                  placeholder="Select location timezone"
                   searchPlaceholder="Search timezone..."
                   className="mt-1"
                   buttonClassName="min-h-11 py-2.5"
@@ -2619,10 +2636,10 @@ export function ParkForm() {
                 <span className="text-xs font-black uppercase text-stone-500">Currency *</span>
                 <input value={form.currency} readOnly required className="input-nexus mt-1 w-full bg-stone-50 px-3 py-2.5 text-sm text-stone-600" />
               </label>
-              <p className="md:col-span-3 text-xs font-semibold text-stone-600">All session dates, booking windows and staff-facing times use this park timezone—not the customer's or server's clock.</p>
+              <p className="md:col-span-3 text-xs font-semibold text-stone-600">All session dates, booking windows and staff-facing times use this location timezone—not the customer's or server's clock.</p>
               <div className="md:col-span-3 rounded-xl border border-stone-200 bg-stone-50 p-4">
                 <p className="text-xs font-black uppercase tracking-wider text-violet-700">Customer sales tax *</p>
-                <p className="mt-1 text-xs font-semibold text-stone-600">Used by bookings, online checkout and POS. This is separate from Movira's monthly SaaS invoice tax. Select the rate for this park's jurisdiction and what it sells; 0% must be chosen explicitly when applicable.</p>
+                <p className="mt-1 text-xs font-semibold text-stone-600">Used by bookings, online checkout and POS. This is separate from Movira's monthly SaaS invoice tax. Select the rate for this location's jurisdiction and what it sells; 0% must be chosen explicitly when applicable.</p>
                 <div className="mt-3 grid gap-3 md:grid-cols-3">
                   <label className="block">
                     <span className="text-xs font-black uppercase text-stone-500">Tax name *</span>
@@ -2670,14 +2687,14 @@ export function ParkForm() {
             {form.deploymentMode === "demo" ? `Demo mode · expires ${dateOnly(form.demoExpiresAt)}` : "Production onboarding"}
           </div>
           <div className="mt-4 space-y-3 text-sm font-bold text-stone-600">
-            <div className="flex items-center gap-2"><FaCheckCircle className="text-emerald-600" /> Park workspace</div>
+            <div className="flex items-center gap-2"><FaCheckCircle className="text-emerald-600" /> Location workspace</div>
             <div className="flex items-center gap-2"><FaLayerGroup className="text-violet-600" /> Module access</div>
             <div className="flex items-center gap-2"><FaFileInvoiceDollar className="text-violet-600" /> Billing preview</div>
             <div className="flex items-center gap-2"><FaCreditCard className="text-violet-600" /> Payment setup</div>
           </div>
           <div className="mt-6 space-y-2">
             <button disabled={(!isEdit && Boolean(createdParkAccess)) || createState.isLoading || updateState.isLoading} className={buttonClass("primary", "w-full")}>
-              {isEdit ? "Update park" : createdParkAccess ? "Park created" : "Create park"}
+              {isEdit ? "Update location" : createdParkAccess ? "Location created" : "Create location"}
             </button>
             <Link to="/movira-control/parks" className={buttonClass("secondary", "w-full")}>Cancel</Link>
           </div>
@@ -2725,7 +2742,7 @@ export function ParkForm() {
                 </label>
                 <label className="block">
                   <span className="text-xs font-black uppercase text-stone-500">Phone *</span>
-                  <div className="mt-1 flex min-h-11 overflow-hidden rounded-lg border-2 border-[#d6c8b8] bg-white shadow-[0_2px_0_rgba(23,21,18,0.08)] transition focus-within:border-violet-400 focus-within:ring-4 focus-within:ring-violet-500/15">
+                  <div className="mt-1 flex min-h-11 overflow-hidden rounded-lg border-2 border-[var(--input-border)] bg-[var(--input-bg)] shadow-[0_2px_0_rgba(23,21,18,0.08)] transition focus-within:border-violet-400 focus-within:ring-4 focus-within:ring-violet-500/15">
                     <span className="grid min-w-14 place-items-center border-r border-stone-200 bg-stone-50 px-3 text-sm font-black text-stone-600">
                       {selectedCountryProfile.dialCode}
                     </span>
@@ -2789,14 +2806,14 @@ export function ParkDetail() {
   }, [navigate, park, section]);
 
   if (isLoading) return <Loader />;
-  if (isError || !park) return <ErrorMessage message={error?.data?.message || "Park not found"} />;
+  if (isError || !park) return <ErrorMessage message={error?.data?.message || "Location not found"} />;
 
   return (
     <ControlShell
       title={park.name}
       actions={
         <div className="flex w-full flex-wrap gap-2 sm:w-auto">
-          <Link to="/movira-control/parks" className={buttonClass("secondary", "flex-1 sm:flex-none")}><FaArrowLeft /> Parks</Link>
+          <Link to="/movira-control/parks" className={buttonClass("secondary", "flex-1 sm:flex-none")}><FaArrowLeft /> Locations</Link>
           <Link to={`/movira-control/parks/${park.locationId}/edit`} className={buttonClass("primary", "flex-1 sm:flex-none")}><FaEdit /> Edit</Link>
         </div>
       }
@@ -2855,7 +2872,7 @@ function OverviewPanel({ park }) {
         <section className="rounded-xl border border-stone-200 bg-white p-5 shadow-sm">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <p className="text-xs font-black uppercase text-violet-700">Park summary</p>
+              <p className="text-xs font-black uppercase text-violet-700">Location summary</p>
               <h2 className="mt-1 text-xl font-black text-stone-950">{park.name}</h2>
             </div>
             <Pill className={statusClass(park.status)}>{park.status}</Pill>
@@ -3162,7 +3179,7 @@ function ModulesPanel({
         tone="info"
         eyebrow="Complete process"
         title={`Enable ${pendingWorkflow?.label || "this process"}?`}
-        message="Required and recommended modules will be enabled together. If the park already has a paid invoice, newly added access may create an activation invoice."
+        message="Required and recommended modules will be enabled together. If the location already has a paid invoice, newly added access may create an activation invoice."
         details={[
           `Required: ${(pendingWorkflow?.requiredModules || []).map(moduleLabel).join(", ") || "None"}`,
           `Recommended: ${(pendingWorkflow?.recommendedModules || []).map(moduleLabel).join(", ") || "None"}`,
@@ -3182,10 +3199,10 @@ function ModulesPanel({
 }
 
 const fallbackPlanOptions = [
-  { key: "starter", label: "Starter", monthlyBaseFee: 499, maxParks: 1, description: "For one park getting live with the core Movira setup." },
-  { key: "pro", label: "Pro", monthlyBaseFee: 899, maxParks: 3, description: "For growing operators with multiple parks under one customer." },
-  { key: "scale", label: "Scale", monthlyBaseFee: 1499, maxParks: 8, description: "For larger groups that need more parks and operational coverage." },
-  { key: "enterprise", label: "Enterprise", monthlyBaseFee: 2499, maxParks: null, description: "Unlimited parks with commercial terms handled by Movira." },
+  { key: "starter", label: "Starter", monthlyBaseFee: 499, maxParks: 1, description: "For one location getting live with the core Movira setup." },
+  { key: "pro", label: "Pro", monthlyBaseFee: 899, maxParks: 3, description: "For growing operators with multiple locations under one customer." },
+  { key: "scale", label: "Scale", monthlyBaseFee: 1499, maxParks: 8, description: "For larger groups that need more locations and operational coverage." },
+  { key: "enterprise", label: "Enterprise", monthlyBaseFee: 2499, maxParks: null, description: "Unlimited locations with commercial terms handled by Movira." },
   { key: "custom", label: "Custom", monthlyBaseFee: 0, maxParks: null, description: "Legacy or custom contract managed by Movira." },
 ];
 
@@ -3207,7 +3224,7 @@ function BillingPanel({ park, plans = [], moduleCatalog = modules, planUsage = n
   const planOptions = availablePlans.map((plan) => ({
     value: plan.key,
     label: `${plan.label} - ${money(plan.monthlyBaseFee, park.currency)}/mo`,
-    description: plan.maxParks === null ? "Unlimited parks" : `${plan.maxParks} park${plan.maxParks === 1 ? "" : "s"} included`,
+    description: plan.maxParks === null ? "Unlimited locations" : `${plan.maxParks} location${plan.maxParks === 1 ? "" : "s"} included`,
   }));
   const selectPlan = (planKey) => {
     const plan = availablePlans.find((item) => item.key === planKey) || selectedPlan;
@@ -3286,7 +3303,7 @@ function BillingPanel({ park, plans = [], moduleCatalog = modules, planUsage = n
                 <p className="mt-0.5 text-base font-black text-stone-950">{money(selectedPlan?.monthlyBaseFee || 0, park.currency)}/mo</p>
               </div>
               <div className="rounded-md border border-violet-100 bg-white px-3 py-2">
-                <p className="text-xs font-black uppercase text-stone-500">Park limit</p>
+                <p className="text-xs font-black uppercase text-stone-500">Location limit</p>
                 <p className="mt-0.5 text-base font-black text-stone-950">{selectedPlan?.maxParks === null ? "Unlimited" : selectedPlan?.maxParks}</p>
               </div>
               <div className="rounded-md border border-violet-100 bg-white px-3 py-2">
@@ -3444,7 +3461,7 @@ function BillingPanel({ park, plans = [], moduleCatalog = modules, planUsage = n
           <p className="mt-0.5 text-xs font-bold text-stone-500">per month</p>
         </div>
         <div className="mt-3 rounded-lg bg-stone-50 p-3 text-xs font-semibold text-stone-600">
-          {selectedModules.length} module{selectedModules.length === 1 ? "" : "s"} enabled for this park.
+          {selectedModules.length} module{selectedModules.length === 1 ? "" : "s"} enabled for this location.
         </div>
         </aside>
       </div>
@@ -3676,7 +3693,7 @@ function InvoiceHistoryTable({ park, invoices, paymentEvents = [] }) {
         tone: "warning",
         eyebrow: "Refresh lifecycle",
         title: "Refresh invoice lifecycle?",
-        message: "This can generate due invoices, mark overdue invoices, send reminders, and apply collection policy for this park.",
+        message: "This can generate due invoices, mark overdue invoices, send reminders, and apply collection policy for this location.",
         details: ["Use this when you intentionally want billing state to be recalculated.", "Audit and payment history will record resulting changes."],
         confirmLabel: "Refresh invoices",
       };
@@ -3697,8 +3714,8 @@ function InvoiceHistoryTable({ park, invoices, paymentEvents = [] }) {
       eyebrow: resend ? "Resend payment link" : "Send payment link",
       title: `${resend ? "Resend" : "Send"} payment link for ${invoice.invoiceNumber}?`,
       message: resend
-        ? "This reuses the current unpaid live payment link and sends it to the park billing email again."
-        : "This creates a live customer-payable SaaS invoice link and sends it to the park billing email.",
+        ? "This reuses the current unpaid live payment link and sends it to the location billing email again."
+        : "This creates a live customer-payable SaaS invoice link and sends it to the location billing email.",
       details: [
         `Amount due: ${money(remaining, invoice.currency || park.currency)}`,
         "A live Movira SaaS billing gateway and live platform credentials are required.",
@@ -3990,12 +4007,12 @@ function PaymentsPanel({ park }) {
           <div className="min-w-0">
             <p className="text-xs font-black uppercase text-violet-700">Payment control</p>
             <h2 className="mt-1 wrap-break-word text-lg font-black text-stone-950">
-              {isDemo ? "Sandbox payment testing" : "Park payment status"}
+              {isDemo ? "Sandbox payment testing" : "Location payment status"}
             </h2>
             <p className="mt-1 text-sm font-semibold text-stone-500">
               {isDemo
                 ? "Test checkout, POS, refunds, and memberships without collecting real money."
-                : "Platform billing collects from the park. Guest payments control checkout, POS, refunds, and memberships."}
+                : "Platform billing collects from the location. Guest payments control checkout, POS, refunds, and memberships."}
             </p>
           </div>
           <Pill className={isDemo ? "border-violet-200 bg-violet-50 text-violet-700" : platformStatusClass}>
@@ -4036,7 +4053,7 @@ function PaymentsPanel({ park }) {
                 {isSavingPayments ? "Saving..." : guestPaymentDirty ? "Save change" : "Saved"}
               </button>
             </div>
-            <span className="mt-2 block text-xs font-semibold text-stone-500">Controls checkout/POS acceptance for this park.</span>
+            <span className="mt-2 block text-xs font-semibold text-stone-500">Controls checkout/POS acceptance for this location.</span>
             {isDemo ? (
               <span className="mt-2 block rounded-md border border-violet-200 bg-violet-50 px-2.5 py-2 text-xs font-black text-violet-800">
                 Demo guard active: real/live gateway routes and charges are blocked.
@@ -4289,7 +4306,7 @@ function OnboardingPanel({ park }) {
               ? "Convert this demo to production onboarding before requesting go-live approval."
               : missingChecks.length
               ? `Still required: ${missingChecks.map((key) => onboardingLabels[key] || key).join(", ")}.`
-              : "All prerequisites are complete. Approval will activate the park."}
+              : "All prerequisites are complete. Approval will activate the location."}
           </p>
         </div>
         <button disabled={isDemo} onClick={() => setGoLiveConfirm(true)} className={buttonClass("primary", "disabled:cursor-not-allowed disabled:opacity-50")}><FaRocket /> {isDemo ? "Convert to production first" : "Approve go-live"}</button>
@@ -4299,7 +4316,7 @@ function OnboardingPanel({ park }) {
         tone="warning"
         eyebrow="Go-live approval"
         title={`Approve ${park.name} for go-live?`}
-        message="This checks readiness and updates the park lifecycle. Use it only when the park is ready for real customer operations."
+        message="This checks readiness and updates the location lifecycle. Use it only when the location is ready for real customer operations."
         details={[
           `${park.onboardingScore || 0}% readiness currently complete.`,
           missingChecks.length

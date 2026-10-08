@@ -15,7 +15,7 @@ import { toast } from "sonner";
 import ThemeToggle from "../../components/ThemeToggle";
 
 const trustNotes = [
-  "Manage SaaS parks, plans, billing, and onboarding.",
+  "Manage SaaS locations, plans, billing, and onboarding.",
   "Review venue payment routing and gateway health.",
   "Only sections assigned to your role are shown.",
 ];
@@ -89,7 +89,7 @@ export default function MoviraLogin() {
           <span className="login-eyebrow">Admin Access</span>
           <h1>Good to see you.</h1>
           <p>
-            Sign in to manage parks, subscriptions, onboarding, and payment
+            Sign in to manage locations, subscriptions, onboarding, and payment
             operations from one control workspace.
           </p>
 

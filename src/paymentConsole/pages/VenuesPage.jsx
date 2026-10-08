@@ -55,7 +55,7 @@ export default function VenuesPage() {
       });
 
       const failures = [
-        venuesRes.status === "rejected" && `venues: ${venuesRes.reason?.message || "failed"}`,
+        venuesRes.status === "rejected" && `locations: ${venuesRes.reason?.message || "failed"}`,
         credsRes.status === "rejected" && `credentials: ${credsRes.reason?.message || "failed"}`,
       ].filter(Boolean);
       setLoadError(failures.length ? failures.join(" · ") : null);
@@ -111,8 +111,8 @@ export default function VenuesPage() {
 
   return (
     <PageShell
-      title="Venues"
-      description={`${venues.length} location${venues.length === 1 ? "" : "s"}. Open a venue to manage its gateways and routing.`}
+      title="Locations"
+      description={`${venues.length} location${venues.length === 1 ? "" : "s"}. Open a location to review its payment health.`}
     >
       {loadError && (
         <Card className="p-4 border-amber-300 bg-amber-50/60">
@@ -129,7 +129,7 @@ export default function VenuesPage() {
           <Input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search venues by name or city…"
+            placeholder="Search locations by name or city…"
             className="pl-9"
           />
         </div>
@@ -237,7 +237,7 @@ export default function VenuesPage() {
 
       {filtered.length === 0 && (
         <Card className="p-8 text-center text-sm text-[var(--text-muted)]">
-          No venues match the current filter.
+          No locations match the current filter.
         </Card>
       )}
     </PageShell>

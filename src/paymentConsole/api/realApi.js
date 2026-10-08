@@ -58,7 +58,7 @@ export const realApi = {
   async getVenue(id) {
     const list = await getVenues();
     const venue = list.find((v) => String(v.locationId) === String(id));
-    if (!venue) throw new Error("Venue not found.");
+    if (!venue) throw new Error("Location not found.");
     return venue;
   },
 

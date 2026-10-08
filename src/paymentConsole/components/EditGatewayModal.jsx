@@ -279,10 +279,10 @@ export default function EditGatewayModal({ open, onClose, credential, schema, on
               ? "Organization-wide"
               : scopedVenue
               ? `${scopedVenue.name}${scopedVenue.city ? ` · ${scopedVenue.city}` : ""}`
-              : `Venue #${credential.locationId}`}
+              : `Location #${credential.locationId}`}
           </span>
           <Badge tone={isOrgWide ? "indigo" : "brand"} className="ml-auto">
-            {isOrgWide ? "Org default" : "Venue override"}
+            {isOrgWide ? "Org default" : "Location override"}
           </Badge>
         </div>
 
@@ -490,7 +490,9 @@ export default function EditGatewayModal({ open, onClose, credential, schema, on
         <div className="flex items-center justify-between gap-3 pt-2">
           {confirmDelete ? (
             <div className="flex items-center gap-2">
-              <span className="text-sm text-[var(--text-base)]">Delete?</span>
+              <span className="max-w-56 text-xs font-semibold text-[var(--text-base)]">
+                In-use gateways cannot be deleted. Repoint or remove their routes first.
+              </span>
               <Button variant="danger" size="sm" onClick={remove} disabled={deleting}>
                 {deleting ? <Spinner /> : "Confirm"}
               </Button>

@@ -75,7 +75,7 @@ export default function OverviewPage() {
       });
 
       const failures = [
-        venuesRes.status === "rejected" && `venues: ${venuesRes.reason?.message || "failed"}`,
+        venuesRes.status === "rejected" && `locations: ${venuesRes.reason?.message || "failed"}`,
         credsRes.status === "rejected" && `credentials: ${credsRes.reason?.message || "failed"}`,
       ].filter(Boolean);
       setLoadError(failures.length ? failures.join(" · ") : null);
@@ -121,7 +121,7 @@ export default function OverviewPage() {
   return (
     <PageShell
       title={`Hi ${user?.name?.split(" ")[0] || "there"}`}
-      description={`Payment configuration across your ${data.venues.length} venue${data.venues.length === 1 ? "" : "s"}.`}
+      description={`Payment configuration across your ${data.venues.length} location${data.venues.length === 1 ? "" : "s"}.`}
     >
       {loadError && (
         <Card className="p-4 border-amber-300 bg-amber-50/60">
@@ -142,19 +142,19 @@ export default function OverviewPage() {
       )}
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <Stat icon={FiMapPin} label="Venues" value={data.venues.length} to="/movira-control/payments/venues" />
+        <Stat icon={FiMapPin} label="Locations" value={data.venues.length} to="/movira-control/payments/venues" />
         <Stat
           icon={FiCreditCard}
           label="Connected gateways"
           value={data.credentials.length}
-          hint={`${orgCredentialCount} org · ${venueCredentialCount} per-venue`}
+          hint={`${orgCredentialCount} org · ${venueCredentialCount} per-location`}
           to="/movira-control/payments/gateways"
         />
         <Stat
           icon={FiZap}
           label="Live channels routed"
           value={`${health.totalLiveRoutes} / ${totalPossibleLiveRoutes}`}
-          hint={`${LIVE_CHANNELS.length} channel${LIVE_CHANNELS.length === 1 ? "" : "s"} × ${data.venues.length} venue${data.venues.length === 1 ? "" : "s"}`}
+          hint={`${LIVE_CHANNELS.length} channel${LIVE_CHANNELS.length === 1 ? "" : "s"} × ${data.venues.length} location${data.venues.length === 1 ? "" : "s"}`}
           to="/movira-control/payments/gateways"
         />
         <Stat
@@ -183,10 +183,16 @@ export default function OverviewPage() {
             </Link>
           </div>
           {needsAttention.length === 0 ? (
-            <div className="flex items-center gap-2 rounded-lg bg-green-50 p-2.5 text-green-800">
-              <FiCheckCircle />
-              <span className="text-sm font-semibold">Every venue has at least one live channel routed.</span>
-            </div>
+            data.venues.length === 0 ? (
+              <div className="rounded-lg border border-dashed border-[var(--stroke-soft)] p-3 text-sm font-semibold text-[var(--text-muted)]">
+                Create a location before configuring guest payment routes.
+              </div>
+            ) : (
+              <div className="flex items-center gap-2 rounded-lg bg-green-50 p-2.5 text-green-800">
+                <FiCheckCircle />
+                <span className="text-sm font-semibold">Every location has at least one live channel routed.</span>
+              </div>
+            )
           ) : (
             <ul className="space-y-2">
               {needsAttention.map((entry) => (
@@ -238,7 +244,7 @@ export default function OverviewPage() {
           </div>
           {partial.length === 0 ? (
             <div className="py-5 text-center text-sm text-[var(--text-muted)]">
-              No venues are mid-configuration.
+              No locations are mid-configuration.
             </div>
           ) : (
             <ul className="space-y-2">
@@ -284,7 +290,7 @@ export default function OverviewPage() {
         </div>
         <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
           {CHANNELS.map((ch) => {
-            // How many venues have this channel routed, and what providers
+            // How many locations have this channel routed, and what providers
             // are in use across the org for this channel?
             const routes = data.venues
               .map((v) => data.venueRoutesById[v.locationId]?.[ch.key])
@@ -305,7 +311,7 @@ export default function OverviewPage() {
                 {live ? (
                   <>
                     <div className="text-xs text-[var(--text-muted)] mt-0.5">
-                      Routed at {routes.length} of {data.venues.length} venues
+                      Routed at {routes.length} of {data.venues.length} locations
                     </div>
                     <div className="flex items-center gap-1.5 mt-2">
                       {providersInUse.length === 0 ? (
@@ -341,7 +347,7 @@ export default function OverviewPage() {
       <Card className="flex items-center gap-3 p-3">
         <FiGlobe className="text-[var(--brand-primary-deep)]" />
         <div className="text-sm text-[var(--text-base)] flex-1">
-          Want the whole venue × channel grid in one view?
+          Want the whole location × channel grid in one view?
         </div>
         <Link
           to="/movira-control/payments/gateways"

@@ -268,7 +268,7 @@ export default function AddGatewayModal({
             <div className="rounded-lg border border-violet-200 bg-violet-50 px-3 py-2 text-sm font-bold text-stone-700">
               <span className="inline-flex items-center gap-1.5">
                 <FiGlobe size={14} className="text-violet-700" />
-                Movira-owned credential. It is not tied to any venue or location.
+                Movira-owned credential. It is not tied to a location.
               </span>
             </div>
           ) : (
@@ -276,10 +276,10 @@ export default function AddGatewayModal({
               label="Scope"
               hint={
                 scope === "org"
-                  ? "This gateway is the default for every venue."
+                  ? "This gateway is the default for every location."
                   : scopeLocked
-                  ? "Only this venue uses these credentials."
-                  : "Only the selected venue uses these credentials. Other venues keep the org default."
+                  ? "Only this location uses these credentials."
+                  : "Only the selected location uses these credentials. Other locations keep the organization default."
               }
             >
               <div className="flex flex-col gap-2.5">
@@ -313,7 +313,7 @@ export default function AddGatewayModal({
                         : "text-[var(--text-base)] hover:text-[var(--text-strong)]"
                     }`}
                   >
-                    <FiMapPin size={14} /> Specific venue
+                    <FiMapPin size={14} /> Specific location
                   </button>
                 </div>
 
@@ -331,7 +331,7 @@ export default function AddGatewayModal({
                       value={locationId ?? ""}
                       onChange={(e) => setLocationId(e.target.value ? Number(e.target.value) : null)}
                     >
-                      <option value="">Pick a venue…</option>
+                      <option value="">Pick a location…</option>
                       {venues.map((v) => (
                         <option key={v.locationId} value={v.locationId}>
                           {v.name}

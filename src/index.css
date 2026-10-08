@@ -12899,12 +12899,19 @@ textarea.cf-input { min-height: 64px; padding: 8px 10px; }
 
 :root[data-theme="dark"] [data-app="admin"] {
   --admin-shell-bg: #080D18;
-  --admin-header-bg: rgba(15, 23, 42, 0.96);
+  --admin-shell-text: #D7DEE8;
+  --admin-heading-text: #FAFBFC;
+  --admin-muted-text: #A8B3C1;
+  --admin-header-bg: rgba(12, 18, 32, 0.97);
+  --admin-popover-bg: #151E31;
+  --admin-header-border: rgba(226, 232, 240, 0.16);
   --admin-search-bg: rgba(114, 32, 230, 0.10);
-  --admin-search-border: rgba(139, 92, 255, 0.28);
+  --admin-search-border: rgba(196, 181, 253, 0.38);
+  --admin-kbd-bg: #151E31;
   --admin-rail-bg: #100B1C;
   --admin-accent: #7220E6;
   --admin-accent-deep: #480D9A;
+  --admin-accent-contrast: #C4B5FD;
   --admin-accent-shadow: rgba(114, 32, 230, 0.26);
   --admin-active-soft: rgba(114, 32, 230, 0.16);
   --surface-card: #0F1726;

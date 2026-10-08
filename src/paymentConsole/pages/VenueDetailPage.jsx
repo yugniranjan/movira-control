@@ -134,7 +134,7 @@ function RouteListItem({ channel, route, venue, credentials, onEdit, moduleEnabl
                 <span>·</span>
                 <span>{route.mode}</span>
                 {Number(cred.locationId) === Number(venue.locationId) ? (
-                  <Badge tone="brand">venue override</Badge>
+                  <Badge tone="brand">location override</Badge>
                 ) : (
                   <span className="inline-flex items-center gap-0.5">
                     <FiCornerDownRight size={10} /> inherited org credential
@@ -154,7 +154,7 @@ function RouteListItem({ channel, route, venue, credentials, onEdit, moduleEnabl
                 ? editable
                   ? "Not configured"
                   : channel.phaseNote || "Not yet available"
-                : "Enable POS for this park in Movira Control before configuring card-present payments."}
+                : "Enable POS for this location in Movira Control before configuring card-present payments."}
             </div>
           )}
         </div>
@@ -202,7 +202,7 @@ export default function VenueDetailPage() {
       const [venueRes, credsRes, schRes, routesRes, compatRes] = results;
       // Compatibility is non-critical (the routing picker falls back), so it's
       // excluded from the load-failure banner.
-      const names = ["venue", "credentials", "provider schemas", "routes"];
+      const names = ["location", "credentials", "provider schemas", "routes"];
       const failures = results
         .slice(0, 4)
         .map((r, i) => (r.status === "rejected" ? `${names[i]}: ${r.reason?.message || "failed"}` : null))
@@ -302,13 +302,13 @@ export default function VenueDetailPage() {
             to="/movira-control/payments/venues"
             className="inline-flex items-center gap-1.5 text-sm font-semibold text-[var(--text-base)] hover:text-[var(--text-strong)]"
           >
-            <FiArrowLeft /> All venues
+            <FiArrowLeft /> All locations
           </Link>
           <Card className="p-5 border-amber-300 bg-amber-50/60">
             <div className="flex items-start gap-3">
               <FiAlertTriangle className="text-amber-600 mt-0.5 shrink-0" size={18} />
               <div className="flex-1 min-w-0">
-                <div className="font-semibold text-amber-900">Couldn't load this venue</div>
+                <div className="font-semibold text-amber-900">Couldn't load this location</div>
                 <div className="text-xs text-amber-800 mt-1 break-words">{loadError}</div>
               </div>
               <Button variant="outline" size="sm" onClick={() => setReloadKey((k) => k + 1)}>
@@ -331,7 +331,7 @@ export default function VenueDetailPage() {
           to="/movira-control/payments/venues"
           className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-stone-300 bg-white px-4 py-2 text-sm font-black text-stone-800 shadow-sm hover:border-violet-300 hover:bg-violet-50"
         >
-          <FiArrowLeft /> All venues
+          <FiArrowLeft /> All locations
         </Link>
       }
     >
@@ -375,12 +375,12 @@ export default function VenueDetailPage() {
           <div>
             <h2 className="font-display font-bold text-[var(--text-strong)]">Gateways</h2>
             <p className="text-sm text-[var(--text-base)] mt-0.5">
-              Merchant credentials available to this venue. Venue-specific overrides take precedence over
+              Merchant credentials available to this location. Location-specific overrides take precedence over
               org-wide rows with the same provider+mode.
             </p>
           </div>
           <Button onClick={() => setAdding(true)}>
-            <FiPlus /> Add venue gateway
+            <FiPlus /> Add location gateway
           </Button>
         </div>
 
@@ -388,8 +388,8 @@ export default function VenueDetailPage() {
           <div className="rounded-xl bg-[var(--surface-muted)] p-4 flex items-start gap-2.5">
             <FiGlobe className="mt-0.5 text-[var(--brand-primary-deep)] shrink-0" />
             <div className="text-sm text-[var(--text-base)]">
-              This venue uses <strong>organization-wide gateways only</strong>. Add a venue gateway above
-              if this venue needs its own merchant account.
+              This location uses <strong>organization-wide gateways only</strong>. Add a location gateway above
+              if this location needs its own merchant account.
             </div>
           </div>
         ) : (
@@ -399,7 +399,7 @@ export default function VenueDetailPage() {
                 <FiAlertTriangle className="mt-0.5 text-amber-600 shrink-0" size={16} />
                 <div className="text-sm text-amber-900 flex-1">
                   <strong>
-                    {health.unroutedCredentials.length} venue credential
+                    {health.unroutedCredentials.length} location credential
                     {health.unroutedCredentials.length === 1 ? " is" : "s are"} not used by any
                     route.
                   </strong>{" "}
@@ -482,7 +482,7 @@ export default function VenueDetailPage() {
           <p className="text-sm text-[var(--text-base)] mt-0.5">
             Each channel resolves to one
             <code className="font-mono mx-1">location_payment_settings</code>
-            row for this venue. The route picks a provider+mode; the backend resolves the credential at
+            row for this location. The route picks a provider and mode; the backend resolves the credential at
             request time.
           </p>
         </div>
@@ -492,7 +492,7 @@ export default function VenueDetailPage() {
           <span>
             {hasPosModule
               ? "For card-present payments, route the POS channel first and then register terminals and readers below."
-              : "Online booking channels can be configured now. POS routing stays locked until the POS module is assigned to this park."}{" "}
+              : "Online booking channels can be configured now. POS routing stays locked until the POS module is assigned to this location."}{" "}
             Recurring memberships route through Stripe or Nuvei online.
           </span>
         </div>
@@ -524,7 +524,7 @@ export default function VenueDetailPage() {
             <div className="min-w-0 flex-1">
               <h2 className="font-display font-bold text-[var(--text-strong)]">Card terminals</h2>
               <p className="mt-0.5 text-sm text-[var(--text-base)]">
-                Card terminals are not part of this park's current module access. Enable POS first; terminal and reader setup will then unlock here.
+                Card terminals are not part of this location's current module access. Enable POS first; terminal and reader setup will then unlock here.
               </p>
             </div>
             <Link
