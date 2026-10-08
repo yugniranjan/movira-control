@@ -3634,7 +3634,6 @@ function InvoiceHistoryTable({ park, invoices, paymentEvents = [] }) {
       const result = await createPaymentLink({
         locationId: park.locationId,
         invoiceId: invoice.invoiceId,
-        appBaseUrl: window.location.origin,
         resend,
         notificationRequestId: window.crypto?.randomUUID?.() || `${Date.now()}-${invoice.invoiceId}`,
       }).unwrap();
