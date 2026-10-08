@@ -41,3 +41,12 @@ export function validateAll(schema, values, ctx) {
   }
   return { ok: Object.keys(errors).length === 0, fieldErrors: errors };
 }
+
+export function requiredFieldsPresent(schema, values = {}) {
+  if (!Array.isArray(schema?.fields)) return false;
+  return schema.fields.every((field) => {
+    if (field.required === false) return true;
+    const value = values[field.key];
+    return value != null && String(value).trim() !== "";
+  });
+}

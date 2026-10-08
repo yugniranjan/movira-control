@@ -4,7 +4,7 @@ import { PROVIDERS, providerByKey } from "../constants/providers";
 import { Modal, Button, Field, Input, Select, Spinner, ProviderBadge } from "./ui";
 import { api } from "../api";
 import TestConnectionResult from "./TestConnectionResult";
-import { validateAll } from "./gatewayValidation";
+import { requiredFieldsPresent, validateAll } from "./gatewayValidation";
 import { parkPaymentMode, parkPaymentModeLabel } from "../../features/saas/parkPaymentMode";
 
 function initialValues(schema) {
@@ -90,7 +90,7 @@ export default function AddGatewayModal({
 
   const requiredFilled = useMemo(() => {
     if (!schema) return false;
-    const fieldsOk = schema.fields.every((f) => f.type === "select" || values[f.key]);
+    const fieldsOk = requiredFieldsPresent(schema, values);
     const scopeOk = scope === "org" || locationId != null;
     return fieldsOk && scopeOk && liveValidation.ok;
   }, [schema, values, scope, locationId, liveValidation]);
