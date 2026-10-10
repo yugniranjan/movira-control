@@ -334,9 +334,6 @@ const setupSteps = [
   { key: "billingPlan", label: "Billing", route: "billing" },
   { key: "paymentMethod", label: "Platform payment", route: "payments" },
   { key: "customerPayments", label: "Customer payments", route: "payments" },
-  { key: "catalogReady", label: "Catalog", route: "onboarding" },
-  { key: "bookingPortal", label: "Portal", route: "onboarding" },
-  { key: "staffHandoff", label: "Staff", route: "onboarding" },
   { key: "goLiveApproval", label: "Go live", route: "onboarding" },
 ];
 
@@ -347,7 +344,7 @@ const demoSetupSteps = [
   { key: "sandboxPayments", label: "Sandbox payments", route: "payments" },
 ];
 
-const manualOnboardingKeys = new Set(["staffHandoff"]);
+const manualOnboardingKeys = new Set();
 
 const setupStages = [
   {
@@ -376,9 +373,9 @@ const setupStages = [
   },
   {
     suffix: "onboarding",
-    label: "Launch",
-    description: "Operations and go-live",
-    keys: ["catalogReady", "bookingPortal", "staffHandoff", "goLiveApproval"],
+    label: "Approval",
+    description: "Approve and notify owner",
+    keys: ["goLiveApproval"],
   },
 ];
 
@@ -4243,8 +4240,8 @@ function OnboardingPanel({ park }) {
     <div className="rounded-xl border border-stone-200 bg-white p-5 shadow-sm">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-stone-200 pb-4">
         <div>
-          <p className="text-xs font-black uppercase text-violet-700">Launch checklist</p>
-          <h2 className="mt-1 text-xl font-black text-stone-950">Operational readiness</h2>
+          <p className="text-xs font-black uppercase text-violet-700">Location approval</p>
+          <h2 className="mt-1 text-xl font-black text-stone-950">Provisioning readiness</h2>
         </div>
         <div className="w-full max-w-xs">
           <ProgressBar value={park.onboardingScore || 0} />
@@ -4292,22 +4289,22 @@ function OnboardingPanel({ park }) {
       </div>
       <div className="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-xl bg-stone-50 p-4">
         <div>
-          <p className="font-black text-stone-950">Go-live gate</p>
+          <p className="font-black text-stone-950">Approve customer workspace</p>
           <p className="text-sm font-semibold text-stone-500">
             {isDemo
               ? "Convert this demo to production onboarding before requesting go-live approval."
               : missingChecks.length
               ? `Still required: ${missingChecks.map((key) => onboardingLabels[key] || key).join(", ")}.`
-              : "All prerequisites are complete. Approval will activate the location."}
+              : "All Movira provisioning checks are complete. Approval will activate the location and notify its owner."}
           </p>
         </div>
-        <button disabled={isDemo} onClick={() => setGoLiveConfirm(true)} className={buttonClass("primary", "disabled:cursor-not-allowed disabled:opacity-50")}><FaRocket /> {isDemo ? "Convert to production first" : "Approve go-live"}</button>
+        <button disabled={isDemo} onClick={() => setGoLiveConfirm(true)} className={buttonClass("primary", "disabled:cursor-not-allowed disabled:opacity-50")}><FaRocket /> {isDemo ? "Convert to production first" : "Approve location"}</button>
       </div>
       <ConfirmDialog
         open={goLiveConfirm}
         tone="warning"
         eyebrow="Go-live approval"
-        title={`Approve ${park.name} for go-live?`}
+        title={`Approve ${park.name} and notify the owner?`}
         message="This checks readiness and updates the location lifecycle. Use it only when the location is ready for real customer operations."
         details={[
           `${park.onboardingScore || 0}% readiness currently complete.`,
@@ -4316,7 +4313,7 @@ function OnboardingPanel({ park }) {
             : "All required readiness checks are complete.",
           "This action is recorded in the audit history.",
         ]}
-        confirmLabel="Approve go-live"
+        confirmLabel="Approve location"
         loading={goLiveState.isLoading}
         onConfirm={approve}
         onClose={() => setGoLiveConfirm(false)}
