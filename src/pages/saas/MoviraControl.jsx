@@ -83,17 +83,6 @@ const customerAppBaseUrl = String(
     window.location.origin
 ).replace(/\/+$/, "");
 
-const modules = [
-  { key: "bookings", label: "Bookings", monthly: 299, description: "Core reservations, calendars, and order records." },
-  { key: "pos", label: "POS", monthly: 299, description: "Counter sales, terminals, receipts, and cashier controls." },
-  { key: "booking_portal", label: "Booking portal", monthly: 199, description: "Public checkout, pages, and guest booking flow." },
-  { key: "crm", label: "CRM", monthly: 249, description: "Contacts, segments, email, and automation." },
-  { key: "staff", label: "Staff", monthly: 149, description: "Schedules, time clock, leave, and team operations." },
-  { key: "inventory", label: "Inventory", monthly: 99, description: "Stock, add-ons, gift cards, and retail items." },
-  { key: "waivers", label: "Waivers", monthly: 99, description: "Digital waiver setup, holders, and signatures." },
-  { key: "reports", label: "Reports", monthly: 129, description: "Owner dashboards and operating reports." },
-];
-
 const onboardingLabels = {
   parkWorkspace: "Location workspace",
   ownerAccess: "Owner access",
@@ -358,7 +347,7 @@ const demoSetupSteps = [
   { key: "sandboxPayments", label: "Sandbox payments", route: "payments" },
 ];
 
-const manualOnboardingKeys = new Set(["catalogReady", "bookingPortal", "staffHandoff"]);
+const manualOnboardingKeys = new Set(["staffHandoff"]);
 
 const setupStages = [
   {
@@ -1353,7 +1342,7 @@ function ModulePricingPanel() {
   const [form, setForm] = useState(null);
   const { data = {}, isLoading, isError, error } = useGetSaasModulesQuery({ includeInactive: true });
   const [updateModule, updateState] = useUpdateSaasModuleMutation();
-  const moduleList = data.modules?.length ? data.modules : modules;
+  const moduleList = data.modules || [];
   const filteredModules = moduleList.filter((module) => {
     const term = search.trim().toLowerCase();
     if (!term) return true;
@@ -1588,7 +1577,7 @@ function Overview() {
           <StatCard icon={FaRocket} label="Live locations" value={summary.live || 0} detail="approved for operations" />
           <StatCard icon={FaEye} label="Demo locations" value={summary.demo || 0} detail="sandbox testing access" />
           <StatCard icon={FaCreditCard} label="Monthly SaaS" value={money(summary.monthlyRevenue || 0)} detail="base fee + modules" />
-          <StatCard icon={FaLayerGroup} label="Modules" value={modules.length} detail="controlled per location" />
+          <StatCard icon={FaLayerGroup} label="Modules" value={data.catalogs?.modules?.length || 0} detail="controlled per location" />
         </section>
 
         <section className="rounded-xl border border-stone-200 bg-white p-5 shadow-sm">
@@ -2562,7 +2551,7 @@ export function ParkForm() {
                 </label>
                 <label className="block">
                   <span className="text-xs font-black uppercase text-stone-500">Phone *</span>
-                  <div className="mt-1 flex min-h-11 overflow-hidden rounded-lg border-2 border-[var(--input-border)] bg-[var(--input-bg)] shadow-[0_2px_0_rgba(23,21,18,0.08)] transition focus-within:border-violet-400 focus-within:ring-4 focus-within:ring-violet-500/15">
+                  <div className="mt-1 flex min-h-11 overflow-hidden rounded-lg border-2 border-(--input-border) bg-(--input-bg) shadow-[0_2px_0_rgba(23,21,18,0.08)] transition focus-within:border-violet-400 focus-within:ring-4 focus-within:ring-violet-500/15">
                     <span className="grid min-w-14 place-items-center border-r border-stone-200 bg-stone-50 px-3 text-sm font-black text-stone-600">
                       {selectedCountryProfile.dialCode}
                     </span>
@@ -2742,7 +2731,7 @@ export function ParkForm() {
                 </label>
                 <label className="block">
                   <span className="text-xs font-black uppercase text-stone-500">Phone *</span>
-                  <div className="mt-1 flex min-h-11 overflow-hidden rounded-lg border-2 border-[var(--input-border)] bg-[var(--input-bg)] shadow-[0_2px_0_rgba(23,21,18,0.08)] transition focus-within:border-violet-400 focus-within:ring-4 focus-within:ring-violet-500/15">
+                  <div className="mt-1 flex min-h-11 overflow-hidden rounded-lg border-2 border-(--input-border) bg-(--input-bg) shadow-[0_2px_0_rgba(23,21,18,0.08)] transition focus-within:border-violet-400 focus-within:ring-4 focus-within:ring-violet-500/15">
                     <span className="grid min-w-14 place-items-center border-r border-stone-200 bg-stone-50 px-3 text-sm font-black text-stone-600">
                       {selectedCountryProfile.dialCode}
                     </span>
@@ -2791,7 +2780,7 @@ export function ParkDetail() {
   const auditLogs = data?.auditLogs || [];
   const invoices = data?.invoices || [];
   const paymentEvents = data?.paymentEvents || [];
-  const catalogModules = data?.catalogs?.modules?.length ? data.catalogs.modules : modules;
+  const catalogModules = data?.catalogs?.modules || [];
   const moduleWorkflows = data?.catalogs?.moduleWorkflows?.length
     ? data.catalogs.moduleWorkflows
     : fallbackModuleWorkflows;
@@ -2933,7 +2922,7 @@ function OverviewPanel({ park }) {
 
 function ModulesPanel({
   park,
-  moduleCatalog = modules,
+  moduleCatalog = [],
   workflows = fallbackModuleWorkflows,
 }) {
   const [updateModules, { isLoading: isUpdating }] = useUpdateSaasParkModulesMutation();
@@ -3198,16 +3187,8 @@ function ModulesPanel({
   );
 }
 
-const fallbackPlanOptions = [
-  { key: "starter", label: "Starter", monthlyBaseFee: 499, maxParks: 1, description: "For one location getting live with the core Movira setup." },
-  { key: "pro", label: "Pro", monthlyBaseFee: 899, maxParks: 3, description: "For growing operators with multiple locations under one customer." },
-  { key: "scale", label: "Scale", monthlyBaseFee: 1499, maxParks: 8, description: "For larger groups that need more locations and operational coverage." },
-  { key: "enterprise", label: "Enterprise", monthlyBaseFee: 2499, maxParks: null, description: "Unlimited locations with commercial terms handled by Movira." },
-  { key: "custom", label: "Custom", monthlyBaseFee: 0, maxParks: null, description: "Legacy or custom contract managed by Movira." },
-];
-
-function BillingPanel({ park, plans = [], moduleCatalog = modules, planUsage = null }) {
-  const availablePlans = plans.length ? plans : fallbackPlanOptions;
+function BillingPanel({ park, plans = [], moduleCatalog = [], planUsage = null }) {
+  const availablePlans = plans;
   const currentPlan = availablePlans.find((plan) => plan.key === (park.planKey || "starter")) || availablePlans[0];
   const [form, setForm] = useState({
     planKey: park.planKey || currentPlan?.key || "starter",
@@ -3228,6 +3209,7 @@ function BillingPanel({ park, plans = [], moduleCatalog = modules, planUsage = n
   }));
   const selectPlan = (planKey) => {
     const plan = availablePlans.find((item) => item.key === planKey) || selectedPlan;
+    if (!plan) return;
     setForm((current) => ({
       ...current,
       planKey: plan.key,
@@ -3236,6 +3218,10 @@ function BillingPanel({ park, plans = [], moduleCatalog = modules, planUsage = n
   };
   const submit = async (event) => {
     event.preventDefault();
+    if (!selectedPlan) {
+      toast.error("No active billing plan is configured. Create a plan before saving billing.");
+      return;
+    }
     try {
       await updateBilling({ locationId: park.locationId, ...form }).unwrap();
       toast.success("Billing updated.");
@@ -3272,13 +3258,19 @@ function BillingPanel({ park, plans = [], moduleCatalog = modules, planUsage = n
             </Pill>
             <button
               type="submit"
-              disabled={isSavingBilling}
+              disabled={isSavingBilling || !selectedPlan}
               className={buttonClass("primary", "min-h-10 px-4 py-2 text-sm disabled:cursor-wait disabled:opacity-60")}
             >
               {isSavingBilling ? "Saving..." : "Save billing"}
             </button>
           </div>
         </div>
+
+        {!availablePlans.length ? (
+          <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm font-semibold text-amber-900">
+            No active plans are available from the billing catalog. Create or activate a plan in Manage plans before this location can be billed or launched.
+          </div>
+        ) : null}
 
         <div className="mt-3 rounded-lg border border-violet-100 bg-violet-50/50 p-3">
           <div className="grid min-w-0 gap-3 xl:grid-cols-[minmax(220px,340px)_1fr]">

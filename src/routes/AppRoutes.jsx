@@ -33,6 +33,7 @@ const PaymentVenuesPage = lazy(() => import("../paymentConsole/pages/VenuesPage"
 const PaymentVenueDetailPage = lazy(() => import("../paymentConsole/pages/VenueDetailPage"));
 const PaymentPaymentsPage = lazy(() => import("../paymentConsole/pages/PaymentsPage"));
 const PaymentPlatformBillingPage = lazy(() => import("../paymentConsole/pages/PlatformBillingPage"));
+const ControlSettingsPage = lazy(() => import("../pages/saas/ControlSettings"));
 
 function ControlGuard() {
   return (
@@ -84,6 +85,7 @@ export default function AppRoutes() {
             <Route path="/movira-control/payments/venues" element={<PolicyRoute policy="venues"><PaymentVenuesPage /></PolicyRoute>} />
             <Route path="/movira-control/payments/venues/:locationId" element={<PolicyRoute policy="venues"><PaymentVenueDetailPage /></PolicyRoute>} />
             <Route path="/movira-control/payments/gateways" element={<PolicyRoute policy="gateways"><PaymentPaymentsPage /></PolicyRoute>} />
+            <Route path="/movira-control/settings" element={<PolicyRoute policy="settings"><ControlSettingsPage /></PolicyRoute>} />
 
             <Route path="/payment-console" element={<Navigate to="/movira-control/payments" replace />} />
             <Route path="/payment-console/platform-billing" element={<Navigate to="/movira-control/billing" replace />} />

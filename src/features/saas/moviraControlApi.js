@@ -6,6 +6,16 @@ const locationHeaders = (locationId) =>
 
 export const moviraControlApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
+    getSaasPlatformSettings: builder.query({
+      query: () => "/saas/settings",
+      providesTags: [{ type: "SaasControl", id: "platform-settings" }],
+      transformResponse: (response) => response?.data || response || {},
+    }),
+    updateSaasPlatformSettings: builder.mutation({
+      query: (body) => ({ url: "/saas/settings", method: "PUT", body }),
+      invalidatesTags: [{ type: "SaasControl", id: "platform-settings" }],
+      transformResponse: (response) => response?.data || response,
+    }),
     getSaasParks: builder.query({
       query: ({ page = 1, limit = 12, search = "", includeArchived = false, status = "active", organizationId = "" } = {}) => ({
         url: "/saas/parks",
@@ -425,6 +435,8 @@ export const moviraControlApi = baseApi.injectEndpoints({
 });
 
 export const {
+  useGetSaasPlatformSettingsQuery,
+  useUpdateSaasPlatformSettingsMutation,
   useGetSaasParksQuery,
   useGetSaasParkByLocationIdQuery,
   useGetSaasPlansQuery,
