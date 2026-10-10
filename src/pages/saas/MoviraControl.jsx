@@ -3345,8 +3345,9 @@ function BillingPanel({ park, plans = [], moduleCatalog = modules, planUsage = n
             <input type="date" value={form.billingStartDate} onChange={(event) => setForm({ ...form, billingStartDate: event.target.value })} className="input-nexus mt-1 w-full px-3 py-2.5 text-sm" />
           </label>
           <label>
-            <span className="text-xs font-black uppercase text-stone-500">Promo</span>
+            <span className="text-xs font-black uppercase text-stone-500">Monthly promo / discount</span>
             <input type="number" value={form.discountAmount} onChange={(event) => setForm({ ...form, discountAmount: event.target.value })} className="input-nexus mt-1 w-full px-3 py-2.5 text-sm" />
+            <span className="mt-1 block text-xs font-semibold text-stone-500">Applies to every invoice until you change it. A $0 invoice is settled automatically.</span>
           </label>
         </div>
         <div className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-[0.9fr_0.9fr_1.2fr]">
@@ -3713,7 +3714,7 @@ function InvoiceHistoryTable({ park, invoices, paymentEvents = [] }) {
       eyebrow: resend ? "Resend payment link" : "Send payment link",
       title: `${resend ? "Resend" : "Send"} payment link for ${invoice.invoiceNumber}?`,
       message: resend
-        ? "This reuses the current unpaid live payment link and sends it to the location billing email again."
+        ? "This creates a fresh unpaid live payment link, invalidates older links for this invoice, and emails the new link to the billing contact."
         : "This creates a live customer-payable SaaS invoice link and sends it to the location billing email.",
       details: [
         `Amount due: ${money(remaining, invoice.currency || park.currency)}`,
