@@ -174,28 +174,32 @@ export const realApi = {
     return j.data || { provider: null, enrollment: null, routed: false, terminals: [] };
   },
 
-  // Register a Reader UNDER a Terminal. Stripe → registers with the provider
-  // (registrationCode = real reader, else simulated). Nuvei → providerTerminalId
-  // is the typed TID.
-  async addReader({ locationId, posDeviceId, label, makeDefault = true, deviceKind, registrationCode, providerTerminalId, registerId, registerAuthKey }) {
+  // Register unassigned park inventory; POS assignment is a separate operation.
+  async addReader({ locationId, posDeviceId, ...body }) {
     const j = await http.post(
-      paymentConfigPaths.terminalReaders(locationId, posDeviceId),
-      // deviceKind "simulator" → driven by the Terminal Simulator app (no real
-      // creds needed). "real" → Nuvei sends registerId + registerAuthKey
-      // (encrypted server-side); Stripe sends registrationCode. providerTerminalId = TID.
-      { label, makeDefault, deviceKind, registrationCode, providerTerminalId, registerId, registerAuthKey }
+      posDeviceId == null ? `/payments/config/locations/${locationId}/readers`
+        : paymentConfigPaths.terminalReaders(locationId, posDeviceId),
+      body
     );
     return j.data;
   },
 
-  async updateReader(terminalId, { locationId, displayName, makeDefault, providerTerminalId, registerId, registerAuthKey } = {}) {
+  async updateReader(terminalId, { locationId, ...body } = {}) {
     return (
       await http.patch(
         `/payments/config/readers/${terminalId}`,
-        { displayName, makeDefault, providerTerminalId, registerId, registerAuthKey },
+        body,
         { locationId }
       )
     ).data;
+  },
+
+  async testReaderConnection({ locationId, ...body }) {
+    return (await http.post(`/payments/config/locations/${locationId}/readers/test`, body, { locationId })).data;
+  },
+
+  async checkReaderPayment({ locationId, transactionId }) {
+    return http.get(`/payments/terminal/${transactionId}/status`, { locationId });
   },
 
   async removeReaderRow(terminalId, locationId) {

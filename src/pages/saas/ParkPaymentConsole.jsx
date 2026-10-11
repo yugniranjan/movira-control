@@ -11,29 +11,23 @@ import {
   FaPlus,
   FaRedo,
   FaSave,
-  FaStar,
   FaTrash,
   FaTimes,
 } from "react-icons/fa";
 import {
-  useAddVenueReaderMutation,
   useCreatePaymentCredentialMutation,
-  useCreateVenueTerminalMutation,
   useDeletePaymentCredentialMutation,
   useDeleteVenuePaymentRouteMutation,
-  useDeleteVenueReaderMutation,
   useGetPaymentCompatibilityQuery,
   useGetPaymentCredentialsQuery,
   useGetPaymentProviderSchemasQuery,
   useGetVenuePaymentRoutesQuery,
-  useGetVenuePosTreeQuery,
-  useRegenerateVenueTerminalPairingMutation,
   useTestPaymentCredentialMutation,
   useUpdatePaymentCredentialMutation,
-  useUpdateVenueReaderMutation,
   useUpsertVenuePaymentRouteMutation,
 } from "../../features/saas/moviraControlApi";
 import ConfirmDialog from "../../components/common/ConfirmDialog";
+import PosCardTree from "../../paymentConsole/components/PosCardTree";
 import SearchableSelect from "../../components/common/SearchableSelect";
 import { PanelShimmer, ShimmerBlock } from "../../components/Shimmer";
 import { parkPaymentMode, parkPaymentModeLabel } from "../../features/saas/parkPaymentMode";
@@ -503,222 +497,7 @@ function EditGatewayModal({ credential, schemas, onClose }) {
 }
 
 function PosTree({ park, onConfigurePos }) {
-  const { data: tree = {}, isLoading, isError } = useGetVenuePosTreeQuery(park.locationId);
-  const [terminalName, setTerminalName] = useState("");
-  const [readerDraft, setReaderDraft] = useState({});
-  const [removeReaderTarget, setRemoveReaderTarget] = useState(null);
-  const [createTerminal, createTerminalState] = useCreateVenueTerminalMutation();
-  const [regeneratePairing] = useRegenerateVenueTerminalPairingMutation();
-  const [addReader] = useAddVenueReaderMutation();
-  const [updateReader] = useUpdateVenueReaderMutation();
-  const [deleteReader, deleteReaderState] = useDeleteVenueReaderMutation();
-
-  async function createTill() {
-    if (!terminalName.trim()) return;
-    try {
-      await createTerminal({ locationId: park.locationId, name: terminalName.trim() }).unwrap();
-      setTerminalName("");
-      toast.success("Terminal created.");
-    } catch (err) {
-      toast.error(err?.data?.message || "Failed to create terminal.");
-    }
-  }
-
-  async function createReader(terminal) {
-    const draft = readerDraft[terminal.posDeviceId] || {};
-    try {
-      await addReader({
-        locationId: park.locationId,
-        posDeviceId: terminal.posDeviceId,
-        label: draft.label || undefined,
-        makeDefault: (terminal.readers || []).length === 0,
-        // The backend no longer supports an AeroSports-created emulator.
-        // Nuvei's sandbox simulator is still a provider-issued terminal and
-        // therefore uses the same TID/Register credentials as real hardware.
-        deviceKind: "real",
-        providerTerminalId: draft.providerTerminalId || undefined,
-        registerId: draft.registerId || undefined,
-        registerAuthKey: draft.registerAuthKey || undefined,
-        registrationCode: draft.registrationCode || undefined,
-      }).unwrap();
-      setReaderDraft((current) => ({ ...current, [terminal.posDeviceId]: {} }));
-      toast.success("Reader added.");
-    } catch (err) {
-      toast.error(err?.data?.message || "Failed to add reader.");
-    }
-  }
-
-  async function removeReader(event) {
-    if (!removeReaderTarget || event?.type !== "confirm") return;
-    try {
-      await deleteReader({
-        terminalId: removeReaderTarget.reader.terminalId,
-        locationId: park.locationId,
-      }).unwrap();
-      toast.success("Reader removed.");
-      setRemoveReaderTarget(null);
-    } catch (err) {
-      toast.error(err?.data?.message || "Failed to remove reader.");
-    }
-  }
-
-  const terminals = tree.terminals || [];
-  const routed = Boolean(tree.routed);
-  const isNuveiTerminal = tree.enrollment === "tid-per-till";
-
-  return (
-    <>
-    <section className="rounded-xl border border-stone-200 bg-white p-5 shadow-sm">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="min-w-0">
-          <p className="text-xs font-black uppercase text-violet-700">Card terminals</p>
-          <h3 className="mt-1 break-words text-lg font-black text-stone-950">Tills and card readers</h3>
-          <p className="mt-1 text-sm font-semibold text-stone-500">POS readers are available after the POS channel is routed.</p>
-        </div>
-        {routed ? (
-          <div className="flex w-full min-w-0 flex-col gap-2 sm:w-auto sm:min-w-[280px] sm:flex-row">
-            <Input value={terminalName} onChange={(event) => setTerminalName(event.target.value)} placeholder="Terminal name" />
-            <button type="button" onClick={createTill} disabled={createTerminalState.isLoading || !terminalName.trim()} className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm font-black text-stone-700 disabled:opacity-50">
-              <FaPlus /> Add terminal
-            </button>
-          </div>
-        ) : (
-          <button
-            type="button"
-            onClick={onConfigurePos}
-            className="btn-nexus inline-flex min-h-10 items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-black"
-          >
-            Configure POS route <FaArrowRight />
-          </button>
-        )}
-      </div>
-
-      {isLoading ? <PanelShimmer rows={2} className="mt-4" /> : null}
-      {isError && routed ? <p className="mt-4 text-sm font-bold text-red-600">Terminals could not be loaded.</p> : null}
-      {!isLoading && !routed ? (
-        <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4">
-          <div>
-            <p className="text-sm font-black text-amber-900">POS route required first</p>
-            <p className="mt-1 text-xs font-semibold text-amber-800">Choose a gateway for the POS / card terminal channel before creating tills or attaching readers.</p>
-          </div>
-          <Badge tone="orange">Step 2 required</Badge>
-        </div>
-      ) : null}
-      {!isLoading && routed && terminals.length === 0 ? (
-        <p className="mt-4 rounded-xl border border-dashed border-stone-300 bg-stone-50 p-4 text-sm font-bold text-stone-500">No terminals yet.</p>
-      ) : null}
-
-      <div className="mt-4 space-y-3">
-        {terminals.map((terminal) => {
-          const draft = readerDraft[terminal.posDeviceId] || {};
-          return (
-            <div key={terminal.posDeviceId} className="rounded-xl border border-stone-200 p-4">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div>
-                  <p className="font-black text-stone-950">{terminal.name}</p>
-                  <p className="text-xs font-semibold text-stone-500">
-                    Terminal #{terminal.posDeviceId}
-                    {terminal.pairingCode ? ` · pairing ${terminal.pairingCode}` : ""}
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={async () => {
-                    await regeneratePairing({
-                      posDeviceId: terminal.posDeviceId,
-                      locationId: park.locationId,
-                    }).unwrap();
-                    toast.success("Pairing code regenerated.");
-                  }}
-                  className="inline-flex min-h-9 items-center gap-2 rounded-lg border border-stone-200 bg-white px-3 py-1.5 text-xs font-black text-stone-700"
-                >
-                  <FaRedo /> Pairing
-                </button>
-              </div>
-
-              <div className="mt-3 space-y-2">
-                {(terminal.readers || []).map((reader) => (
-                  <div key={reader.terminalId} className="flex flex-wrap items-center gap-2 rounded-lg bg-stone-50 p-2">
-                    <FaCreditCard className="text-violet-700" />
-                    <span className="font-bold text-stone-800">{reader.displayName}</span>
-                    <code className="text-xs font-semibold text-stone-500">{reader.providerTerminalId || "simulated"}</code>
-                    {reader.isDefault ? <Badge tone="orange"><FaStar /> Default</Badge> : null}
-                    <Badge tone={reader.status === "online" ? "green" : "neutral"}>{reader.status}</Badge>
-                    <div className="ml-auto flex gap-1">
-                      {!reader.isDefault ? (
-                        <button
-                          type="button"
-                          onClick={() => updateReader({ terminalId: reader.terminalId, locationId: park.locationId, makeDefault: true })}
-                          className="rounded-lg border border-stone-200 bg-white px-2 py-1 text-xs font-black text-stone-700"
-                        >
-                          Default
-                        </button>
-                      ) : null}
-                      <button
-                        type="button"
-                        onClick={() => setRemoveReaderTarget({ terminal, reader })}
-                        className="rounded-lg border border-red-200 bg-white px-2 py-1 text-xs font-black text-red-700"
-                      >
-                        Remove
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              {routed ? (
-                <div className="mt-3 rounded-lg border border-stone-200 bg-stone-50 p-3">
-                  <p className="mb-2 text-xs font-bold text-stone-600">
-                    {isNuveiTerminal
-                      ? "Attach a Nuvei-issued physical terminal or sandbox simulator. Both require the TID, Register ID, and Register Auth Key supplied by Nuvei."
-                      : "Attach a Stripe reader using its provider-issued pairing or registration code."}
-                  </p>
-                  <div className={`grid gap-2 ${isNuveiTerminal ? "md:grid-cols-5" : "md:grid-cols-3"}`}>
-                  <Input value={draft.label || ""} onChange={(event) => setReaderDraft((current) => ({ ...current, [terminal.posDeviceId]: { ...draft, label: event.target.value } }))} placeholder="Reader label" />
-                  {isNuveiTerminal ? (
-                    <>
-                      <Input value={draft.providerTerminalId || ""} onChange={(event) => setReaderDraft((current) => ({ ...current, [terminal.posDeviceId]: { ...draft, providerTerminalId: event.target.value } }))} placeholder="Terminal ID (TID)" />
-                      <Input value={draft.registerId || ""} onChange={(event) => setReaderDraft((current) => ({ ...current, [terminal.posDeviceId]: { ...draft, registerId: event.target.value } }))} placeholder="Register ID" />
-                      <Input type="password" value={draft.registerAuthKey || ""} onChange={(event) => setReaderDraft((current) => ({ ...current, [terminal.posDeviceId]: { ...draft, registerAuthKey: event.target.value } }))} placeholder="Register Auth Key" autoComplete="new-password" />
-                    </>
-                  ) : (
-                    <Input value={draft.registrationCode || ""} onChange={(event) => setReaderDraft((current) => ({ ...current, [terminal.posDeviceId]: { ...draft, registrationCode: event.target.value } }))} placeholder="Pairing / registration code" />
-                  )}
-                  <button
-                    type="button"
-                    onClick={() => createReader(terminal)}
-                    disabled={isNuveiTerminal
-                      ? !draft.providerTerminalId?.trim() || !draft.registerId?.trim() || !draft.registerAuthKey?.trim()
-                      : !draft.registrationCode?.trim()}
-                    className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm font-black text-stone-700 disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    <FaPlus /> Reader
-                  </button>
-                  </div>
-                </div>
-              ) : null}
-            </div>
-          );
-        })}
-      </div>
-    </section>
-    <ConfirmDialog
-      open={Boolean(removeReaderTarget)}
-      tone="danger"
-      eyebrow="Remove card reader"
-      title={removeReaderTarget ? `Remove ${removeReaderTarget.reader.displayName}?` : "Remove reader?"}
-      message="This reader will be detached from the terminal and can no longer be used for POS payments until added again."
-      details={[
-        removeReaderTarget ? `Terminal: ${removeReaderTarget.terminal.name}` : "Selected terminal reader.",
-        "Use this only when the hardware reader should no longer accept payments for this location.",
-      ]}
-      confirmLabel="Remove reader"
-      loading={deleteReaderState.isLoading}
-      onConfirm={removeReader}
-      onClose={() => setRemoveReaderTarget(null)}
-    />
-    </>
-  );
+  return <PosCardTree locationId={park.locationId} onConfigurePos={onConfigurePos} />;
 }
 
 export default function ParkPaymentConsole({ park }) {
