@@ -3192,7 +3192,7 @@ function BillingPanel({ park, plans = [], moduleCatalog = [], planUsage = null }
     monthlyBaseFee: park.monthlyBaseFee || currentPlan?.monthlyBaseFee || 0,
     billingCycle: park.billingCycle || "monthly",
     billingStartDate: dateInputValue(park.billingStartDate) || todayDateInputValue(),
-    discountAmount: park.discountAmount || 0,
+    promoAmount: park.promoAmount || 0,
     taxLabel: park.taxLabel || "Tax",
     taxRatePercent: park.taxRatePercent || 0,
     taxRegistrationNumber: park.taxRegistrationNumber || "",
@@ -3229,9 +3229,9 @@ function BillingPanel({ park, plans = [], moduleCatalog = [], planUsage = null }
   const selectedModules = moduleCatalog.filter((module) => (park.modules || []).includes(module.key));
   const baseAmount = Number(form.monthlyBaseFee ?? selectedPlan?.monthlyBaseFee ?? park.billing?.base ?? park.monthlyBaseFee ?? 0);
   const moduleTotal = selectedModules.reduce((sum, module) => sum + Number(module.monthly || 0), 0);
-  const discount = Number(form.discountAmount ?? park.billing?.discount ?? park.discountAmount ?? 0);
+  const promo = Number(form.promoAmount ?? park.billing?.promo ?? park.promoAmount ?? 0);
   const taxRatePercent = Math.max(0, Math.min(100, Number(form.taxRatePercent || 0)));
-  const subtotal = Math.max(0, baseAmount + moduleTotal - discount);
+  const subtotal = Math.max(0, baseAmount + moduleTotal - promo);
   const taxAmount = Number(((subtotal * taxRatePercent) / 100).toFixed(2));
   const monthlyTotal = Number((subtotal + taxAmount).toFixed(2));
 
@@ -3334,8 +3334,8 @@ function BillingPanel({ park, plans = [], moduleCatalog = [], planUsage = null }
             <input type="date" value={form.billingStartDate} onChange={(event) => setForm({ ...form, billingStartDate: event.target.value })} className="input-nexus mt-1 w-full px-3 py-2.5 text-sm" />
           </label>
           <label>
-            <span className="text-xs font-black uppercase text-stone-500">Monthly promo / discount</span>
-            <input type="number" value={form.discountAmount} onChange={(event) => setForm({ ...form, discountAmount: event.target.value })} className="input-nexus mt-1 w-full px-3 py-2.5 text-sm" />
+            <span className="text-xs font-black uppercase text-stone-500">Monthly promo / promo</span>
+            <input type="number" value={form.promoAmount} onChange={(event) => setForm({ ...form, promoAmount: event.target.value })} className="input-nexus mt-1 w-full px-3 py-2.5 text-sm" />
             <span className="mt-1 block text-xs font-semibold text-stone-500">Applies to every invoice until you change it. A $0 invoice is settled automatically.</span>
           </label>
         </div>
@@ -3400,14 +3400,14 @@ function BillingPanel({ park, plans = [], moduleCatalog = [], planUsage = null }
                   <td colSpan="3" className="px-3 py-3 text-sm font-bold text-stone-500">No paid modules enabled.</td>
                 </tr>
               ) : null}
-              {discount > 0 ? (
+              {promo > 0 ? (
                 <tr>
                   <td className="px-3 py-2.5">
                     <p className="font-black text-stone-950">Promo</p>
                     <p className="text-xs font-semibold text-stone-500">Manual monthly adjustment</p>
                   </td>
                   <td className="px-3 py-2.5 font-bold text-stone-500">Credit</td>
-                  <td className="px-3 py-2.5 text-right font-black text-emerald-700">-{money(discount, park.currency)}</td>
+                  <td className="px-3 py-2.5 text-right font-black text-emerald-700">-{money(promo, park.currency)}</td>
                 </tr>
               ) : null}
               {taxAmount > 0 ? (
@@ -3438,7 +3438,7 @@ function BillingPanel({ park, plans = [], moduleCatalog = [], planUsage = null }
           </div>
           <div className="flex justify-between gap-3">
             <span className="text-stone-500">Promo</span>
-            <span className="text-emerald-700">-{money(discount, park.currency)}</span>
+            <span className="text-emerald-700">-{money(promo, park.currency)}</span>
           </div>
           <div className="flex justify-between gap-3">
             <span className="text-stone-500">{form.taxLabel || "Tax"} ({taxRatePercent}%)</span>
